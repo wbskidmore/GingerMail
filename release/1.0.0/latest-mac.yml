@@ -1,8 +1,0 @@
-version: 1.0.0
-files:
-  - url: GingerMail-1.0.0-mac-arm64.dmg
-    sha512: dt6GIyNLI638wYjxidswj1ahQjI0VtqDCwlkJCfuVEJXxTvb25HWaS/ItF881YgQrYxuA9G2KQDjmxH9YdQtvQ==
-    size: 118686592
-path: GingerMail-1.0.0-mac-arm64.dmg
-sha512: dt6GIyNLI638wYjxidswj1ahQjI0VtqDCwlkJCfuVEJXxTvb25HWaS/ItF881YgQrYxuA9G2KQDjmxH9YdQtvQ==
-releaseDate: '2026-05-28T01:24:38.714Z'

@@ -1,6 +1,0 @@
-provider: generic
-url: https://updates.gingermail.app/latest/mac
-channel: latest
-useMultipleRangeRequest: true
-publishAutoUpdate: true
-updaterCacheDirName: gingermail-updater

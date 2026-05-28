@@ -1,1 +1,0 @@
-{"version":3,"file":"accountHandlers.d.ts","sourceRoot":"","sources":["../../src/ipc/accountHandlers.ts"],"names":[],"mappings":"AACA,OAAO,KAAK,EAAE,OAAO,EAAE,eAAe,EAAE,MAAM,kBAAkB,CAAC;AAEjE,OAAO,KAAK,EAAE,UAAU,EAAE,MAAM,eAAe,CAAC;AAEhD,wBAAsB,gBAAgB,CACpC,GAAG,EAAE,UAAU,EACf,KAAK,EAAE,eAAe,EACtB,IAAI,GAAE;IAAE,QAAQ,CAAC,EAAE,OAAO,CAAA;CAAO,GAChC,OAAO,CAAC,OAAO,CAAC,CA4DlB"}

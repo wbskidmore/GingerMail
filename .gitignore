@@ -1,0 +1,35 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+**/dist/
+*.tsbuildinfo
+
+# Packaged app / electron-builder output
+release/
+
+# Environment & secrets
+.env
+.env.*
+
+# Logs
+*.log
+npm-debug.log*
+pnpm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Generated SBOMs
+sbom.cdx.json
+sbom.cdx.xml
+
+# Test & coverage output
+coverage/
+playwright-report/
+test-results/
+
+# Editor & OS junk
+.vscode/
+.DS_Store
+Thumbs.db

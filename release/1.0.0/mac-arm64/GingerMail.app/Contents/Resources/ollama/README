@@ -1,2 +1,0 @@
-Bundled Ollama binary not present in this build.
-App will reuse an existing Ollama on :11434 or prompt the user via the first-launch wizard.
