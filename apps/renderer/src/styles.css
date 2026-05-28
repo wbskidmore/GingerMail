@@ -1,0 +1,49 @@
+/*
+ * Renderer-only overrides on top of Mantine + ui-kit.
+ * Most styling lives in the Mantine theme. Keep this file tiny.
+ */
+
+#root {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+}
+
+/* Hover style for SnoozeMenu rows (used by ui-kit/SnoozeMenu) */
+.gm-snooze-item:hover {
+  background: var(--mantine-color-default-hover);
+}
+
+/* Make iframe-rendered mail bodies inherit the app color scheme */
+iframe {
+  background: var(--mantine-color-body);
+  color-scheme: light dark;
+}
+
+/* Thread row quick actions: hidden in resting state, visible on hover, on
+ * focus-within (so keyboard tab into the row reveals them), and when the
+ * row is selected. Mouse-only reveal was the WCAG 2.1 keyboard-access
+ * regression the accessibility review flagged. */
+.gm-thread-quickactions {
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 120ms ease-out;
+}
+
+.gm-thread-row:hover .gm-thread-quickactions,
+.gm-thread-row:focus-within .gm-thread-quickactions,
+.gm-thread-row[data-selected='true'] .gm-thread-quickactions {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+/* In reduced-motion mode just snap them in without the transition. */
+[data-reduce-motion='true'] .gm-thread-quickactions {
+  transition: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .gm-thread-quickactions {
+    transition: none;
+  }
+}

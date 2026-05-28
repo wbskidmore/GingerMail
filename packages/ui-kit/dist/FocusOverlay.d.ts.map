@@ -1,0 +1,1 @@
+{"version":3,"file":"FocusOverlay.d.ts","sourceRoot":"","sources":["../src/FocusOverlay.tsx"],"names":[],"mappings":"AAGA,OAAO,EAAoB,KAAK,UAAU,EAAE,MAAM,kBAAkB,CAAC;AAErE,MAAM,WAAW,iBAAiB;IAChC,KAAK,EAAE,UAAU,CAAC;IAClB,MAAM,EAAE,MAAM,IAAI,CAAC;CACpB;AAED;;;GAGG;AACH,wBAAgB,YAAY,CAAC,EAAE,KAAK,EAAE,MAAM,EAAE,EAAE,iBAAiB,kDAsChE"}

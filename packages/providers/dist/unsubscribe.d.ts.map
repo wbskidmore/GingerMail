@@ -1,0 +1,1 @@
+{"version":3,"file":"unsubscribe.d.ts","sourceRoot":"","sources":["../src/unsubscribe.ts"],"names":[],"mappings":"AAAA;;;;;;;;;;;GAWG;AACH,MAAM,WAAW,qBAAqB;IACpC,IAAI,CAAC,EAAE,MAAM,CAAC;IACd,MAAM,CAAC,EAAE,MAAM,CAAC;IAChB,QAAQ,EAAE,OAAO,CAAC;CACnB;AAED,wBAAgB,oBAAoB,CAAC,KAAK,EAAE,MAAM,GAAG,SAAS,EAAE,IAAI,CAAC,EAAE,MAAM,GAAG,qBAAqB,CAwBpG"}

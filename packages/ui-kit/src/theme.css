@@ -1,0 +1,212 @@
+/*
+ * GingerMail global overrides on top of Mantine.
+ *
+ * Mantine handles colours, spacing, components. We only layer in:
+ *   - density modes (data-density on <html>)
+ *   - the dyslexic-friendly font toggle (data-font on <html>)
+ *   - the draggable window region for the Electron title bar
+ *   - small a11y improvements (visible focus rings)
+ */
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+[data-density='compact'] {
+  --gm-row-py: 6px;
+}
+
+[data-density='cozy'] {
+  --gm-row-py: 10px;
+}
+
+[data-density='spacious'] {
+  --gm-row-py: 14px;
+}
+
+/* OpenDyslexic + Lexend are looked up locally; a follow-up packaging
+ * change will ship them bundled. Until then `local()` honours installs on
+ * macOS / Windows / Linux (where ADHD users have most commonly already
+ * installed OpenDyslexic), and the fallback chain below silently moves to
+ * Lexend > system-ui if the user doesn't have the font.
+ *
+ * Why `local()`-only for now: bundling the woff2 binaries needs to land
+ * with electron-builder asset-copy config + a font license-tracker update,
+ * and we didn't want to bundle without those guards in place. */
+@font-face {
+  font-family: 'OpenDyslexic';
+  src: local('OpenDyslexic'), local('OpenDyslexic-Regular');
+  font-display: swap;
+  font-weight: 400;
+}
+
+@font-face {
+  font-family: 'OpenDyslexic';
+  src: local('OpenDyslexic Bold'), local('OpenDyslexic-Bold');
+  font-display: swap;
+  font-weight: 700;
+}
+
+@font-face {
+  font-family: 'Lexend';
+  src: local('Lexend'), local('Lexend-Regular');
+  font-display: swap;
+  font-weight: 100 900;
+}
+
+[data-font='dyslexic'] {
+  font-family: 'OpenDyslexic', 'Lexend', system-ui, sans-serif !important;
+  letter-spacing: 0.01em;
+}
+
+[data-font='dyslexic'] * {
+  font-family: inherit !important;
+}
+
+[data-font='lexend'] {
+  font-family: 'Lexend', 'Inter', system-ui, sans-serif !important;
+  letter-spacing: 0.005em;
+}
+
+[data-font='lexend'] * {
+  font-family: inherit !important;
+}
+
+/* Honour the base-size slider. The slider in Settings sets --gm-base-size on
+ * <html>; Mantine reads `rem(...)` against the html element's font-size, so
+ * the slider has to actually mutate html { font-size }. Previously the
+ * variable was set but never consumed, which is why the slider looked
+ * broken in the accessibility review.
+ *
+ * 14px is the Mantine default and matches the theme's `fontSizes.md`. */
+html {
+  font-size: var(--gm-base-size, 14px);
+}
+
+.gm-titlebar-region {
+  -webkit-app-region: drag;
+}
+
+.gm-titlebar-region [data-no-drag],
+.gm-titlebar-region button,
+.gm-titlebar-region input,
+.gm-titlebar-region [role='button'] {
+  -webkit-app-region: no-drag;
+}
+
+/* Mac inset for traffic lights (top-left). */
+[data-platform='darwin'] .gm-titlebar-region {
+  padding-left: 78px;
+}
+
+/* Windows / Linux: system minimise/maximise/close sit top-right, so reserve
+ * room there instead. ~140px covers the standard Windows caption button group. */
+[data-platform='win32'] .gm-titlebar-region,
+[data-platform='linux'] .gm-titlebar-region {
+  padding-right: 140px;
+}
+
+/* The titlebar's centred title cluster shouldn't ever become a drop target. */
+.gm-titlebar-region img {
+  -webkit-user-drag: none;
+  user-select: none;
+}
+
+/* ActionBar — dedicated row beneath the title bar that hosts the global
+ * search input (and future quick-actions). Explicitly NON-draggable so the
+ * search input behaves normally on macOS regardless of where it sits
+ * relative to the traffic lights. Honours density via --gm-row-py. */
+.gm-actionbar-region {
+  -webkit-app-region: no-drag;
+  height: 40px;
+  border-bottom: 1px solid var(--mantine-color-default-border);
+  display: flex;
+  align-items: center;
+}
+
+[data-density='compact'] .gm-actionbar-region {
+  height: 36px;
+}
+
+[data-density='spacious'] .gm-actionbar-region {
+  height: 44px;
+}
+
+/* Visible focus rings - important for keyboard users (Q10).
+ *
+ * Outline colour is explicitly the AA-compliant filled-primary shade
+ * (theme.ts pins this to a 4.5:1+ contrast ratio against both light and
+ * dark Mantine surfaces) so focus is visible to low-vision users. */
+:focus-visible {
+  outline: 3px solid var(--mantine-primary-color-filled);
+  outline-offset: 2px;
+  border-radius: var(--mantine-radius-sm);
+}
+
+/* Skip-to-content link for keyboard / screen reader users. Visually
+ * hidden until focused; jumps the cursor past the title bar + sidebar
+ * straight to the main content region. */
+.gm-skip-link {
+  position: fixed;
+  top: 8px;
+  left: -9999px;
+  z-index: 9999;
+  padding: 8px 12px;
+  background: var(--mantine-primary-color-filled);
+  color: var(--mantine-color-white);
+  border-radius: var(--mantine-radius-sm);
+  font-weight: 600;
+}
+
+.gm-skip-link:focus {
+  left: 8px;
+}
+
+/* Reduce-motion support — honours both the OS preference and the in-app
+ * Accessibility toggle (which sets data-reduce-motion on <html>). Disables
+ * non-essential transitions, transforms, and the Mantine fade animations
+ * that ADHD users found distracting. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+[data-reduce-motion='true'] *,
+[data-reduce-motion='true'] *::before,
+[data-reduce-motion='true'] *::after {
+  animation-duration: 0.01ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.01ms !important;
+  scroll-behavior: auto !important;
+}
+
+/* High-contrast mode opt-in. Boosts text contrast and gives every
+ * interactive element a visible border even at rest. */
+[data-high-contrast='true'] {
+  --mantine-color-text: #000;
+  --mantine-color-dimmed: #222;
+}
+
+[data-mantine-color-scheme='dark'][data-high-contrast='true'] {
+  --mantine-color-text: #fff;
+  --mantine-color-dimmed: #ddd;
+}
+
+[data-high-contrast='true'] button,
+[data-high-contrast='true'] a {
+  text-decoration: underline;
+}

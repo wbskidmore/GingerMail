@@ -1,0 +1,35 @@
+{
+  "name": "@gingermail/main",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "main": "./entry.cjs",
+  "scripts": {
+    "dev": "node --watch-path=src --experimental-vm-modules ./scripts/dev.mjs",
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "start": "electron .",
+    "test": "vitest run --passWithNoTests"
+  },
+  "dependencies": {
+    "@azure/msal-node": "^2.13.1",
+    "@gingermail/ai": "workspace:*",
+    "@gingermail/core": "workspace:*",
+    "@gingermail/providers": "workspace:*",
+    "@gingermail/storage": "workspace:*",
+    "dompurify": "^3.4.7",
+    "electron-log": "^5.2.0",
+    "electron-updater": "^6.3.4",
+    "googleapis": "^144.0.0",
+    "jsdom": "^25.0.1",
+    "node-machine-id": "^1.1.12",
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "@types/jsdom": "^28.0.3",
+    "@types/node": "^20.16.0",
+    "electron": "^35.7.5",
+    "typescript": "^5.6.2",
+    "vitest": "^2.1.1"
+  }
+}

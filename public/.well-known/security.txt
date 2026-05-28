@@ -1,0 +1,11 @@
+# GingerMail security disclosure surface
+# Hosted at https://gingermail.app/.well-known/security.txt
+# Format: RFC 9116 (https://www.rfc-editor.org/info/rfc9116)
+
+Contact: mailto:security@gingermail.app
+Expires: 2027-05-27T00:00:00.000Z
+Acknowledgments: https://github.com/williamskidmore/gingermail/blob/main/SECURITY.md
+Preferred-Languages: en
+Canonical: https://gingermail.app/.well-known/security.txt
+Encryption: https://gingermail.app/security/pgp.asc
+Policy: https://github.com/williamskidmore/gingermail/blob/main/SECURITY.md

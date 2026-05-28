@@ -1,0 +1,130 @@
+appId: com.williamskidmore.gingermail
+productName: GingerMail
+copyright: Copyright (c) 2026 William Skidmore
+asar: true
+artifactName: GingerMail-${version}-${os}-${arch}.${ext}
+
+directories:
+  output: release/${version}
+  buildResources: build
+
+files:
+  # Source / compiled output.
+  - "apps/main/entry.cjs"
+  - "apps/main/dist/**"
+  - "apps/main/package.json"
+  - "apps/renderer/dist/**"
+  - "packages/*/dist/**"
+  - "packages/*/package.json"
+  - "package.json"
+  # Dependency tree. WITHOUT these globs electron-builder ships zero
+  # node_modules and entry.cjs crashes with `Cannot find module
+  # 'electron-log'` on first launch (we hit this between v1.0.0 builds).
+  # electron-builder follows pnpm symlinks correctly when both the
+  # per-app node_modules dir AND the hoisted .pnpm store are listed.
+  - "node_modules/**"
+  - "apps/main/node_modules/**"
+  - "packages/*/node_modules/**"
+  # Exclusions: source maps and tests bloat the package and may leak
+  # internal paths. Native bindings are kept (they live under
+  # node_modules/<pkg>/build/Release/*.node and are matched by the
+  # generic `node_modules/**` glob above).
+  - "!**/*.map"
+  - "!**/*.test.*"
+  - "!**/test/**"
+  - "!**/tests/**"
+  - "!**/*.md"
+  - "!**/.bin/**"
+
+# Bundle the platform-specific Ollama binary alongside the app so local AI
+# works on first launch without the user installing Ollama separately. The
+# `scripts/fetch-ollama.mjs` script populates these directories at build time
+# (run via `pnpm prepackage`). At runtime the OllamaSidecar looks for the
+# binary under `<resourcesPath>/ollama/<binary>` (mapped below per platform).
+extraResources:
+  - from: "apps/main/resources/ollama/${platform}-${arch}"
+    to: "ollama"
+    filter: ["**/*"]
+
+extraMetadata:
+  main: apps/main/entry.cjs
+
+mac:
+  category: public.app-category.productivity
+  # Building arm64-only for v1.0. Building a universal binary requires
+  # cross-arch (x64) native rebuilds of better-sqlite3-multiple-ciphers,
+  # which on Python 3.12+ hits a `ModuleNotFoundError: No module named
+  # 'distutils'` from node-gyp 9.x. Until we ship prebuilds (or upgrade
+  # node-gyp to 10.x system-wide), shipping arm64 is the safe path. Intel
+  # support can be re-added by setting `arch: [arm64, x64]` once the
+  # rebuild chain is healthy.
+  target:
+    - target: dmg
+      arch: [arm64]
+  hardenedRuntime: true
+  gatekeeperAssess: false
+  entitlements: build/entitlements.mac.plist
+  entitlementsInherit: build/entitlements.mac.plist
+  # Signing identity is intentionally null for v1.0 — code-signing +
+  # notarization is the cert-procurement workstream tracked separately
+  # as item #2 of the security review. Setting identity to null tells
+  # electron-builder to skip codesign entirely; the .app launches with
+  # a Gatekeeper warning the user has to dismiss on first run.
+  identity: null
+  # NOTE: when the Ollama sidecar is re-enabled (see scripts/fetch-ollama.mjs),
+  # restore the bundled-binary re-sign step here:
+  #   binaries:
+  #     - "Contents/Resources/ollama/ollama"
+
+dmg:
+  contents:
+    - x: 130
+      y: 220
+    - x: 410
+      y: 220
+      type: link
+      path: /Applications
+
+win:
+  target:
+    - target: nsis
+      arch: [x64, arm64]
+  publisherName: William Skidmore
+
+nsis:
+  oneClick: false
+  perMachine: false
+  allowToChangeInstallationDirectory: true
+  createDesktopShortcut: true
+  createStartMenuShortcut: true
+
+linux:
+  target:
+    - AppImage
+  category: Office
+
+# Auto-update channel.
+#
+# `generic` lets us host our own release feed instead of GitHub Releases /
+# S3 / Bintray. The URL is templated by electron-builder at build time and
+# resolved by electron-updater at runtime. The default `latest.yml` /
+# `latest-mac.yml` / `latest-linux.yml` manifests are SHA512-signed by
+# electron-builder; electron-updater verifies the signature before any
+# bytes are written to disk, so a hostile mirror can't downgrade or
+# substitute an installer.
+#
+# IMPORTANT: until the publish endpoint exists, the runtime auto-updater
+# also has a safety toggle (`updates.optIn`) that ships disabled by
+# default. Flipping it on without a working endpoint is a no-op.
+publish:
+  provider: generic
+  # The feed URL must be arch-agnostic because the macOS universal build
+  # combines arm64 + x64 slices and requires `app-update.yml` to be byte-
+  # identical between them. electron-updater downloads `latest.yml`
+  # (or `latest-mac.yml` on macOS) from this base, and that manifest in
+  # turn references the per-arch installer by file name — so we get the
+  # right binary without `${arch}` in the URL.
+  url: https://updates.gingermail.app/${channel}/${os}
+  channel: latest
+  useMultipleRangeRequest: true
+  publishAutoUpdate: true

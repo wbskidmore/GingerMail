@@ -1,0 +1,1 @@
+{"version":3,"file":"AccountBadge.d.ts","sourceRoot":"","sources":["../src/AccountBadge.tsx"],"names":[],"mappings":"AAEA,MAAM,WAAW,iBAAiB;IAChC,WAAW,EAAE,MAAM,CAAC;IACpB,YAAY,EAAE,MAAM,CAAC;IACrB,KAAK,CAAC,EAAE,MAAM,CAAC;CAChB;AAED,qEAAqE;AACrE,wBAAgB,YAAY,CAAC,EAAE,WAAW,EAAE,YAAY,EAAE,KAAK,EAAE,EAAE,iBAAiB,2CAwBnF"}
