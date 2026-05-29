@@ -3,11 +3,14 @@ import type { Account, AppSettings, FocusState } from '@gingermail/core';
 import { defaultAppSettings } from '@gingermail/core';
 import { getApi, type Platform } from './ipcBridge.js';
 
-export type TabId = 'mail' | 'calendar' | 'tasks' | 'settings';
+export type TabId = 'mail' | 'calendar' | 'tasks' | 'slack' | 'settings';
 
 interface AppStore {
   tab: TabId;
   setTab: (tab: TabId) => void;
+  /** Whether the global keyboard-shortcuts cheat sheet is open. */
+  shortcutsOpen: boolean;
+  setShortcutsOpen: (open: boolean) => void;
   accounts: Account[];
   settings: AppSettings;
   focus: FocusState;
@@ -27,6 +30,8 @@ interface AppStore {
 export const useAppStore = create<AppStore>((set, get) => ({
   tab: 'mail',
   setTab: (tab) => set({ tab }),
+  shortcutsOpen: false,
+  setShortcutsOpen: (shortcutsOpen) => set({ shortcutsOpen }),
   accounts: [],
   settings: defaultAppSettings,
   focus: { active: false },

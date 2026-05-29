@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import type * as LoopbackModule from './loopback.js';
 
 // Mock the electron shell.openExternal before importing the loopback module
 // — we don't want a real browser to pop during tests.
@@ -11,7 +12,7 @@ vi.mock('../electronShim.js', () => ({
   },
 }));
 
-let runLoopbackOAuth: typeof import('./loopback.js').runLoopbackOAuth;
+let runLoopbackOAuth: typeof LoopbackModule.runLoopbackOAuth;
 
 beforeEach(async () => {
   openedUrls.length = 0;

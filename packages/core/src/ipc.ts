@@ -3,6 +3,8 @@ import type {
   AppSettings,
   Calendar,
   CalendarEvent,
+  ChatConversation,
+  ChatMessage,
   Draft,
   Folder,
   Message,
@@ -233,7 +235,42 @@ export interface IpcApi {
     /** List muted senders for the Privacy settings card. */
     listMuted: () => Promise<MutedSender[]>;
   };
+
+  // ---- Slack / chat ----
+  slack: {
+    /**
+     * Connect a workspace by pasting a Slack token (xoxp-/xoxb-/xoxc-…).
+     * Runs `auth.test`, persists the token in the OS keychain, and creates a
+     * `kind:'slack'` account. Returns the created account.
+     */
+    connectToken: (input: { token: string }) => Promise<Account>;
+    /** Connect via the BYO Slack OAuth app (loopback redirect). */
+    beginOAuth: () => Promise<Account>;
+    /** Remove a connected workspace (token + cached data). */
+    disconnect: (input: { accountId: string }) => Promise<void>;
+    /** Connected workspaces (subset of accounts where kind === 'slack'). */
+    listWorkspaces: () => Promise<Account[]>;
+    /** Cached conversations for a workspace (or all when accountId omitted). */
+    listConversations: (input?: { accountId?: string }) => Promise<ChatConversation[]>;
+    /** Most recent messages for a conversation. */
+    listMessages: (input: { conversationId: string; limit?: number }) => Promise<ChatMessage[]>;
+    /** Post a message to a conversation. */
+    send: (input: { conversationId: string; text: string }) => Promise<ChatMessage>;
+    /** Mark a conversation read up to its latest message. */
+    markRead: (input: { conversationId: string }) => Promise<void>;
+    /** Force a poll of all workspaces now. */
+    refresh: () => Promise<void>;
+    /** Subscribe to background sync events (new messages / unread changes). */
+    onSync: (cb: (evt: ChatSyncEvent) => void) => () => void;
+  };
 }
+
+export type ChatSyncEvent =
+  | { type: 'started'; accountId: string }
+  | { type: 'finished'; accountId: string }
+  | { type: 'conversations-updated'; accountId: string }
+  | { type: 'new-message'; accountId: string; conversationId: string; mentionsMe: boolean }
+  | { type: 'error'; accountId: string; error: string };
 
 export interface AddAccountInput {
   kind: ProviderKind;
@@ -376,6 +413,18 @@ export const IPC_CHANNELS = {
   updatesStatus: 'updates:status',
   updatesCheck: 'updates:check',
   updatesDownload: 'updates:download',
+
+  // slack / chat
+  slackConnectToken: 'slack:connectToken',
+  slackBeginOAuth: 'slack:beginOAuth',
+  slackDisconnect: 'slack:disconnect',
+  slackListWorkspaces: 'slack:listWorkspaces',
+  slackListConversations: 'slack:listConversations',
+  slackListMessages: 'slack:listMessages',
+  slackSend: 'slack:send',
+  slackMarkRead: 'slack:markRead',
+  slackRefresh: 'slack:refresh',
+  slackSyncEvent: 'slack:syncEvent',
 } as const;
 
 export type IpcChannel = (typeof IPC_CHANNELS)[keyof typeof IPC_CHANNELS];

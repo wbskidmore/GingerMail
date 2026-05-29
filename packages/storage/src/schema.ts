@@ -225,6 +225,57 @@ CREATE INDEX IF NOT EXISTS pending_sends_status_idx ON pending_sends(status, nex
 CREATE INDEX IF NOT EXISTS pending_sends_account_idx ON pending_sends(account_id);
 
 CREATE INDEX IF NOT EXISTS messages_muted_idx ON messages(muted) WHERE muted = 1;
+
+/* ---- Slack / chat cache (schema v5) ----
+ *
+ * Conversations, messages, and the user roster for connected Slack
+ * workspaces. last_read_ts is OUR local read marker: markRead updates it
+ * (and pushes to Slack), and the sync layer compares it against the newest
+ * cached message ts to derive unread_count / has_mention. This keeps unread
+ * state correct even with bot tokens (which have no server-side unread).
+ */
+CREATE TABLE IF NOT EXISTS slack_conversations (
+  id TEXT PRIMARY KEY,                 -- accountId:conversationId
+  account_id TEXT NOT NULL,
+  conversation_id TEXT NOT NULL,       -- native Slack id (C…/D…/G…)
+  kind TEXT NOT NULL,                  -- im | mpim | channel | group
+  name TEXT NOT NULL DEFAULT '',
+  partner_user_id TEXT,
+  unread_count INTEGER NOT NULL DEFAULT 0,
+  has_mention INTEGER NOT NULL DEFAULT 0,
+  last_message_at INTEGER NOT NULL DEFAULT 0,
+  last_read_ts TEXT,
+  is_member INTEGER NOT NULL DEFAULT 1,
+  FOREIGN KEY (account_id) REFERENCES accounts(id) ON DELETE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS slack_conv_account_idx ON slack_conversations(account_id, last_message_at DESC);
+
+CREATE TABLE IF NOT EXISTS slack_messages (
+  id TEXT PRIMARY KEY,                 -- accountId:conversationId:ts
+  account_id TEXT NOT NULL,
+  conversation_id TEXT NOT NULL,       -- native Slack id
+  ts TEXT NOT NULL,
+  user_id TEXT,
+  author_name TEXT NOT NULL DEFAULT '',
+  text TEXT NOT NULL DEFAULT '',
+  created_at INTEGER NOT NULL,
+  mentions_me INTEGER NOT NULL DEFAULT 0,
+  links_json TEXT,
+  FOREIGN KEY (account_id) REFERENCES accounts(id) ON DELETE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS slack_msg_conv_idx ON slack_messages(account_id, conversation_id, created_at DESC);
+
+CREATE TABLE IF NOT EXISTS slack_users (
+  id TEXT PRIMARY KEY,                 -- accountId:userId
+  account_id TEXT NOT NULL,
+  user_id TEXT NOT NULL,
+  display_name TEXT NOT NULL DEFAULT '',
+  initials TEXT NOT NULL DEFAULT '?',
+  is_bot INTEGER NOT NULL DEFAULT 0,
+  FOREIGN KEY (account_id) REFERENCES accounts(id) ON DELETE CASCADE
+);
 `;
 
-export const CURRENT_SCHEMA_VERSION = 4;
+export const CURRENT_SCHEMA_VERSION = 5;

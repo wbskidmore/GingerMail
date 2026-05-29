@@ -29,17 +29,17 @@
     "build:icons": "node scripts/build-icons.mjs",
     "fetch:ollama": "node scripts/fetch-ollama.mjs",
     "postinstall": "electron-builder install-app-deps",
-    "sbom": "pnpm dlx @cyclonedx/cyclonedx-npm --output-file sbom.cdx.json --output-format JSON",
-    "sbom:xml": "pnpm dlx @cyclonedx/cyclonedx-npm --output-file sbom.cdx.xml --output-format XML",
+    "sbom": "cyclonedx-npm --output-file sbom.cdx.json --output-format JSON",
+    "sbom:xml": "cyclonedx-npm --output-file sbom.cdx.xml --output-format XML",
     "audit:prod": "pnpm audit --prod --audit-level high"
   },
   "dependencies": {
-    "@gingermail/main": "workspace:*",
+    "@azure/msal-node": "^2.13.1",
     "@gingermail/ai": "workspace:*",
     "@gingermail/core": "workspace:*",
+    "@gingermail/main": "workspace:*",
     "@gingermail/providers": "workspace:*",
     "@gingermail/storage": "workspace:*",
-    "@azure/msal-node": "^2.13.1",
     "@microsoft/microsoft-graph-client": "^3.0.7",
     "dompurify": "^3.4.7",
     "electron-log": "^5.2.0",
@@ -54,6 +54,7 @@
     "zod": "^3.23.8"
   },
   "devDependencies": {
+    "@cyclonedx/cyclonedx-npm": "^4.2.1",
     "@electron/rebuild": "^3.7.1",
     "@playwright/test": "^1.48.1",
     "@testing-library/jest-dom": "^6.5.0",

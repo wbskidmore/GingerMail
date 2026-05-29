@@ -30,7 +30,7 @@ packages/
 pnpm install
 pnpm rebuild-native       # native module rebuild against Electron's Node ABI
 pnpm dev                  # renderer + electron, hot reload both
-pnpm dist                 # build signed installers for current OS
+pnpm dist                 # build installers for current OS (UNSIGNED until certs are provisioned)
 ```
 
 ## ADHD-first defaults
@@ -44,3 +44,9 @@ pnpm dist                 # build signed installers for current OS
 ## Status
 
 Phased build - see `docs/ROADMAP.md` for what's shipped and what's next.
+
+## Security & compliance
+
+- Security policy: `SECURITY.md`; hardening summary: `docs/security-hardening.md`.
+- NIST 800-53 / 800-171 / CSF 2.0 / FedRAMP-readiness program (scope, control
+  crosswalk, threat model, SSP, POA&M): `docs/compliance/`.

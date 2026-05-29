@@ -1,0 +1,45 @@
+# Plan of Action & Milestones (POA&M)
+
+Supports NIST CA-5. Each weakness has an ID, the control it maps to, a
+severity, a remediation, a milestone, and a status. Severity uses the
+incident-response ladder in [docs/incident-response.md](../incident-response.md)
+plus a planning priority (P0 highest).
+
+Status: Open | In progress | Closed.
+
+## Open / in-progress
+
+| ID | Priority | Weakness | Control(s) | Source | Remediation | Milestone | Status |
+|----|----------|----------|------------|--------|-------------|-----------|--------|
+| PM-008 | P1 | macOS/Windows binaries unsigned | CM-14, SA-10 | Build review | Signing is now env-gated in `electron-builder.yml`; still requires procuring Apple Developer ID + Windows Authenticode certs | Cert procurement | Open (config wired, certs pending) |
+| PM-009 | P1 | Ollama binary SHAs are placeholders | SR-11 | Build review | `@cyclonedx/cyclonedx-npm` now pinned as devDependency (SR-4 part done); `scripts/fetch-ollama.mjs` now fails fast on placeholder and accepts env-injected digests, but real upstream SHAs still must be filled in | Next release | In progress |
+| PM-011 | P2 | No key rotation for DB key / vault secrets | SC-12, SC-28 | Storage review | Add key-rotation procedure + re-key path | Future release | Open |
+| PM-012 | P2 | Cipher not explicitly pinned; docs say "SQLCipher" but driver default differs | SC-13 | Storage review | Set explicit `PRAGMA cipher`; reconcile docs | Future release | Open |
+| PM-013 | P2 | Log scrubber misses `sk-ant-`, `ghp_`, 32-39 char hex, renderer logs | AU-9 | Logging review | Extend scrub rules; add renderer-side scrubbing | Future release | Open |
+| PM-014 | P2 | IR roster TBD; no `docs/post-mortems/` | IR-7, IR-8 | IR review | Define roster; create post-mortems dir + template | Future release | Open |
+| PM-015 | P2 | Microsoft OAuth refresh token not persisted; access tokens expire | AC-12 | App-layer review | Persist refresh token / wire MSAL silent refresh to vault | Future release | Open |
+| PM-016 | P2 | AI egress filter not on the main-process fetch path used for cloud calls | SC-7, AC-4 | App-layer review | Attach egress enforcement to the actual cloud fetch (or dedicated session) | Future release | Open |
+| PM-017 | P0 | The repo does not pass its own `lint`/`typecheck` today: pre-existing `require()` and React-hooks lint errors, a parse error in `packages/storage/src/schema.ts`, and an incomplete in-tree Slack feature (`apps/main/src/preload.ts`, `apps/main/src/sync/chatSync.ts`, `packages/providers/src/slack/`) referencing not-yet-existing exports. The new CI gate (PM-002) surfaces all of these. | SA-11, CM-2 | Discovered while enabling CI | Either complete or revert the Slack WIP; fix the `schema.ts` syntax error; resolve the `no-require-imports` / `rules-of-hooks` errors so `pnpm lint` and `pnpm typecheck` are green | Before first green CI run | Open |
+
+## Closed (resolved by the compliance-program change set)
+
+| ID | Weakness | Control(s) | Resolved by |
+|----|----------|------------|-------------|
+| PM-001 | Documentation drift (CI/signing overstated) | CM-2 | Corrected `docs/security-hardening.md` §#9, §#1 cipher note, and `README.md` "signed installers" line |
+| PM-002 | No CI/CD pipeline | SA-11, RA-5, SI-2 | `.github/workflows/ci.yml` (frozen install, lint, typecheck, test, `audit:prod`, SBOM artifact) |
+| PM-003 | No automated dependency updates | SA-22, SR-3 | `.github/dependabot.yml` (npm + github-actions) |
+| PM-004 | No SAST | SA-11 | `.github/workflows/codeql.yml` (JS/TS, push/PR + weekly) |
+| PM-005 | Silent plaintext secrets fallback | SC-28, IA-5 | `apps/main/src/tokenVault.ts` warns + refuses plaintext unless `GM_ALLOW_PLAINTEXT_VAULT=1`; load failures now warn instead of silently emptying |
+| PM-006 | Unwired IPC validation on write channels | SI-10 | Wired `safeHandle` + corrected schemas for mail/cal/tasks/scheduler write channels in `register.ts`; bounded `SettingsUpdateSchema` top-level keys; added `apps/main/src/ipc/coverage.test.ts` |
+| PM-007 | Unenforced signed updates / TOCTOU | SI-7, CM-14 | `apps/main/src/autoUpdater.ts` sets `requireSignedUpdates` and re-checks kill-switch + version drift on the download path |
+| PM-010 | No file-perm hardening; plaintext migration backups | SC-28, MP-6, AC-6 | `chmod 600` on the secrets vault; migration backups now `chmod 600` + sentinel README in `openEncryptedDb.ts` |
+
+## Notes
+
+- PM-008 (certificates) and PM-011/PM-015 (rotation, MS refresh) involve
+  external dependencies or larger design work and remain Open with future
+  milestones.
+- PM-017 is the headline finding once CI is enabled: the codebase currently
+  fails its own quality gate due to pre-existing, in-progress work that is
+  unrelated to this compliance program. This is exactly the class of issue the
+  CI gate (PM-002) exists to catch.

@@ -1,9 +1,10 @@
 import { createRequire } from 'node:module';
 import type { ImapFlow as ImapFlowType } from 'imapflow';
+import type * as Nodemailer from 'nodemailer';
 import type { Transporter } from 'nodemailer';
 const localRequire = createRequire(import.meta.url);
 const { ImapFlow } = localRequire('imapflow') as { ImapFlow: typeof ImapFlowType };
-const nodemailer = localRequire('nodemailer') as typeof import('nodemailer');
+const nodemailer = localRequire('nodemailer') as typeof Nodemailer;
 import type {
   Account,
   Address,

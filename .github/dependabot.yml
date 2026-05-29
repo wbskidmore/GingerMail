@@ -1,0 +1,32 @@
+version: 2
+updates:
+  # npm (pnpm workspace) dependencies.
+  - package-ecosystem: npm
+    directory: "/"
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 10
+    groups:
+      # Group low-risk dev/test tooling to reduce PR noise.
+      dev-tooling:
+        patterns:
+          - "@types/*"
+          - "eslint*"
+          - "typescript*"
+          - "vitest"
+          - "@vitejs/*"
+          - "prettier"
+        update-types:
+          - minor
+          - patch
+    labels:
+      - dependencies
+
+  # GitHub Actions used by our workflows.
+  - package-ecosystem: github-actions
+    directory: "/"
+    schedule:
+      interval: weekly
+    labels:
+      - dependencies
+      - ci

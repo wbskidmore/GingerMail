@@ -1,5 +1,6 @@
 import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
 import { z } from 'zod';
+import type * as GuardsModule from './guards.js';
 
 // Mock the electronShim's ipcMain BEFORE importing guards.
 const handlerStore = new Map<string, (event: unknown, raw: unknown) => unknown>();
@@ -10,7 +11,7 @@ vi.mock('../electronShim.js', () => ({
   },
 }));
 
-let guards: typeof import('./guards.js');
+let guards: typeof GuardsModule;
 
 beforeEach(async () => {
   handlerStore.clear();

@@ -145,6 +145,9 @@ function MovePopover({
 }) {
   const [opened, setOpened] = useState(false);
   const [filter, setFilter] = useState('');
+  // All hooks must run unconditionally and before any early return
+  // (react-hooks/rules-of-hooks), so keep this above the `a` guard below.
+  const close = useCallback(() => setOpened(false), []);
   const accountFolders = folders.filter((f) => f.accountId === message.accountId);
   const filtered = accountFolders.filter(
     (f) => !filter || f.name.toLowerCase().includes(filter.toLowerCase()),
@@ -152,7 +155,6 @@ function MovePopover({
 
   const a = MAIL_ACTION_BY_ID['move'];
   if (!a) return null;
-  const close = useCallback(() => setOpened(false), []);
 
   return (
     <Popover opened={opened} onChange={setOpened} position="bottom-end" withArrow shadow="md" trapFocus>

@@ -1,7 +1,8 @@
 import { createRequire } from 'node:module';
+import type * as Nodemailer from 'nodemailer';
 import type { Transporter } from 'nodemailer';
 const localRequire = createRequire(import.meta.url);
-const nodemailer = localRequire('nodemailer') as typeof import('nodemailer');
+const nodemailer = localRequire('nodemailer') as typeof Nodemailer;
 import type {
   Account,
   Draft,

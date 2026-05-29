@@ -4,6 +4,8 @@ import type {
   AppSettings,
   Calendar,
   CalendarEvent,
+  ChatConversation,
+  ChatMessage,
   CuratedModelInfo,
   Draft,
   Folder,
@@ -128,6 +130,18 @@ export interface Api {
     unmute: (input: { email: string }) => Promise<void>;
     dismiss: (input: { email: string }) => Promise<void>;
     listMuted: () => Promise<MutedSender[]>;
+  };
+  slack: {
+    connectToken: (input: { token: string }) => Promise<Account>;
+    beginOAuth: () => Promise<Account>;
+    disconnect: (input: { accountId: string }) => Promise<void>;
+    listWorkspaces: () => Promise<Account[]>;
+    listConversations: (input?: { accountId?: string }) => Promise<ChatConversation[]>;
+    listMessages: (input: { conversationId: string; limit?: number }) => Promise<ChatMessage[]>;
+    send: (input: { conversationId: string; text: string }) => Promise<ChatMessage>;
+    markRead: (input: { conversationId: string }) => Promise<void>;
+    refresh: () => Promise<void>;
+    onSync: (cb: Listener<unknown>) => Unsubscribe;
   };
 }
 
@@ -292,6 +306,27 @@ function createMockApi(): Api {
       unmute: async () => {},
       dismiss: async () => {},
       listMuted: async () => [],
+    },
+    slack: {
+      connectToken: async () => ({ ...baseAccount, kind: 'slack', displayName: 'Mock Slack' }),
+      beginOAuth: async () => ({ ...baseAccount, kind: 'slack', displayName: 'Mock Slack' }),
+      disconnect: async () => {},
+      listWorkspaces: async () => [],
+      listConversations: async () => [],
+      listMessages: async () => [],
+      send: async (input) => ({
+        id: `mock:${input.conversationId}:0`,
+        accountId: 'mock',
+        conversationId: input.conversationId,
+        ts: '0',
+        authorName: 'You',
+        text: input.text,
+        createdAt: Date.now(),
+        mentionsMe: false,
+      }),
+      markRead: async () => {},
+      refresh: async () => {},
+      onSync: noListener,
     },
   };
 }

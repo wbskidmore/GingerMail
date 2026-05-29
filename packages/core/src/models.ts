@@ -1,4 +1,4 @@
-export type ProviderKind = 'gmail' | 'microsoft' | 'apple-caldav' | 'imap-smtp' | 'pop3';
+export type ProviderKind = 'gmail' | 'microsoft' | 'apple-caldav' | 'imap-smtp' | 'pop3' | 'slack';
 
 export interface Account {
   id: string;
@@ -246,6 +246,63 @@ export interface Task {
   position: number;
 }
 
+// Chat (Slack)
+
+export type ChatConversationKind = 'im' | 'mpim' | 'channel' | 'group';
+
+/**
+ * A Slack (or future chat provider) conversation: a DM, a group DM, or a
+ * channel. `id` is the provider-scoped `accountId:conversationId` so it is
+ * unique across multiple connected workspaces, matching the mail id scheme.
+ */
+export interface ChatConversation {
+  id: string;
+  accountId: string;
+  /** Provider-native conversation id (e.g. Slack `C…`/`D…`/`G…`). */
+  conversationId: string;
+  kind: ChatConversationKind;
+  /** Display name: channel name (`#general`) or the other member's name. */
+  name: string;
+  /** Slack user id of the DM partner, when this is a 1:1 IM. */
+  partnerUserId?: string;
+  unreadCount: number;
+  /** True when the conversation has an unread @-mention or is a DM with unread. */
+  hasMention: boolean;
+  lastMessageAt: number;
+  /** Whether the signed-in user is a member (channels can be browsable but unjoined). */
+  isMember: boolean;
+}
+
+export interface ChatUser {
+  id: string;
+  accountId: string;
+  /** Provider-native user id (Slack `U…`). */
+  userId: string;
+  displayName: string;
+  /** Two-letter initials we render as a low-stimulation avatar. */
+  initials: string;
+  isBot: boolean;
+}
+
+export interface ChatMessage {
+  /** `accountId:conversationId:ts` — stable + globally unique. */
+  id: string;
+  accountId: string;
+  conversationId: string;
+  /** Slack message timestamp ("1700000000.000100"); doubles as the cursor. */
+  ts: string;
+  /** Authoring user id (Slack `U…`); absent for some system messages. */
+  userId?: string;
+  authorName: string;
+  /** Plain-text rendering of the message (mrkdwn flattened). */
+  text: string;
+  createdAt: number;
+  /** True when the message @-mentions the signed-in user. */
+  mentionsMe: boolean;
+  /** External links / files surfaced as openable URLs (rendered as links). */
+  links?: string[];
+}
+
 // AI
 
 export interface AiSummary {
@@ -464,11 +521,39 @@ export interface UpdatesSettings {
   lastNotifiedVersion?: string;
 }
 
+/**
+ * Slack / chat behaviour. Polling-based in v1 (no always-on socket), so the
+ * interval is user-tunable. Notifications default to mentions + DMs only so
+ * the tab stays low-stimulation for ADHD users; channel chatter never pings.
+ */
+export interface ChatSettings {
+  /** Master switch for the Slack tab + background polling. */
+  enabled: boolean;
+  /** Seconds between background unread/message polls. */
+  pollIntervalSec: number;
+  /** Notify on direct messages. */
+  notifyOnDirectMessage: boolean;
+  /** Notify on @-mentions in channels. */
+  notifyOnMention: boolean;
+}
+
+export const defaultChatSettings: ChatSettings = {
+  enabled: true,
+  pollIntervalSec: 60,
+  notifyOnDirectMessage: true,
+  notifyOnMention: true,
+};
+
 export interface AppSettings {
   appearance: AppearanceSettings;
   accessibility: AccessibilitySettings;
   notifications: NotificationSettings;
   ai: AiSettings;
+  /**
+   * Slack / chat settings. Optional for backwards compat with older
+   * persisted prefs; callers should fall back to `defaultChatSettings`.
+   */
+  chat?: ChatSettings;
   /**
    * Optional only for backwards compat with renderer-side stub settings
    * that were authored before #3 landed. Real settings written by the
@@ -500,6 +585,7 @@ export const defaultAppSettings: AppSettings = {
     perAccount: {},
   },
   ai: { mode: 'off' },
+  chat: defaultChatSettings,
   updates: {
     optIn: false,
     channel: 'latest',

@@ -4,11 +4,18 @@ This document captures the production-readiness work landed for v1.0,
 addressing the cybersecurity architect review's top 10 (item #2 — code
 signing + notarization — is deferred to the cert procurement workstream).
 
+For the formal NIST 800-53 / 800-171 / CSF 2.0 / FedRAMP-readiness control
+mapping, gap assessment, SSP, and POA&M, see
+[docs/compliance/](compliance/README.md).
+
 ## #1 — At-rest DB encryption (SQLCipher)
 
 **Status:** shipped.
 
-- New dep: `better-sqlite3-multiple-ciphers` (SQLCipher-compatible).
+- New dep: `better-sqlite3-multiple-ciphers` (SQLCipher-compatible). Note:
+  the cipher is currently the driver default rather than an explicitly pinned
+  `PRAGMA cipher`; pinning + doc reconciliation is tracked in
+  `docs/compliance/poam.md` PM-012.
 - `packages/storage/src/openEncryptedDb.ts` wraps driver selection,
   key validation, and in-place plaintext → encrypted migration.
 - `apps/main/src/context.ts` derives the DB key on first launch via
@@ -104,12 +111,18 @@ write channels).
 
 ## #9 — Supply chain
 
-**Status:** shipped.
+**Status:** partial.
 
-- `package.json` scripts: `sbom`, `sbom:xml`, `audit:prod`.
-- `.github/dependabot.yml` — daily npm scans, grouped by ecosystem.
-- `.github/workflows/ci.yml` — `pnpm audit --prod --audit-level high`
-  hard-fails CI; CodeQL on every push; SBOM artifact on main.
+- `package.json` scripts: `sbom`, `sbom:xml`, `audit:prod` (present).
+- `.github/dependabot.yml` — weekly npm + github-actions update PRs,
+  dev-tooling grouped to reduce noise.
+- `.github/workflows/ci.yml` — frozen-lockfile install, `lint`, `typecheck`,
+  `test`, then `pnpm audit:prod` (hard-fails on high/critical); SBOM artifact
+  uploaded on `main`.
+- `.github/workflows/codeql.yml` — CodeQL JS/TS analysis on push/PR + weekly.
+- Open items: Ollama binary SHAs are placeholders and the CycloneDX tool is
+  invoked via `pnpm dlx` rather than a pinned devDependency (see
+  `docs/compliance/poam.md` PM-009).
 
 ## #10 — Disclosure surface
 

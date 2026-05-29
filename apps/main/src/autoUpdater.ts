@@ -60,6 +60,19 @@ export function setupAutoUpdater(deps: SetupUpdaterDeps): UpdaterController {
   // hostile feed advertise an "older" version as the latest.
   updater.allowDowngrade = false;
   updater.allowPrerelease = false;
+  // SI-7: require signed updates. electron-updater verifies the downloaded
+  // package's code signature against the app's own signing identity on macOS
+  // (Squirrel.Mac) and against `publisherName` on Windows (NSIS) — but only
+  // once the app itself is signed (tracked as compliance POA&M PM-008). We
+  // set the intent flag defensively in case the installed electron-updater
+  // build exposes it, so enforcement turns on automatically with signing.
+  type SignableUpdater = typeof updater & { requireSignedUpdates?: boolean };
+  (updater as SignableUpdater).requireSignedUpdates = true;
+
+  // Remember the version surfaced by the most recent checkNow() so the
+  // download path can detect a feed that changed between check and click
+  // (a TOCTOU manifest swap) and refuse it.
+  let lastAvailableVersion: string | null = null;
 
   updater.on('checking-for-update', () => log.info('[updater] checking'));
   updater.on('update-available', (info) => log.info(`[updater] available ${info.version}`));
@@ -86,18 +99,41 @@ export function setupAutoUpdater(deps: SetupUpdaterDeps): UpdaterController {
       try {
         const result = await updater.checkForUpdates();
         const v = result?.updateInfo?.version;
-        if (!v) return { available: false };
+        if (!v) {
+          lastAvailableVersion = null;
+          return { available: false };
+        }
         if (v === '0.0.0-killswitch') {
+          lastAvailableVersion = null;
           return { available: false, error: 'This build has been retired by the publisher. Please reinstall from gingermail.app.' };
         }
+        lastAvailableVersion = v;
         return { available: true, version: v, notes: typeof result?.updateInfo?.releaseNotes === 'string' ? result.updateInfo.releaseNotes : undefined };
       } catch (err) {
+        lastAvailableVersion = null;
         return { available: false, error: err instanceof Error ? err.message : String(err) };
       }
     },
     downloadAndInstallOnQuit: async () => {
       if (!isOptedIn()) return { ok: false, error: 'Updates are opted out in Settings.' };
       try {
+        // Re-verify the feed immediately before downloading. The manifest
+        // could have changed since checkNow() (TOCTOU): re-apply the
+        // kill-switch and refuse if the advertised version drifted from what
+        // the user agreed to download. (SI-7)
+        const recheck = await updater.checkForUpdates();
+        const v = recheck?.updateInfo?.version;
+        if (v === '0.0.0-killswitch') {
+          log.warn('[updater] kill-switch detected at download time; aborting');
+          return { ok: false, error: 'This build has been retired by the publisher. Please reinstall from gingermail.app.' };
+        }
+        if (!v) {
+          return { ok: false, error: 'No update is currently available.' };
+        }
+        if (lastAvailableVersion !== null && v !== lastAvailableVersion) {
+          log.warn(`[updater] feed version changed ${lastAvailableVersion} -> ${v} between check and download; aborting`);
+          return { ok: false, error: 'The available update changed since you last checked. Please check for updates again.' };
+        }
         await updater.downloadUpdate();
         return { ok: true };
       } catch (err) {

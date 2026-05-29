@@ -65,12 +65,21 @@ mac:
   gatekeeperAssess: false
   entitlements: build/entitlements.mac.plist
   entitlementsInherit: build/entitlements.mac.plist
-  # Signing identity is intentionally null for v1.0 — code-signing +
-  # notarization is the cert-procurement workstream tracked separately
-  # as item #2 of the security review. Setting identity to null tells
-  # electron-builder to skip codesign entirely; the .app launches with
-  # a Gatekeeper warning the user has to dismiss on first run.
-  identity: null
+  # Code signing (NIST CM-14 / SI-7; compliance POA&M PM-008).
+  #
+  # Signing is ENV-DRIVEN instead of hardcoded off, so it activates the moment
+  # certificates are provisioned:
+  #   * With a Developer ID available (CSC_LINK + CSC_KEY_PASSWORD env, or a
+  #     "Developer ID Application" identity in the login keychain),
+  #     electron-builder signs automatically.
+  #   * For a purely LOCAL UNSIGNED build, set
+  #     CSC_IDENTITY_AUTO_DISCOVERY=false; electron-builder then skips codesign
+  #     and the .app launches with a Gatekeeper warning on first run.
+  #
+  # Notarization activates when Apple credentials are present and `notarize` is
+  # enabled; see docs/PACKAGING.md. We do not hardcode `notarize: true` here
+  # because that would FAIL builds that lack credentials. Set it (or pass creds
+  # in CI) once the Apple Developer account is in place.
   # NOTE: when the Ollama sidecar is re-enabled (see scripts/fetch-ollama.mjs),
   # restore the bundled-binary re-sign step here:
   #   binaries:

@@ -11,12 +11,18 @@
  * See `entry.cjs` for the long explanation of why this two-step dance is
  * required on Electron 32.
  */
+import type * as ElectronModule from 'electron';
+import type * as ElectronLogModule from 'electron-log';
+import type * as ElectronUpdaterModule from 'electron-updater';
+import type * as GoogleApisModule from 'googleapis';
+import type * as MsalNodeModule from '@azure/msal-node';
+
 type GlobalShim = {
-  __gmElectron?: typeof import('electron');
-  __gmElectronLog?: typeof import('electron-log');
-  __gmGetElectronUpdater?: () => typeof import('electron-updater');
-  __gmGetGoogleApis?: () => typeof import('googleapis');
-  __gmGetMsalNode?: () => typeof import('@azure/msal-node');
+  __gmElectron?: typeof ElectronModule;
+  __gmElectronLog?: typeof ElectronLogModule;
+  __gmGetElectronUpdater?: () => typeof ElectronUpdaterModule;
+  __gmGetGoogleApis?: () => typeof GoogleApisModule;
+  __gmGetMsalNode?: () => typeof MsalNodeModule;
 };
 
 const g = globalThis as GlobalShim;
@@ -50,15 +56,15 @@ export const {
 
 export const log = required('__gmElectronLog', g.__gmElectronLog);
 
-export function getElectronUpdater(): typeof import('electron-updater') {
+export function getElectronUpdater(): typeof ElectronUpdaterModule {
   return required('__gmGetElectronUpdater', g.__gmGetElectronUpdater)();
 }
 
-export function getGoogleApis(): typeof import('googleapis') {
+export function getGoogleApis(): typeof GoogleApisModule {
   return required('__gmGetGoogleApis', g.__gmGetGoogleApis)();
 }
 
-export function getMsalNode(): typeof import('@azure/msal-node') {
+export function getMsalNode(): typeof MsalNodeModule {
   return required('__gmGetMsalNode', g.__gmGetMsalNode)();
 }
 

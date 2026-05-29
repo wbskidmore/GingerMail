@@ -1,5 +1,4 @@
 #!/usr/bin/env node
-/* eslint-disable no-console */
 /**
  * Build-time helper that downloads the platform-specific Ollama binary,
  * verifies it against a pinned SHA-256, and drops it under
@@ -74,6 +73,21 @@ function targetKey(platform, arch) {
   return `${platform}-${arch}`;
 }
 
+/**
+ * Resolve the expected SHA-256 for a target. A verified digest can be injected
+ * via env (e.g. OLLAMA_SHA256_DARWIN_ARM64) so CI can pin the real upstream
+ * value without committing it prematurely. A value still set to a
+ * `PLACEHOLDER_*` sentinel is treated as "not pinned" (compliance POA&M
+ * PM-009 / SR-11).
+ */
+function resolveExpectedSha(key) {
+  const envName = `OLLAMA_SHA256_${key.replace(/-/g, '_').toUpperCase()}`;
+  const fromEnv = process.env[envName];
+  const candidate = fromEnv && fromEnv.trim().length > 0 ? fromEnv.trim() : SHA_BY_TARGET[key];
+  if (!candidate || /^PLACEHOLDER/i.test(candidate)) return null;
+  return candidate.toLowerCase();
+}
+
 async function sha256File(file) {
   const buf = await readFile(file);
   const h = createHash('sha256');
@@ -116,11 +130,20 @@ async function downloadTo(url, dest) {
 async function fetchOne(platform, arch) {
   const key = targetKey(platform, arch);
   const url = URL_BY_TARGET[key];
-  const expectedSha = SHA_BY_TARGET[key];
   const filename = FILE_BY_TARGET[key];
-  if (!url || !expectedSha || !filename) {
+  if (!url || !filename) {
     console.warn(`[ollama] skipping unsupported target ${key}`);
     return;
+  }
+  const expectedSha = resolveExpectedSha(key);
+  if (!expectedSha) {
+    // Fail BEFORE downloading rather than fetching an unverifiable binary.
+    throw new Error(
+      `[ollama] no verified SHA-256 pinned for ${key}. Set ` +
+        `OLLAMA_SHA256_${key.replace(/-/g, '_').toUpperCase()} or update ` +
+        `SHA_BY_TARGET from the upstream sha256sum.txt before packaging ` +
+        `(compliance POA&M PM-009).`,
+    );
   }
   const destDir = path.join(ROOT, 'apps', 'main', 'resources', 'ollama', key);
   const destFile = path.join(destDir, filename);

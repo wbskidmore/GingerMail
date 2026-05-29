@@ -1,7 +1,8 @@
 import { createRequire } from 'node:module';
+import type * as GoogleApis from 'googleapis';
 import type { gmail_v1, calendar_v3, tasks_v1 } from 'googleapis';
 const localRequire = createRequire(import.meta.url);
-const { google } = localRequire('googleapis') as typeof import('googleapis');
+const { google } = localRequire('googleapis') as typeof GoogleApis;
 
 type OAuth2Client = InstanceType<typeof google.auth.OAuth2>;
 import type {

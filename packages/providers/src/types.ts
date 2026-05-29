@@ -2,6 +2,9 @@ import type {
   Account,
   Calendar,
   CalendarEvent,
+  ChatConversation,
+  ChatMessage,
+  ChatUser,
   Draft,
   Folder,
   Message,
@@ -65,9 +68,42 @@ export interface TaskProvider {
   deleteTask(id: string): Promise<void>;
 }
 
+/** Result of a successful Slack `auth.test` + workspace/user identification. */
+export interface ChatIdentity {
+  /** Workspace / team id (Slack `T…`). */
+  teamId: string;
+  teamName: string;
+  /** Signed-in user id (Slack `U…`). */
+  userId: string;
+  userName: string;
+  /** The signed-in user's email, when the token scope exposes it. */
+  email?: string;
+}
+
+/**
+ * A chat provider (Slack today). Mirrors the read/write split of the mail
+ * provider but for conversations + messages. All network egress happens in
+ * the main process; the renderer only ever sees normalised core types.
+ */
+export interface ChatProvider {
+  /** Validate the token and return workspace/user identity. */
+  authTest(): Promise<ChatIdentity>;
+  /** List the user's conversations (DMs, group DMs, channels). */
+  listConversations(): Promise<ChatConversation[]>;
+  /** Most-recent-first messages for a conversation. */
+  listMessages(conversationId: string, limit?: number): Promise<ChatMessage[]>;
+  /** Post a plain-text message. Returns the created message. */
+  sendMessage(conversationId: string, text: string): Promise<ChatMessage>;
+  /** Mark a conversation read up to `ts` (latest when omitted). */
+  markRead(conversationId: string, ts?: string): Promise<void>;
+  /** Roster lookup used to resolve author names / DM partner labels. */
+  listUsers(): Promise<ChatUser[]>;
+}
+
 export interface ProviderBundle {
   account: Account;
   mail?: MailProvider;
   calendar?: CalendarProvider;
   tasks?: TaskProvider;
+  chat?: ChatProvider;
 }

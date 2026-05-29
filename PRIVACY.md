@@ -28,6 +28,7 @@ Everything mail-shaped stays on your machine:
 | When | What is sent | To whom | How to disable |
 |------|--------------|---------|----------------|
 | Always (mail sync) | Your mail credentials, IMAP/SMTP/Graph/Gmail API calls | The mail provider you configured | Remove the account in Settings → Accounts |
+| Slack connected (opt-in) | Your Slack token + Web API calls (read conversations/messages, send messages, mark read) | `slack.com` | Disconnect in Settings → Slack, or turn off "Enable Slack" |
 | Cloud AI on (opt-in) | The text of the email or thread you asked AI to act on, plus your prompt | The AI vendor you chose (OpenAI, Anthropic, or Google) | Settings → AI → Mode: Off (or Local) |
 | Local AI on | (none) — the Ollama sidecar runs on your machine; no traffic leaves | Loopback only | n/a |
 | Auto-update opt-in (off by default) | App version + OS + arch on update check | `updates.gingermail.app` (run by us) | Settings → Updates → Auto-update toggle |

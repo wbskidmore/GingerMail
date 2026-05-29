@@ -1,6 +1,7 @@
 import { createRequire } from 'node:module';
+import type * as Tsdav from 'tsdav';
 const localRequire = createRequire(import.meta.url);
-const { createDAVClient } = localRequire('tsdav') as typeof import('tsdav');
+const { createDAVClient } = localRequire('tsdav') as typeof Tsdav;
 import type { Account, Calendar, CalendarEvent } from '@gingermail/core';
 import type { CalendarProvider } from '../types.js';
 import { ImapSmtpProvider, type ImapSmtpCredentials } from '../imap-smtp/index.js';

@@ -11,7 +11,7 @@ import {
 } from '@gingermail/storage';
 import type { Account, AppSettings, FocusState, ProviderKind } from '@gingermail/core';
 import { defaultAppSettings } from '@gingermail/core';
-import type { CalendarProvider, MailProvider, TaskProvider } from '@gingermail/providers';
+import type { CalendarProvider, ChatProvider, MailProvider, TaskProvider } from '@gingermail/providers';
 import {
   AppleCalendarProvider,
   AppleMailProvider,
@@ -23,12 +23,14 @@ import {
   MicrosoftMailProvider,
   MicrosoftTasksProvider,
   Pop3Provider,
+  SlackProvider,
   buildGoogleAuth,
 } from '@gingermail/providers';
 import { Scheduler } from './scheduler.js';
 import { TokenVault } from './tokenVault.js';
 import { GoogleOAuthFlow } from './oauth/google.js';
 import { MicrosoftOAuthFlow } from './oauth/microsoft.js';
+import { SlackOAuthFlow } from './oauth/slack.js';
 import { getBuildConfig } from './config.js';
 import type { UpdaterController } from './autoUpdater.js';
 
@@ -50,6 +52,11 @@ export class AppContext {
     this.vault = new TokenVault({
       storage: safeStorage.isEncryptionAvailable() ? safeStorage : null,
       file: path.join(userData, 'gingermail.vault.json'),
+      log,
+      // Only permit a plaintext vault when the operator explicitly opts in.
+      // Otherwise the vault throws on write rather than silently leaking the
+      // DB key + credentials to disk (compliance POA&M PM-005).
+      allowPlaintextFallback: process.env.GM_ALLOW_PLAINTEXT_VAULT === '1',
     });
     // At-rest DB encryption (#1 of the production-readiness review).
     // The DB key is generated once on first launch and stored in the OS
@@ -187,6 +194,19 @@ export class AppContext {
   async getTaskProvider(accountId: string): Promise<TaskProvider | undefined> {
     return (await this.getBundle(accountId))?.tasks;
   }
+  async getChatProvider(accountId: string): Promise<ChatProvider | undefined> {
+    return (await this.getBundle(accountId))?.chat;
+  }
+
+  async getAllChatProviders(): Promise<Array<{ accountId: string; provider: ChatProvider }>> {
+    const accounts = this.db.listAccounts().filter((a) => a.enabled && a.kind === 'slack');
+    const out: Array<{ accountId: string; provider: ChatProvider }> = [];
+    for (const a of accounts) {
+      const b = await this.getBundle(a.id);
+      if (b?.chat) out.push({ accountId: a.id, provider: b.chat });
+    }
+    return out;
+  }
 
   async getAllMailProviders(): Promise<MailProvider[]> {
     const accounts = this.db.listAccounts().filter((a) => a.enabled);
@@ -244,6 +264,56 @@ export class AppContext {
     return new MicrosoftOAuthFlow(cfg.microsoftClientId).run();
   }
 
+  beginSlackOAuth(): Promise<{ account: Account; tokens: { access_token: string } }> {
+    const cfg = getBuildConfig();
+    if (!cfg.slackClientId || !cfg.slackClientSecret) {
+      return Promise.reject(
+        new Error('Slack OAuth client not configured. Paste a token instead, or set GM_SLACK_CLIENT_ID/SECRET.'),
+      );
+    }
+    return new SlackOAuthFlow(cfg.slackClientId, cfg.slackClientSecret).run();
+  }
+
+  /**
+   * Connect a Slack workspace from a pasted token. Validates the token via
+   * `auth.test`, then persists the account + token. The account id is keyed
+   * off the team id so re-pasting a token for the same workspace updates it
+   * in place rather than creating a duplicate.
+   */
+  async connectSlackToken(token: string): Promise<Account> {
+    const trimmed = token.trim();
+    if (!/^xox[a-z]-/.test(trimmed)) {
+      throw new Error('That does not look like a Slack token (expected it to start with "xox").');
+    }
+    // Build a throwaway provider bound to a placeholder account to run auth.test.
+    const probeAccount: Account = {
+      id: 'slack:probe',
+      kind: 'slack',
+      displayName: 'Slack',
+      emailAddress: 'probe@slack',
+      createdAt: Date.now(),
+      syncIntervalSec: 120,
+      enabled: true,
+    };
+    const probe = new SlackProvider(probeAccount, trimmed);
+    const identity = await probe.authTest();
+    const account: Account = {
+      id: `slack:${identity.teamId}`,
+      kind: 'slack',
+      displayName: identity.teamName,
+      emailAddress: identity.email ?? `${identity.userId}@${identity.teamId}.slack`,
+      createdAt: Date.now(),
+      syncIntervalSec: 120,
+      enabled: true,
+    };
+    // Persist account config (team/user ids) + the token in the keychain.
+    this.db.upsertAccount(account, JSON.stringify({ teamId: identity.teamId, userId: identity.userId }));
+    this.vault.write(account.id, { access_token: trimmed });
+    // Drop any cached bundle for this id so the next access rebuilds with the new token.
+    this.providerCache.delete(account.id);
+    return account;
+  }
+
   private async getBundle(accountId: string): Promise<ProviderBundleInternal | undefined> {
     if (this.providerCache.has(accountId)) return this.providerCache.get(accountId);
     const account = this.db.listAccounts().find((a) => a.id === accountId);
@@ -260,6 +330,7 @@ interface ProviderBundleInternal {
   mail?: MailProvider;
   calendar?: CalendarProvider;
   tasks?: TaskProvider;
+  chat?: ChatProvider;
 }
 
 async function buildBundleFor(
@@ -334,6 +405,11 @@ async function buildBundleFor(
         calendar: new MicrosoftCalendarProvider(account, token),
         tasks: new MicrosoftTasksProvider(account, token),
       };
+    }
+    case 'slack': {
+      const token = secrets?.['access_token'];
+      if (!token) return undefined;
+      return { chat: new SlackProvider(account, token) };
     }
     default:
       return undefined;

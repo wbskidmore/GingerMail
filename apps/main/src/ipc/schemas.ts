@@ -26,38 +26,70 @@ const addressSchema = z.object({
   email: z.string().email().max(320),
 });
 
+// A composite message/event id as produced by the providers, e.g.
+// "accountId:folderId:uid" or "local:<uuid>". Bounded but opaque.
+const messageRef = z.string().min(1).max(1024);
+
+// Matches the `Draft` shape in `@gingermail/core` (NOT a hypothetical wire
+// shape). `to` may be empty for a forward draft the user has not addressed
+// yet. Fields are optional/lenient to avoid rejecting legitimate composer
+// payloads, but every field is type- and size-bounded (SI-10).
 const draftSchema = z.object({
+  id: z.string().max(1024).optional(),
   accountId,
-  to: z.array(addressSchema).min(1).max(50),
-  cc: z.array(addressSchema).max(50).optional(),
-  bcc: z.array(addressSchema).max(50).optional(),
-  subject: z.string().max(998).optional(), // RFC 5322 line-length cap
-  body: z.string().max(5_000_000), // ~5 MB body cap
-  html: z.string().max(5_000_000).optional(),
   inReplyTo: z.string().max(1024).optional(),
-  references: z.array(z.string().max(1024)).max(50).optional(),
+  references: z.array(z.string().max(1024)).max(100).optional(),
+  to: z.array(addressSchema).max(100),
+  cc: z.array(addressSchema).max(100).optional(),
+  bcc: z.array(addressSchema).max(100).optional(),
+  subject: z.string().max(998).optional(), // RFC 5322 line-length cap
+  bodyHtml: z.string().max(5_000_000).optional(), // ~5 MB body cap
+  bodyText: z.string().max(5_000_000).optional(),
   attachments: z.array(
     z.object({
       filename: z.string().max(512),
-      mimeType: z.string().max(255),
-      sizeBytes: z.number().int().nonnegative().max(50 * 1024 * 1024), // 50 MB
-      contentBase64: z.string().max(100_000_000),
+      path: z.string().max(4096),
     }),
-  ).max(20).optional(),
+  ).max(50).optional(),
 });
 
 // ---- per-channel schemas ----
+//
+// Each schema below matches the ACTUAL wire shape the corresponding handler
+// in `register.ts` / `aiHandlers.ts` receives. The `ipc/coverage.test.ts`
+// audit asserts that every state-mutating / network-egress / path-consuming
+// channel has a schema here and that the schema is wired via `safeHandle`.
 
-export const SettingsUpdateSchema = z.object({}).passthrough();
+// Settings: the renderer sends a partial patch. We bound the *top-level* keys
+// to the known `AppSettings` shape (`appearance`, `accessibility`,
+// `notifications`, `ai`, `updates`, `focus`) with `.strict()` so a renderer
+// cannot inject arbitrary top-level keys, while leaving nested shapes flexible
+// (the main process strips secrets like `ai.cloud.apiKey` in
+// `context.updateSettings`). This replaces the previous unbounded
+// `z.object({}).passthrough()` (SI-10).
+export const SettingsUpdateSchema = z
+  .object({
+    appearance: z.object({}).passthrough().optional(),
+    accessibility: z.object({}).passthrough().optional(),
+    notifications: z.object({}).passthrough().optional(),
+    ai: z.object({}).passthrough().optional(),
+    updates: z.object({}).passthrough().optional(),
+    focus: z.object({}).passthrough().optional(),
+  })
+  .strict();
 
 export const AccountIdSchema = accountId;
 
+// NOTE on `.passthrough()`: account creation deliberately passes provider-
+// specific fields (imapHost, smtpPort, password, app-specific password, ...)
+// through to the per-provider builder, which validates them. Removing
+// passthrough here would STRIP those required fields and break account setup.
+// We therefore bound the top-level shape (kind + email) and let the provider
+// builder own the rest. (SI-10 with a documented exception.)
 export const AddAccountInputSchema = z.object({
   kind: z.enum(['gmail', 'microsoft', 'imap-smtp', 'pop3', 'apple-caldav']),
   displayName: z.string().max(256).optional(),
   emailAddress: z.string().email().max(320),
-  // The rest of the fields are provider-specific and validated by the
-  // per-provider builder. We only enforce the top-level shape here.
 }).passthrough();
 
 export const OAuthKindSchema = z.enum(['gmail', 'microsoft']);
@@ -67,53 +99,40 @@ export const MailSendSchema = draftSchema;
 export const MailSaveDraftSchema = draftSchema;
 
 export const MailReplySchema = z.object({
-  messageId,
-  replyAll: z.boolean().optional(),
-  body: z.string().max(5_000_000),
-  html: z.string().max(5_000_000).optional(),
+  id: messageRef,
+  all: z.boolean(),
 });
 
-export const MailForwardSchema = z.object({
-  messageId,
-  to: z.array(addressSchema).min(1).max(50),
-  body: z.string().max(5_000_000),
-  html: z.string().max(5_000_000).optional(),
-});
+export const MailForwardSchema = z.object({ id: messageRef });
 
 export const MailSetFlagSchema = z.object({
-  messageId,
-  flag: z.enum(['read', 'unread', 'flagged', 'unflagged']),
+  id: messageRef,
+  flag: z.enum(['read', 'unread', 'star', 'unstar']),
 });
 
 export const MailSnoozeSchema = z.object({
-  messageId,
-  wakeAt: z.number().int().min(0).max(8.64e15),
+  id: messageRef,
+  until: z.number().int().min(0).max(8.64e15),
 });
 
 export const MailMoveSchema = z.object({
-  messageId,
-  toFolderId: folderId,
+  id: messageRef,
+  folderId,
 });
 
-export const MailArchiveSchema = z.object({ messageId });
-export const MailTrashSchema = z.object({ messageId });
-export const MailMarkReadSchema = z.object({ messageId, read: z.boolean() });
-export const MailMarkSpamSchema = z.object({ messageId, isSpam: z.boolean() });
+export const MailArchiveSchema = z.object({ id: messageRef });
+export const MailTrashSchema = z.object({ id: messageRef });
+export const MailMarkSpamSchema = z.object({ id: messageRef });
+export const MailPrintSchema = z.object({ id: messageRef });
+export const MailMarkReadSchema = z.object({ id: messageRef, read: z.boolean() });
 
-export const MailSearchSchema = z.object({
-  query: z.string().max(2048),
-  accountId: accountId.optional(),
-  folderId: folderId.optional(),
-  limit: z.number().int().min(1).max(500).optional(),
-});
+// mailSearch receives a bare query string.
+export const MailSearchSchema = z.string().max(2048);
 
 export const CalCreateSchema = z.object({}).passthrough(); // CalendarEvent shape varies per provider
 export const CalUpdateSchema = z.object({}).passthrough();
-export const CalDeleteSchema = z.object({
-  accountId,
-  calendarId: shortString,
-  eventId: shortString,
-});
+// calDelete receives a bare composite event id string.
+export const CalDeleteSchema = messageRef;
 
 // ICS import: take the *content* as a string instead of a filesystem path
 // so the renderer can never coerce the main process into reading an
@@ -126,11 +145,8 @@ export const CalImportIcsSchema = z.object({
 
 export const TasksCreateSchema = z.object({}).passthrough();
 export const TasksUpdateSchema = z.object({}).passthrough();
-export const TasksDeleteSchema = z.object({
-  accountId,
-  listId: shortString,
-  taskId: shortString,
-});
+// tasksDelete receives a bare composite task id string.
+export const TasksDeleteSchema = messageRef;
 
 export const AiTestSchema = z.object({}).passthrough();
 export const AiSummarizeSchema = z.object({
@@ -157,7 +173,8 @@ export const FocusStartSchema = z.object({
   allowMailFrom: z.array(z.string().email().max(320)).max(100).optional(),
 });
 
-export const SchedulerCancelSchema = z.object({ jobId: nonEmptyString });
+// schedulerCancel receives a bare job id string.
+export const SchedulerCancelSchema = z.string().min(1).max(512);
 
 // Actual wire shape from the renderer: `{ email, http?, mailto?, oneClick }`.
 // We also enforce that `http`, if present, is an HTTPS URL — never plain
@@ -171,5 +188,29 @@ export const UnsubPerformSchema = z.object({
 export const UnsubMuteSchema = z.object({ email: z.string().email().max(320) });
 export const UnsubUnmuteSchema = z.object({ email: z.string().email().max(320) });
 export const UnsubDismissSchema = z.object({ email: z.string().email().max(320) });
+
+// ---- Slack / chat ----
+// Native Slack conversation ids are short alphanumerics (C…/D…/G…); cap
+// generously. The token is a secret bound for the keychain, never logged.
+export const SlackConnectTokenSchema = z.object({
+  token: z.string().min(8).max(512),
+});
+// `conversationId` here is the GLOBAL id (`slack:<team>:<native>`); the
+// handler splits it on the final colon. 128 chars is comfortably above the
+// real max (account id ~30 + native id ~12).
+export const SlackSendSchema = z.object({
+  conversationId: z.string().min(1).max(128),
+  text: z.string().min(1).max(40_000), // Slack's per-message text cap
+});
+export const SlackMarkReadSchema = z.object({
+  conversationId: z.string().min(1).max(128),
+});
+export const SlackDisconnectSchema = z.object({
+  accountId,
+});
+export const SlackListMessagesSchema = z.object({
+  conversationId: z.string().min(1).max(128),
+  limit: z.number().int().min(1).max(200).optional(),
+});
 
 void optEpoch;

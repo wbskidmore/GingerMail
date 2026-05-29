@@ -104,6 +104,18 @@ const api = {
     dismiss: (input: unknown) => ipcRenderer.invoke(IPC_CHANNELS.unsubDismiss, input),
     listMuted: () => ipcRenderer.invoke(IPC_CHANNELS.unsubListMuted),
   },
+  slack: {
+    connectToken: (input: unknown) => ipcRenderer.invoke(IPC_CHANNELS.slackConnectToken, input),
+    beginOAuth: () => ipcRenderer.invoke(IPC_CHANNELS.slackBeginOAuth),
+    disconnect: (input: unknown) => ipcRenderer.invoke(IPC_CHANNELS.slackDisconnect, input),
+    listWorkspaces: () => ipcRenderer.invoke(IPC_CHANNELS.slackListWorkspaces),
+    listConversations: (input?: unknown) => ipcRenderer.invoke(IPC_CHANNELS.slackListConversations, input),
+    listMessages: (input: unknown) => ipcRenderer.invoke(IPC_CHANNELS.slackListMessages, input),
+    send: (input: unknown) => ipcRenderer.invoke(IPC_CHANNELS.slackSend, input),
+    markRead: (input: unknown) => ipcRenderer.invoke(IPC_CHANNELS.slackMarkRead, input),
+    refresh: () => ipcRenderer.invoke(IPC_CHANNELS.slackRefresh),
+    onSync: (cb: Listener<unknown>) => subscribe(IPC_CHANNELS.slackSyncEvent, cb),
+  },
 };
 
 contextBridge.exposeInMainWorld('gingermail', api);

@@ -26,6 +26,26 @@ export default tseslint.config(
     },
   },
   {
+    // CommonJS files (Electron entry shim, smoke test) legitimately use
+    // require(); they are CJS by design and cannot be ESM.
+    files: ['**/*.cjs'],
+    languageOptions: {
+      sourceType: 'commonjs',
+      globals: {
+        require: 'readonly',
+        module: 'readonly',
+        __dirname: 'readonly',
+        __filename: 'readonly',
+        process: 'readonly',
+        console: 'readonly',
+        globalThis: 'readonly',
+      },
+    },
+    rules: {
+      '@typescript-eslint/no-require-imports': 'off',
+    },
+  },
+  {
     files: ['apps/renderer/**/*.{ts,tsx}'],
     plugins: {
       react,

@@ -8,6 +8,7 @@ import { handleAccountAdd } from './accountHandlers.js';
 import { syncAllMail } from '../sync/mailSync.js';
 import { syncAllCalendars } from '../sync/calendarSync.js';
 import { syncAllTasks } from '../sync/taskSync.js';
+import { syncAllChat } from '../sync/chatSync.js';
 import { parseIcsString } from '@gingermail/providers';
 import { randomUUID } from 'node:crypto';
 import { sanitiseMailHtmlMain } from '../security/mailHtml.js';
@@ -15,18 +16,16 @@ import { safeHandle } from './guards.js';
 import {
   AccountIdSchema,
   AddAccountInputSchema,
-  AiSetCloudKeySchema,
-  AiPullModelSchema,
-  AiDeleteModelSchema,
   CalDeleteSchema,
-  CalImportIcsSchema,
   MailArchiveSchema,
   MailForwardSchema,
   MailMarkReadSchema,
   MailMarkSpamSchema,
   MailMoveSchema,
+  MailPrintSchema,
   MailReplySchema,
   MailSaveDraftSchema,
+  MailSearchSchema,
   MailSendSchema,
   MailSetFlagSchema,
   MailSnoozeSchema,
@@ -34,6 +33,11 @@ import {
   OAuthKindSchema,
   SchedulerCancelSchema,
   SettingsUpdateSchema,
+  SlackConnectTokenSchema,
+  SlackDisconnectSchema,
+  SlackListMessagesSchema,
+  SlackMarkReadSchema,
+  SlackSendSchema,
   TasksDeleteSchema,
   UnsubDismissSchema,
   UnsubMuteSchema,
@@ -135,7 +139,8 @@ export function registerIpc(ctx: AppContext): void {
     return msg;
   });
 
-  handle(IPC_CHANNELS.mailSend, async (_e, draft: Draft) => {
+  safeHandle(IPC_CHANNELS.mailSend, MailSendSchema, async (input) => {
+    const draft = input as Draft;
     // OUTBOX FLOW
     // 1. Coerce the draft into something with a stable client_id. The
     //    Composer is updated to populate `draft.id` from a UUIDv4 on save;
@@ -180,13 +185,14 @@ export function registerIpc(ctx: AppContext): void {
     }
   });
 
-  handle(IPC_CHANNELS.mailSaveDraft, async (_e, draft: Draft) => {
+  safeHandle(IPC_CHANNELS.mailSaveDraft, MailSaveDraftSchema, async (input) => {
+    const draft = input as Draft;
     const provider = await ctx.getMailProvider(draft.accountId);
     if (!provider) throw new Error('Provider unavailable');
     return provider.saveDraft(draft);
   });
 
-  handle(IPC_CHANNELS.mailSetFlag, async (_e, input: { id: string; flag: 'read' | 'unread' | 'star' | 'unstar' }) => {
+  safeHandle(IPC_CHANNELS.mailSetFlag, MailSetFlagSchema, async (input) => {
     const [accountId, folderShort, uid] = input.id.split(':');
     if (!accountId || !folderShort || !uid) throw new Error('Invalid message id');
     const folderId = `${accountId}:${folderShort}`;
@@ -198,7 +204,7 @@ export function registerIpc(ctx: AppContext): void {
     if (input.flag === 'unstar') ctx.db.setMessageFlags(input.id, { flagged: false });
   });
 
-  handle(IPC_CHANNELS.mailSnooze, async (_e, input: { id: string; until: number }) => {
+  safeHandle(IPC_CHANNELS.mailSnooze, MailSnoozeSchema, async (input) => {
     ctx.db.setMessageFlags(input.id, { snoozedUntil: input.until });
     ctx.scheduler.schedule({
       kind: 'snooze-wake',
@@ -207,7 +213,7 @@ export function registerIpc(ctx: AppContext): void {
     });
   });
 
-  handle(IPC_CHANNELS.mailSearch, async (_e, query: string) => {
+  safeHandle(IPC_CHANNELS.mailSearch, MailSearchSchema, async (query) => {
     const local = ctx.db.searchMessages(query, 100);
     if (local.length > 0) return local;
     const providers = await ctx.getAllMailProviders();
@@ -228,19 +234,19 @@ export function registerIpc(ctx: AppContext): void {
 
   // ---- Mail actions (archive / trash / move / mark / spam / reply / forward / print) ----
 
-  handle(IPC_CHANNELS.mailMove, async (_e, input: { id: string; folderId: string }): Promise<MoveResult> => {
+  safeHandle(IPC_CHANNELS.mailMove, MailMoveSchema, async (input): Promise<MoveResult> => {
     return moveMessage(ctx, input.id, input.folderId);
   });
 
-  handle(IPC_CHANNELS.mailArchive, async (_e, input: { id: string }): Promise<MoveResult> => {
+  safeHandle(IPC_CHANNELS.mailArchive, MailArchiveSchema, async (input): Promise<MoveResult> => {
     return moveToRoleFolder(ctx, input.id, 'archive');
   });
 
-  handle(IPC_CHANNELS.mailTrash, async (_e, input: { id: string }): Promise<MoveResult> => {
+  safeHandle(IPC_CHANNELS.mailTrash, MailTrashSchema, async (input): Promise<MoveResult> => {
     return moveToRoleFolder(ctx, input.id, 'trash');
   });
 
-  handle(IPC_CHANNELS.mailMarkRead, async (_e, input: { id: string; read: boolean }) => {
+  safeHandle(IPC_CHANNELS.mailMarkRead, MailMarkReadSchema, async (input) => {
     const [accountId, folderShort, uid] = input.id.split(':');
     if (!accountId || !folderShort || !uid) throw new Error('Invalid message id');
     const folderId = `${accountId}:${folderShort}`;
@@ -249,7 +255,7 @@ export function registerIpc(ctx: AppContext): void {
     ctx.db.setMessageFlags(input.id, { unread: !input.read });
   });
 
-  handle(IPC_CHANNELS.mailMarkSpam, async (_e, input: { id: string }): Promise<MoveResult> => {
+  safeHandle(IPC_CHANNELS.mailMarkSpam, MailMarkSpamSchema, async (input): Promise<MoveResult> => {
     const [accountId, folderShort, uid] = input.id.split(':');
     if (!accountId || !folderShort || !uid) throw new Error('Invalid message id');
     const folderId = `${accountId}:${folderShort}`;
@@ -265,19 +271,19 @@ export function registerIpc(ctx: AppContext): void {
     return moveToRoleFolder(ctx, input.id, 'spam');
   });
 
-  handle(IPC_CHANNELS.mailReply, async (_e, input: { id: string; all: boolean }): Promise<Draft> => {
+  safeHandle(IPC_CHANNELS.mailReply, MailReplySchema, async (input): Promise<Draft> => {
     const message = ctx.db.getMessage(input.id);
     if (!message) throw new Error('Message not found');
     return buildReplyDraft(ctx, message, input.all);
   });
 
-  handle(IPC_CHANNELS.mailForward, async (_e, input: { id: string }): Promise<Draft> => {
+  safeHandle(IPC_CHANNELS.mailForward, MailForwardSchema, async (input): Promise<Draft> => {
     const message = ctx.db.getMessage(input.id);
     if (!message) throw new Error('Message not found');
     return buildForwardDraft(message);
   });
 
-  handle(IPC_CHANNELS.mailPrint, async (_e, input: { id: string }) => {
+  safeHandle(IPC_CHANNELS.mailPrint, MailPrintSchema, async (input) => {
     const message = ctx.db.getMessage(input.id);
     if (!message) throw new Error('Message not found');
     await printMessage(message);
@@ -312,7 +318,7 @@ export function registerIpc(ctx: AppContext): void {
     ctx.db.upsertEvents([event]);
     return event;
   });
-  handle(IPC_CHANNELS.calDelete, async (_e, id: string) => {
+  safeHandle(IPC_CHANNELS.calDelete, CalDeleteSchema, async (id) => {
     if (!id.startsWith('local:')) {
       const accountId = id.split(':')[0];
       if (accountId) {
@@ -386,7 +392,7 @@ export function registerIpc(ctx: AppContext): void {
     ctx.db.upsertTasks([task]);
     return task;
   });
-  handle(IPC_CHANNELS.tasksDelete, async (_e, id: string) => {
+  safeHandle(IPC_CHANNELS.tasksDelete, TasksDeleteSchema, async (id) => {
     if (!id.startsWith('local:')) {
       const accountId = id.split(':')[0];
       if (accountId) {
@@ -447,7 +453,7 @@ export function registerIpc(ctx: AppContext): void {
 
   // ----- Scheduler -----
   handle(IPC_CHANNELS.schedulerListJobs, () => ctx.scheduler.listAll());
-  handle(IPC_CHANNELS.schedulerCancel, (_e, id: string) => ctx.scheduler.cancel(id));
+  safeHandle(IPC_CHANNELS.schedulerCancel, SchedulerCancelSchema, (id) => ctx.scheduler.cancel(id));
 
   // ----- Notifications -----
   handle(IPC_CHANNELS.notificationsTest, () => {
@@ -537,6 +543,86 @@ export function registerIpc(ctx: AppContext): void {
     if (!ctx.updater) return { ok: false, error: 'Updater unavailable' };
     return ctx.updater.downloadAndInstallOnQuit();
   });
+
+  // ----- Slack / chat -----
+  safeHandle(IPC_CHANNELS.slackConnectToken, SlackConnectTokenSchema, async (input) => {
+    const account = await ctx.connectSlackToken(input.token);
+    // Kick off a first sync so the tab has data immediately. Non-blocking.
+    void syncAllChat(ctx).catch(() => undefined);
+    return account;
+  });
+
+  handle(IPC_CHANNELS.slackBeginOAuth, async () => {
+    const out = await ctx.beginSlackOAuth();
+    persistOAuth(ctx, out.account, out.tokens as Record<string, unknown>);
+    void syncAllChat(ctx).catch(() => undefined);
+    return out.account;
+  });
+
+  safeHandle(IPC_CHANNELS.slackDisconnect, SlackDisconnectSchema, async (input) => {
+    await ctx.forgetAccount(input.accountId);
+  });
+
+  handle(IPC_CHANNELS.slackListWorkspaces, () =>
+    ctx.db.listAccounts().filter((a) => a.kind === 'slack'),
+  );
+
+  handle(IPC_CHANNELS.slackListConversations, (_e, input?: { accountId?: string }) =>
+    ctx.db.listChatConversations(input?.accountId),
+  );
+
+  safeHandle(IPC_CHANNELS.slackListMessages, SlackListMessagesSchema, async (input) => {
+    const { accountId, conversationId } = splitChatId(input.conversationId);
+    // Pull fresh from the provider so opening a conversation is up to date,
+    // falling back to the local cache when the network call fails.
+    const provider = await ctx.getChatProvider(accountId);
+    if (provider) {
+      try {
+        const msgs = await provider.listMessages(conversationId, input.limit ?? 50);
+        if (msgs.length) ctx.db.upsertChatMessages(msgs);
+      } catch {
+        /* offline / rate-limited: serve cache below */
+      }
+    }
+    return ctx.db.listChatMessages(accountId, conversationId, input.limit ?? 50);
+  });
+
+  safeHandle(IPC_CHANNELS.slackSend, SlackSendSchema, async (input) => {
+    const { accountId, conversationId } = splitChatId(input.conversationId);
+    const provider = await ctx.getChatProvider(accountId);
+    if (!provider) throw new Error('Slack workspace unavailable');
+    const sent = await provider.sendMessage(conversationId, input.text);
+    ctx.db.upsertChatMessages([sent]);
+    // Sending implicitly reads the conversation up to our own message.
+    ctx.db.markChatConversationRead(accountId, conversationId, sent.ts);
+    return sent;
+  });
+
+  safeHandle(IPC_CHANNELS.slackMarkRead, SlackMarkReadSchema, async (input) => {
+    const { accountId, conversationId } = splitChatId(input.conversationId);
+    const provider = await ctx.getChatProvider(accountId);
+    const latest = ctx.db.listChatMessages(accountId, conversationId, 1);
+    const ts = latest[latest.length - 1]?.ts;
+    if (ts) {
+      ctx.db.markChatConversationRead(accountId, conversationId, ts);
+      await provider?.markRead(conversationId, ts).catch(() => undefined);
+    }
+  });
+
+  handle(IPC_CHANNELS.slackRefresh, async () => {
+    await syncAllChat(ctx);
+  });
+}
+
+/**
+ * Split a global chat conversation id (`slack:<team>:<native>`) into its
+ * account id and native Slack conversation id. Native Slack ids never
+ * contain a colon, so the final colon is the unambiguous boundary.
+ */
+function splitChatId(globalId: string): { accountId: string; conversationId: string } {
+  const idx = globalId.lastIndexOf(':');
+  if (idx <= 0) return { accountId: globalId, conversationId: globalId };
+  return { accountId: globalId.slice(0, idx), conversationId: globalId.slice(idx + 1) };
 }
 
 function persistOAuth(ctx: AppContext, account: Account, tokens: Record<string, unknown>): void {

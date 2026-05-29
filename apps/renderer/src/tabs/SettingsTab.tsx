@@ -33,10 +33,12 @@ import {
   IconBell,
   IconBrandApple,
   IconBrandGoogle,
+  IconBrandSlack,
   IconBrandWindows,
   IconBrush,
   IconInbox,
   IconInfoCircle,
+  IconKeyboard,
   IconLock,
   IconPlus,
   IconShield,
@@ -45,12 +47,13 @@ import {
   IconUsers,
 } from '@tabler/icons-react';
 import type { Account, AddAccountInput, AppSettings, MailToolbarSettings, MutedSender, ProviderKind } from '@gingermail/core';
-import { DEFAULT_MAIL_TOOLBAR } from '@gingermail/core';
+import { DEFAULT_MAIL_TOOLBAR, defaultChatSettings } from '@gingermail/core';
 import { AccountBadge } from '@gingermail/ui-kit';
 import { useAppStore } from '../store.js';
 import { getApi } from '../ipcBridge.js';
 import { MailToolbarEditor } from '../settings/MailToolbarEditor.js';
 import { LocalAiWizard } from '../onboarding/LocalAiWizard.js';
+import { ShortcutsCheatSheet } from '../shell/ShortcutsCheatSheet.js';
 
 export function SettingsTab() {
   return (
@@ -62,13 +65,17 @@ export function SettingsTab() {
             <Tabs.Tab value="notifications" leftSection={<IconBell size={14} />}>Notifications</Tabs.Tab>
             <Tabs.Tab value="appearance" leftSection={<IconBrush size={14} />}>Appearance</Tabs.Tab>
             <Tabs.Tab value="ai" leftSection={<IconSparkles size={14} />}>AI</Tabs.Tab>
+            <Tabs.Tab value="slack" leftSection={<IconBrandSlack size={14} />}>Slack</Tabs.Tab>
             <Tabs.Tab value="privacy" leftSection={<IconShield size={14} />}>Privacy</Tabs.Tab>
+            <Tabs.Tab value="help" leftSection={<IconKeyboard size={14} />}>Help</Tabs.Tab>
           </Tabs.List>
           <Tabs.Panel value="accounts"><AccountsSection /></Tabs.Panel>
           <Tabs.Panel value="notifications"><NotificationsSection /></Tabs.Panel>
           <Tabs.Panel value="appearance"><AppearanceSection /></Tabs.Panel>
           <Tabs.Panel value="ai"><AiSection /></Tabs.Panel>
+          <Tabs.Panel value="slack"><SlackSection /></Tabs.Panel>
           <Tabs.Panel value="privacy"><PrivacySection /></Tabs.Panel>
+          <Tabs.Panel value="help"><HelpSection /></Tabs.Panel>
         </Tabs>
       </Box>
     </ScrollArea>
@@ -864,6 +871,190 @@ function CloudAiKeyControl() {
         <Button variant="subtle" onClick={() => { setEditing(false); setValue(''); }}>Cancel</Button>
       )}
     </Group>
+  );
+}
+
+// ---- Slack ----
+
+function SlackSection() {
+  const settings = useAppStore((s) => s.settings);
+  const setSettings = useAppStore((s) => s.setSettings);
+  const [workspaces, setWorkspaces] = useState<Account[]>([]);
+  const [token, setToken] = useState('');
+  const [busy, setBusy] = useState(false);
+  const chat = settings.chat ?? defaultChatSettings;
+
+  const refresh = async (): Promise<void> => {
+    try {
+      setWorkspaces(await getApi().slack.listWorkspaces());
+    } catch {
+      setWorkspaces([]);
+    }
+  };
+  useEffect(() => {
+    void refresh();
+  }, []);
+
+  const connectToken = async (): Promise<void> => {
+    if (!token.trim()) return;
+    setBusy(true);
+    try {
+      const account = await getApi().slack.connectToken({ token: token.trim() });
+      setToken('');
+      await refresh();
+      notifications.show({ title: 'Slack connected', message: account.displayName, color: 'green' });
+    } catch (e) {
+      notifications.show({ title: 'Could not connect', message: (e as Error).message, color: 'red' });
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const connectOAuth = async (): Promise<void> => {
+    setBusy(true);
+    try {
+      const account = await getApi().slack.beginOAuth();
+      await refresh();
+      notifications.show({ title: 'Slack connected', message: account.displayName, color: 'green' });
+    } catch (e) {
+      notifications.show({ title: 'Sign-in failed', message: (e as Error).message, color: 'red' });
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <Stack gap="md">
+      <Card withBorder radius="md" p="lg">
+        <Stack gap="sm">
+          <Group gap="xs">
+            <ThemeIcon variant="light" color="ginger" size="sm"><IconBrandSlack size={14} /></ThemeIcon>
+            <Title order={5} m={0}>Connect a workspace</Title>
+          </Group>
+          <Text size="sm" c="dimmed">
+            GingerMail talks to the Slack Web API directly &mdash; no embedded browser, nothing leaves your machine except
+            calls to Slack. Paste a user token to get started, or sign in with OAuth if your build has a Slack app configured.
+          </Text>
+          <PasswordInput
+            label="Slack token"
+            description="A user token (starts with xoxp-). Stored in your OS keychain, never written to disk in plaintext."
+            placeholder="xoxp-…"
+            value={token}
+            onChange={(e) => setToken(e.currentTarget.value)}
+            autoComplete="off"
+            spellCheck={false}
+          />
+          <Group justify="flex-end">
+            <Button variant="subtle" leftSection={<IconBrandSlack size={14} />} onClick={() => void connectOAuth()} disabled={busy}>
+              Sign in with Slack
+            </Button>
+            <Button leftSection={<IconPlus size={14} />} onClick={() => void connectToken()} loading={busy} disabled={!token.trim()}>
+              Connect token
+            </Button>
+          </Group>
+        </Stack>
+      </Card>
+
+      {workspaces.length === 0 ? (
+        <Alert variant="light" color="ginger" title="No workspaces yet" icon={<IconInfoCircle size={16} />}>
+          Once connected, your DMs, group messages, and channels show up under the Slack tab &mdash; with mentions and direct
+          messages floated to the top so nothing important gets lost.
+        </Alert>
+      ) : (
+        <Stack gap="xs">
+          {workspaces.map((w) => (
+            <Paper key={w.id} withBorder radius="md" p="sm">
+              <Group justify="space-between">
+                <AccountBadge displayName={w.displayName} emailAddress={w.emailAddress} color={w.color} />
+                <Group gap="xs">
+                  <Badge variant="light" color="gray" tt="none">slack</Badge>
+                  <Button
+                    size="xs"
+                    variant="subtle"
+                    color="red"
+                    leftSection={<IconTrash size={14} />}
+                    onClick={() => modals.openConfirmModal({
+                      title: 'Disconnect workspace?',
+                      children: <Text size="sm">Removes the cached messages and token for {w.displayName}. Your Slack account is untouched.</Text>,
+                      labels: { confirm: 'Disconnect', cancel: 'Cancel' },
+                      confirmProps: { color: 'red' },
+                      onConfirm: async () => {
+                        await getApi().slack.disconnect({ accountId: w.id });
+                        await refresh();
+                      },
+                    })}
+                  >
+                    Disconnect
+                  </Button>
+                </Group>
+              </Group>
+            </Paper>
+          ))}
+        </Stack>
+      )}
+
+      <Card withBorder radius="md" p="lg">
+        <Stack gap="md">
+          <Title order={5}>Slack behaviour</Title>
+          <Switch
+            label="Enable Slack"
+            description="Turn the Slack tab and background polling on or off."
+            checked={chat.enabled}
+            onChange={(e) => setSettings({ chat: { ...chat, enabled: e.currentTarget.checked } })}
+          />
+          <NumberInput
+            label="Check for new messages every (seconds)"
+            description="How often GingerMail polls Slack in the background. Lower = snappier, higher = lighter."
+            min={15}
+            max={600}
+            value={chat.pollIntervalSec}
+            onChange={(v) => setSettings({ chat: { ...chat, pollIntervalSec: Number(v) || 60 } })}
+          />
+          <Switch
+            label="Notify on direct messages"
+            description="Quiet by design: DMs ping, channel chatter never does."
+            checked={chat.notifyOnDirectMessage}
+            onChange={(e) => setSettings({ chat: { ...chat, notifyOnDirectMessage: e.currentTarget.checked } })}
+          />
+          <Switch
+            label="Notify on @-mentions"
+            description="Ping when someone mentions you in a channel. Focus Mode suppresses all Slack pings."
+            checked={chat.notifyOnMention}
+            onChange={(e) => setSettings({ chat: { ...chat, notifyOnMention: e.currentTarget.checked } })}
+          />
+        </Stack>
+      </Card>
+    </Stack>
+  );
+}
+
+// ---- Help ----
+
+function HelpSection() {
+  const showHints = useAppStore((s) => s.settings.accessibility?.showShortcutHints ?? true);
+  return (
+    <Stack gap="md">
+      <Card withBorder radius="md" p="lg">
+        <Stack gap="sm">
+          <Group gap="xs">
+            <ThemeIcon variant="light" color="ginger" size="sm"><IconKeyboard size={14} /></ThemeIcon>
+            <Title order={5} m={0}>Keyboard shortcuts</Title>
+          </Group>
+          <Text size="sm" c="dimmed">
+            Press <Code>?</Code> anywhere to pop this list up as an overlay. Number keys jump between tabs so you can run the
+            whole app &mdash; mail, calendar, tasks, and Slack &mdash; without reaching for the mouse.
+          </Text>
+          {showHints ? (
+            <ShortcutsCheatSheet />
+          ) : (
+            <Alert variant="light" color="gray" icon={<IconInfoCircle size={16} />}>
+              Shortcut hints are turned off in Appearance → Accessibility. The shortcuts still work; turn hints back on to see
+              them listed here and next to menu items.
+            </Alert>
+          )}
+        </Stack>
+      </Card>
+    </Stack>
   );
 }
 

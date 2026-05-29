@@ -8,6 +8,9 @@ import type {
   Address,
   Calendar,
   CalendarEvent,
+  ChatConversation,
+  ChatMessage,
+  ChatUser,
   EnergyTag,
   EventStatus,
   Folder,
@@ -164,6 +167,14 @@ export class GingerMailDb {
         // Partial index for cheap "muted only" lookups; safe to re-create.
         this.db.exec(`CREATE INDEX IF NOT EXISTS messages_muted_idx ON messages(muted) WHERE muted = 1`);
         current = 4;
+      }
+
+      // -- v4 -> v5: add Slack/chat cache tables. The CREATE TABLE IF NOT
+      // EXISTS statements live in SCHEMA_SQL (already run on every open), so
+      // fresh installs are covered; here we only bump the version for
+      // existing databases.
+      if (current === 4) {
+        current = 5;
       }
 
       this.db
@@ -484,6 +495,179 @@ export class GingerMailDb {
       .prepare(`SELECT email, decided_at FROM sender_actions WHERE action = 'muted' ORDER BY decided_at DESC`)
       .all() as Array<{ email: string; decided_at: number }>;
     return rows.map((r) => ({ email: r.email, mutedAt: r.decided_at }));
+  }
+
+  // ---- Slack / chat cache ----
+
+  /**
+   * Upsert conversations. We preserve the locally-tracked read state
+   * (`unread_count`, `has_mention`, `last_read_ts`) across refreshes: the
+   * sync layer recomputes those separately, so a plain conversation-list
+   * refresh must NOT clobber them back to zero.
+   */
+  upsertChatConversations(conversations: ChatConversation[]): void {
+    const stmt = this.db.prepare(
+      `INSERT INTO slack_conversations
+         (id, account_id, conversation_id, kind, name, partner_user_id, unread_count, has_mention, last_message_at, last_read_ts, is_member)
+       VALUES (@id, @accountId, @conversationId, @kind, @name, @partnerUserId, @unreadCount, @hasMention, @lastMessageAt, NULL, @isMember)
+       ON CONFLICT(id) DO UPDATE SET
+         kind = excluded.kind,
+         name = excluded.name,
+         partner_user_id = excluded.partner_user_id,
+         last_message_at = MAX(slack_conversations.last_message_at, excluded.last_message_at),
+         is_member = excluded.is_member`,
+    );
+    const tx = this.db.transaction((items: ChatConversation[]) => {
+      for (const c of items) {
+        stmt.run({
+          id: c.id,
+          accountId: c.accountId,
+          conversationId: c.conversationId,
+          kind: c.kind,
+          name: c.name,
+          partnerUserId: c.partnerUserId ?? null,
+          unreadCount: c.unreadCount,
+          hasMention: c.hasMention ? 1 : 0,
+          lastMessageAt: c.lastMessageAt,
+          isMember: c.isMember ? 1 : 0,
+        });
+      }
+    });
+    tx(conversations);
+  }
+
+  listChatConversations(accountId?: string): ChatConversation[] {
+    const rows = (accountId
+      ? this.db
+          .prepare(`SELECT * FROM slack_conversations WHERE account_id = ? ORDER BY has_mention DESC, last_message_at DESC`)
+          .all(accountId)
+      : this.db
+          .prepare(`SELECT * FROM slack_conversations ORDER BY has_mention DESC, last_message_at DESC`)
+          .all()) as Array<{
+      id: string;
+      account_id: string;
+      conversation_id: string;
+      kind: string;
+      name: string;
+      partner_user_id: string | null;
+      unread_count: number;
+      has_mention: number;
+      last_message_at: number;
+      last_read_ts: string | null;
+      is_member: number;
+    }>;
+    return rows.map((r) => ({
+      id: r.id,
+      accountId: r.account_id,
+      conversationId: r.conversation_id,
+      kind: r.kind as ChatConversation['kind'],
+      name: r.name,
+      partnerUserId: r.partner_user_id ?? undefined,
+      unreadCount: r.unread_count,
+      hasMention: r.has_mention === 1,
+      lastMessageAt: r.last_message_at,
+      isMember: r.is_member === 1,
+    }));
+  }
+
+  /** Current local read marker for a conversation (native id form). */
+  getChatLastRead(accountId: string, conversationId: string): string | undefined {
+    const r = this.db
+      .prepare(`SELECT last_read_ts FROM slack_conversations WHERE id = ?`)
+      .get(`${accountId}:${conversationId}`) as { last_read_ts: string | null } | undefined;
+    return r?.last_read_ts ?? undefined;
+  }
+
+  /** Recompute and persist unread_count / has_mention for a conversation. */
+  setChatUnread(input: { accountId: string; conversationId: string; unreadCount: number; hasMention: boolean }): void {
+    this.db
+      .prepare(`UPDATE slack_conversations SET unread_count = ?, has_mention = ? WHERE id = ?`)
+      .run(input.unreadCount, input.hasMention ? 1 : 0, `${input.accountId}:${input.conversationId}`);
+  }
+
+  /** Set the local read marker and zero the unread counters. */
+  markChatConversationRead(accountId: string, conversationId: string, ts: string): void {
+    this.db
+      .prepare(`UPDATE slack_conversations SET last_read_ts = ?, unread_count = 0, has_mention = 0 WHERE id = ?`)
+      .run(ts, `${accountId}:${conversationId}`);
+  }
+
+  upsertChatMessages(messages: ChatMessage[]): void {
+    const stmt = this.db.prepare(
+      `INSERT OR REPLACE INTO slack_messages
+         (id, account_id, conversation_id, ts, user_id, author_name, text, created_at, mentions_me, links_json)
+       VALUES (@id, @accountId, @conversationId, @ts, @userId, @authorName, @text, @createdAt, @mentionsMe, @linksJson)`,
+    );
+    const tx = this.db.transaction((items: ChatMessage[]) => {
+      for (const m of items) {
+        stmt.run({
+          id: m.id,
+          accountId: m.accountId,
+          conversationId: m.conversationId,
+          ts: m.ts,
+          userId: m.userId ?? null,
+          authorName: m.authorName,
+          text: m.text,
+          createdAt: m.createdAt,
+          mentionsMe: m.mentionsMe ? 1 : 0,
+          linksJson: m.links ? JSON.stringify(m.links) : null,
+        });
+      }
+    });
+    tx(messages);
+  }
+
+  listChatMessages(accountId: string, conversationId: string, limit = 50): ChatMessage[] {
+    const rows = this.db
+      .prepare(
+        `SELECT * FROM slack_messages WHERE account_id = ? AND conversation_id = ? ORDER BY created_at DESC LIMIT ?`,
+      )
+      .all(accountId, conversationId, limit) as Array<{
+      id: string;
+      account_id: string;
+      conversation_id: string;
+      ts: string;
+      user_id: string | null;
+      author_name: string;
+      text: string;
+      created_at: number;
+      mentions_me: number;
+      links_json: string | null;
+    }>;
+    return rows
+      .map((r) => ({
+        id: r.id,
+        accountId: r.account_id,
+        conversationId: r.conversation_id,
+        ts: r.ts,
+        userId: r.user_id ?? undefined,
+        authorName: r.author_name,
+        text: r.text,
+        createdAt: r.created_at,
+        mentionsMe: r.mentions_me === 1,
+        links: r.links_json ? (JSON.parse(r.links_json) as string[]) : undefined,
+      }))
+      .reverse();
+  }
+
+  upsertChatUsers(users: ChatUser[]): void {
+    const stmt = this.db.prepare(
+      `INSERT OR REPLACE INTO slack_users (id, account_id, user_id, display_name, initials, is_bot)
+       VALUES (@id, @accountId, @userId, @displayName, @initials, @isBot)`,
+    );
+    const tx = this.db.transaction((items: ChatUser[]) => {
+      for (const u of items) {
+        stmt.run({
+          id: u.id,
+          accountId: u.accountId,
+          userId: u.userId,
+          displayName: u.displayName,
+          initials: u.initials,
+          isBot: u.isBot ? 1 : 0,
+        });
+      }
+    });
+    tx(users);
   }
 
   listSenderActions(actions: Array<SenderAction['action']>): SenderAction[] {

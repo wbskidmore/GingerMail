@@ -6,6 +6,7 @@ import { app, BrowserWindow, log, nativeImage, nativeTheme, systemPreferences } 
 import { AppContext } from './context.js';
 import { registerIpc } from './ipc/register.js';
 import { startOllamaSidecar, stopOllamaSidecar } from './ipc/aiHandlers.js';
+import { startChatPolling, stopChatPolling } from './sync/chatSync.js';
 import { setupAutoUpdater } from './autoUpdater.js';
 import { applySecurityHardening } from './security/hardening.js';
 import { installAiEgressFilter } from './security/aiEgress.js';
@@ -142,6 +143,11 @@ async function createWindow(): Promise<void> {
   // troubleshoot, and every cloud / off feature keeps working.
   void startOllamaSidecar();
 
+  // Background Slack polling: refreshes unread/mentions for connected
+  // workspaces and fires (Focus-aware, batched) notifications. No-op when
+  // no Slack account is connected or chat is disabled in settings.
+  startChatPolling(context);
+
   nativeTheme.on('updated', () => {
     mainWindow?.webContents.send('app:themeChanged', nativeTheme.shouldUseDarkColors ? 'dark' : 'light');
   });
@@ -178,6 +184,7 @@ app.on('activate', () => {
 });
 
 app.on('before-quit', async () => {
+  stopChatPolling();
   await Promise.allSettled([context.shutdown(), stopOllamaSidecar()]);
 });
 

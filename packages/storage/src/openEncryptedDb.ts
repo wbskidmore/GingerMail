@@ -25,6 +25,7 @@
  */
 import { createRequire } from 'node:module';
 import type FsModule from 'node:fs';
+import type CryptoModule from 'node:crypto';
 import type DatabaseTypes from 'better-sqlite3';
 
 const localRequire = createRequire(import.meta.url);
@@ -221,11 +222,27 @@ function migratePlaintextToEncrypted(
     try { fs.renameSync(backupPath, dbPath); } catch { /* swallow */ }
     throw err;
   }
+
+  // The backup is an UNENCRYPTED copy of the user's mail cache. Restrict it to
+  // owner-only and leave a sentinel note; it exists for rollback but should be
+  // deleted once the migration is verified (compliance POA&M PM-010 / SC-28,
+  // MP-6). We don't auto-delete so a botched migration is still recoverable.
+  try {
+    fs.chmodSync(backupPath, 0o600);
+    fs.writeFileSync(
+      `${backupPath}.README.txt`,
+      'This .bak is an UNENCRYPTED copy of your mail cache made during ' +
+        'at-rest encryption migration. If GingerMail is working normally, ' +
+        'delete this .bak file. Keep it only if you need to roll back.\n',
+    );
+  } catch {
+    /* best-effort hardening; do not fail the migration over perms */
+  }
 }
 
 /** Generate a fresh 256-bit DB key as 64 hex chars. */
 export function generateEncryptionKeyHex(): string {
-  const crypto = createRequire(import.meta.url)('node:crypto') as typeof import('node:crypto');
+  const crypto = createRequire(import.meta.url)('node:crypto') as typeof CryptoModule;
   return crypto.randomBytes(32).toString('hex');
 }
 
