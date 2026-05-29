@@ -47,7 +47,7 @@
     "dompurify": "^3.4.7",
     "electron-log": "^5.2.0",
     "electron-updater": "^6.3.4",
-    "googleapis": "^144.0.0",
+    "googleapis": "^173.0.0",
     "ical.js": "^2.1.0",
     "imapflow": "^1.0.165",
     "jsdom": "^25.0.1",
