@@ -23,12 +23,12 @@
     "googleapis": "^144.0.0",
     "ical.js": "^2.1.0",
     "imapflow": "^1.0.165",
-    "nodemailer": "^6.9.15",
+    "nodemailer": "^8.0.9",
     "tsdav": "^2.1.2"
   },
   "devDependencies": {
     "@types/nodemailer": "^6.4.16",
     "typescript": "^5.6.2",
-    "vitest": "^2.1.1"
+    "vitest": "^4.0.0"
   }
 }
