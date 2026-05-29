@@ -1,6 +1,46 @@
 # Packaging & signing GingerMail
 
-GingerMail ships as a signed DMG on macOS and a signed NSIS installer on Windows. Auto-updates are wired through `electron-updater`.
+GingerMail packages as a DMG on macOS (arm64), an NSIS installer on Windows
+(x64 + arm64), and an AppImage on Linux (x64). Auto-updates are wired through
+`electron-updater`.
+
+> **Signing status:** builds are currently **UNSIGNED**. Code signing +
+> notarization is env-driven and activates once certificates are provisioned
+> (see `docs/compliance/poam.md` PM-008). Until then, macOS shows a Gatekeeper
+> warning on first launch and Windows shows a SmartScreen prompt.
+
+## Cross-platform release builds (recommended)
+
+You cannot reliably build all three platforms from one machine (Windows NSIS
+needs Wine; Linux AppImage needs a Linux toolchain). Use the native build
+matrix in `.github/workflows/release.yml` instead:
+
+```bash
+# Bump the version in package.json first, then:
+git tag v1.0.1
+git push origin v1.0.1
+```
+
+The workflow builds macOS, Windows, and Linux on their own runners and attaches
+the installers (`.dmg`, `.exe`, `.AppImage` + `latest*.yml` + `.blockmap`) to a
+**draft** GitHub Release for you to review and publish. You can also run it from
+the Actions tab via `workflow_dispatch` to get build artifacts without cutting a
+release.
+
+## Local single-platform builds
+
+electron-builder only builds the host OS reliably. From the matching OS:
+
+```bash
+pnpm dist:mac:no-ollama     # DMG (macOS host)
+pnpm dist:win:no-ollama     # NSIS (Windows host)
+pnpm dist:linux:no-ollama   # AppImage (Linux host)
+```
+
+The `:no-ollama` variants skip the bundled-Ollama fetch (no verified binary
+SHAs are pinned yet — see `scripts/fetch-ollama.mjs` and POA&M PM-009); the app
+falls back to a user-installed Ollama on `:11434`. Output lands in
+`release/<version>/`.
 
 ## Environment variables (build-time)
 
