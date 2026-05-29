@@ -13,7 +13,7 @@
   "scripts": {
     "dev": "concurrently -k -n renderer,main -c blue,green \"pnpm --filter @gingermail/renderer dev\" \"pnpm --filter @gingermail/main dev\"",
     "build": "pnpm -r --filter \"./packages/*\" build && pnpm --filter @gingermail/renderer build && pnpm --filter @gingermail/main build",
-    "typecheck": "pnpm -r typecheck",
+    "typecheck": "tsc -b",
     "lint": "eslint . --max-warnings=0",
     "format": "prettier --write .",
     "test": "pnpm -r test --if-present",
