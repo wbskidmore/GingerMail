@@ -65,6 +65,13 @@ mac:
   gatekeeperAssess: false
   entitlements: build/entitlements.mac.plist
   entitlementsInherit: build/entitlements.mac.plist
+  # Notarize the signed .app with Apple. electron-builder reads the
+  # APPLE_ID / APPLE_APP_SPECIFIC_PASSWORD / APPLE_TEAM_ID env vars (provided as
+  # CI secrets). NOTE: with this enabled, a macOS build REQUIRES those Apple
+  # credentials and a valid Developer ID signing identity; an unsigned macOS
+  # build will fail at the notarization step (other matrix legs still finish
+  # because the release workflow sets fail-fast: false).
+  notarize: true
   # Code signing (NIST CM-14 / SI-7; compliance POA&M PM-008).
   #
   # Signing is ENV-DRIVEN instead of hardcoded off, so it activates the moment

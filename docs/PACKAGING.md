@@ -4,10 +4,15 @@ GingerMail packages as a DMG on macOS (arm64), an NSIS installer on Windows
 (x64 + arm64), and an AppImage on Linux (x64). Auto-updates are wired through
 `electron-updater`.
 
-> **Signing status:** builds are currently **UNSIGNED**. Code signing +
-> notarization is env-driven and activates once certificates are provisioned
-> (see `docs/compliance/poam.md` PM-008). Until then, macOS shows a Gatekeeper
-> warning on first launch and Windows shows a SmartScreen prompt.
+> **Signing status:** the release pipeline is **signing-enabled and
+> secret-driven**. When the GitHub Actions secrets below are present, the
+> `Release` workflow produces a signed + notarized macOS DMG, a signed Windows
+> EXE, a GPG-signed Linux AppImage, and a cosign-signed Docker image. When a
+> credential is absent, that channel falls back to an UNSIGNED artifact (plus
+> checksums) instead of failing the build (compliance POA&M PM-008). Until a
+> macOS cert is provisioned, macOS shows a Gatekeeper warning and Windows shows
+> a SmartScreen prompt (OV certs warn until reputation accrues; EV / Azure
+> Trusted Signing clears SmartScreen immediately).
 
 ## Cross-platform release builds (recommended)
 
@@ -22,10 +27,87 @@ git push origin v1.0.1
 ```
 
 The workflow builds macOS, Windows, and Linux on their own runners and attaches
-the installers (`.dmg`, `.exe`, `.AppImage` + `latest*.yml` + `.blockmap`) to a
-**draft** GitHub Release for you to review and publish. You can also run it from
-the Actions tab via `workflow_dispatch` to get build artifacts without cutting a
-release.
+the installers (`.dmg`, `.exe`, `.AppImage` + `*.sig` + `SHA256SUMS` +
+`latest*.yml` + `.blockmap`) plus the Docker tarball to a **draft** GitHub
+Release for you to review and publish. You can also run it from the Actions tab
+via `workflow_dispatch` to get build artifacts without cutting a release.
+
+### Required GitHub Actions secrets
+
+Add these under **repo Settings -> Secrets and variables -> Actions**. Each
+channel signs only when its secrets exist; otherwise it produces an unsigned
+artifact (+ checksums) without failing the build (the macOS leg is the
+exception: with notarization enabled it requires the Apple credentials below).
+
+| Secret | Channel | Purpose |
+| --- | --- | --- |
+| `CSC_LINK` | macOS | Base64 of the Developer ID Application `.p12` |
+| `CSC_KEY_PASSWORD` | macOS | Password for that `.p12` |
+| `APPLE_ID` | macOS | Apple ID email used for notarization |
+| `APPLE_APP_SPECIFIC_PASSWORD` | macOS | App-specific password (appleid.apple.com) |
+| `APPLE_TEAM_ID` | macOS | 10-char Apple Developer Team ID |
+| `WIN_CSC_LINK` | Windows | Base64 of the code-signing `.pfx` |
+| `WIN_CSC_KEY_PASSWORD` | Windows | Password for that `.pfx` |
+| `GPG_PRIVATE_KEY` | Linux | ASCII-armored private key (signs the AppImage) |
+| `GPG_PASSPHRASE` | Linux | Passphrase for that GPG key |
+| _none_ | Docker | cosign keyless uses the Actions OIDC token; `GITHUB_TOKEN` already pushes to `ghcr.io` |
+
+Base64-encode a cert for the secret value with `base64 -i cert.p12 | pbcopy`
+(macOS) or `base64 -w0 cert.pfx` (Linux). Export an armored GPG key with
+`gpg --armor --export-secret-keys <KEYID>`.
+
+### Obtaining the credentials
+
+- **Apple:** enroll in the Apple Developer Program, create a *Developer ID
+  Application* certificate (Xcode -> Settings -> Accounts, or
+  developer.apple.com), export it as a `.p12`, and generate an app-specific
+  password at appleid.apple.com. Your Team ID is on the membership page.
+- **Windows:** buy an OV or EV code-signing certificate (DigiCert, Sectigo,
+  etc.) or set up **Azure Trusted Signing**, then export/obtain the `.pfx`. An
+  OV cert signs but SmartScreen warns until reputation builds; EV / Azure
+  Trusted Signing clears SmartScreen immediately. (To switch Windows to Azure
+  Trusted Signing later, add an `azureSignOptions` block under `win:` in
+  `electron-builder.yml`.)
+- **Linux / Docker GPG:** `gpg --full-generate-key`, then export the private
+  key (armored) for `GPG_PRIVATE_KEY`. Publish the matching public key so users
+  can verify.
+
+### Cutting a signed release
+
+```bash
+# 1. Bump the version in package.json, then:
+git tag v1.0.4
+git push origin v1.0.4
+# 2. Watch the Actions run; it creates a DRAFT Release with all signed assets.
+# 3. Verify the assets (commands below), then publish the draft.
+```
+
+### Verifying signatures
+
+```bash
+# macOS - signature + notarization stapling
+codesign --verify --deep --strict --verbose=2 GingerMail.app
+spctl --assess --type execute --verbose GingerMail.app
+
+# Windows (PowerShell) - Authenticode
+Get-AuthenticodeSignature .\GingerMail-*-win-*.exe | Format-List
+
+# Linux - detached GPG signature + checksums
+gpg --verify GingerMail-*.AppImage.sig GingerMail-*.AppImage
+sha256sum -c SHA256SUMS
+
+# Docker image (registry) - cosign keyless
+cosign verify ghcr.io/<owner>/gingermail:<version> \
+  --certificate-identity-regexp 'https://github.com/<owner>/.*' \
+  --certificate-oidc-issuer https://token.actions.githubusercontent.com
+
+# Docker tarball (download) - cosign blob
+cosign verify-blob gingermail-<version>-docker.tar.gz \
+  --signature gingermail-<version>-docker.tar.gz.sig \
+  --certificate gingermail-<version>-docker.tar.gz.pem \
+  --certificate-identity-regexp 'https://github.com/<owner>/.*' \
+  --certificate-oidc-issuer https://token.actions.githubusercontent.com
+```
 
 ## Local single-platform builds
 
@@ -69,12 +151,22 @@ docker run -d --name gingermail -p 3001:3001 --shm-size=1g \
 # open https://localhost:3001
 ```
 
-In CI, the `docker` job in `.github/workflows/release.yml` builds the image,
-exports it with `docker save | gzip` to `gingermail-<version>-docker.tar.gz`,
-generates `SHA256SUMS`, and attaches both to the GitHub Release. Users install
-it with `docker load < gingermail-<version>-docker.tar.gz`. No registry push is
-configured; add a `docker/login-action` + push step targeting `ghcr.io` if you
-later want it in GitHub Packages too.
+In CI, the `docker` job in `.github/workflows/release.yml`:
+
+1. Builds and **pushes** the image to `ghcr.io/<owner>/gingermail:<version>`
+   (and `:latest`).
+2. **Signs the image by digest with cosign keyless** (Sigstore) using the
+   Actions OIDC token - no signing key to manage; the signature is recorded in
+   the public Rekor transparency log.
+3. Exports the same image with `docker save | gzip` to
+   `gingermail-<version>-docker.tar.gz`, generates `SHA256SUMS`, and
+   **cosign-signs the tarball** (`*.tar.gz.sig` + `*.tar.gz.pem`) so the
+   downloadable file is independently verifiable.
+4. Attaches the tarball, checksum, and signature files to the GitHub Release.
+
+Users can either pull the signed image (`docker pull ghcr.io/<owner>/gingermail:<version>`)
+or download and load the tarball (`docker load < gingermail-<version>-docker.tar.gz`).
+See the "Verifying signatures" section above for the `cosign verify` commands.
 
 ## Environment variables (build-time)
 

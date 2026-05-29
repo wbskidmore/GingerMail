@@ -29,35 +29,96 @@ packages/
 ```bash
 pnpm install
 pnpm rebuild-native       # native module rebuild against Electron's Node ABI
-pnpm dev                  # renderer + electron, hot reload both
-pnpm dist                 # build installers for current OS (UNSIGNED until certs are provisioned)
 ```
+
+### Launch the desktop app
+
+After `pnpm install` (and `pnpm rebuild-native`), launch GingerMail one of two ways:
+
+**Development (hot reload):** starts the Vite renderer and the Electron main
+process together and opens the desktop window with live reload on both.
+
+```bash
+pnpm dev
+```
+
+**Packaged build:** build a native installer for your current OS, then launch
+the installed app. Output lands in `release/<version>/` (UNSIGNED until certs
+are provisioned).
+
+```bash
+pnpm dist:mac:no-ollama     # DMG     (macOS host)  -> open the .dmg, drag to /Applications, launch
+pnpm dist:win:no-ollama     # NSIS    (Windows host) -> run the .exe installer, launch from Start menu
+pnpm dist:linux:no-ollama   # AppImage (Linux host)  -> chmod +x the .AppImage, then run it
+```
+
+> The `:no-ollama` variants skip the bundled-Ollama fetch and fall back to a
+> user-installed Ollama. Drop `:no-ollama` (e.g. `pnpm dist:mac`) for a signed,
+> Ollama-bundled build. See [`docs/PACKAGING.md`](docs/PACKAGING.md) for signing,
+> cross-platform release builds, and the full matrix.
 
 ## Run via Docker (browser-accessible)
 
 The native installers (`.dmg` / `.exe` / `.AppImage`) are the primary way to run
-GingerMail. As a convenience, each GitHub Release also ships a Docker image that
-runs the Linux build on a minimal KasmVNC desktop, so you can reach the full app
-from a browser without installing anything natively.
+GingerMail. As a convenience, the project also ships a Docker image that runs the
+Linux build on a minimal [KasmVNC](https://github.com/linuxserver/docker-baseimage-kasmvnc)
+desktop, so you can reach the full app from a browser without installing anything
+natively.
+
+### Get the image
+
+**Option A - download from a GitHub Release** (no build toolchain needed):
 
 ```bash
-# 1. Download gingermail-<version>-docker.tar.gz from the GitHub Release, then:
+# Download gingermail-<version>-docker.tar.gz from the Release assets, then:
 docker load < gingermail-<version>-docker.tar.gz
+```
 
-# 2. Run it (data persists in the named volume):
+**Option B - build it yourself from the repo root:**
+
+```bash
+docker build -t gingermail:dev .
+```
+
+The build is multi-stage: it compiles the renderer + main + packages, runs
+`electron-builder --linux dir`, and copies the unpacked app onto the KasmVNC
+base image. See [`Dockerfile`](Dockerfile).
+
+### Run it
+
+```bash
 docker run -d --name gingermail \
   -p 3001:3001 \
   --shm-size=1g \
   -v gingermail-data:/config \
-  gingermail:<version>
-
-# 3. Open https://localhost:3001 (self-signed cert on first load).
+  gingermail:<version>   # or gingermail:dev if you built locally
 ```
 
-`--shm-size=1g` gives Chromium enough shared memory; `/config` is the persistent
-data/cache volume. The container runs Electron with `--no-sandbox` (containers
-lack the user-namespace sandbox), so it is a convenience channel rather than the
-hardened native build. See `docs/PACKAGING.md` for build details.
+Then open **https://localhost:3001** (self-signed cert, so accept the browser
+warning on first load).
+
+| Flag | Why |
+| --- | --- |
+| `-p 3001:3001` | KasmVNC web UI (HTTPS). Map to another host port if 3001 is taken. |
+| `--shm-size=1g` | Gives Chromium enough shared memory; the app may crash without it. |
+| `-v gingermail-data:/config` | Persists accounts, cache, and settings across restarts. |
+
+### Manage the container
+
+```bash
+docker logs -f gingermail     # follow startup / app logs
+docker stop gingermail        # stop
+docker start gingermail       # start again (data persists in the volume)
+docker rm -f gingermail       # remove the container (volume is kept)
+```
+
+To upgrade, `docker rm -f gingermail`, load/build the new image, and `docker run`
+again with the same `-v gingermail-data:/config` volume.
+
+> The container runs Electron with `--no-sandbox` because containers lack the
+> user-namespace sandbox, so treat Docker as a convenience channel rather than
+> the hardened native build. Full build details are in
+> [`docs/PACKAGING.md`](docs/PACKAGING.md).
 
 ## ADHD-first defaults
 

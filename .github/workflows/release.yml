@@ -35,13 +35,6 @@ jobs:
             platform: win
           - os: ubuntu-latest
             platform: linux
-    env:
-      # Builds are UNSIGNED until certificates are provisioned (compliance
-      # POA&M PM-008). This disables macOS signing auto-discovery so the build
-      # does not fail looking for an identity. Provide CSC_LINK /
-      # CSC_KEY_PASSWORD (Windows) and APPLE_* (macOS notarization) secrets and
-      # remove this line to enable signing.
-      CSC_IDENTITY_AUTO_DISCOVERY: false
     steps:
       - name: Checkout
         uses: actions/checkout@v6
@@ -68,8 +61,49 @@ jobs:
 
       # We skip `prepackage` (the Ollama fetch) on purpose: no verified binary
       # SHAs are pinned yet, and the app falls back to a user-installed Ollama.
+      #
+      # Signing is secret-driven so this stays graceful when a credential is
+      # absent (the leg then produces an UNSIGNED artifact instead of failing):
+      #   * macOS  - CSC_LINK/CSC_KEY_PASSWORD (Developer ID Application .p12,
+      #     base64) sign the .app; APPLE_ID/APPLE_APP_SPECIFIC_PASSWORD/
+      #     APPLE_TEAM_ID notarize it (notarize is enabled in electron-builder.yml).
+      #     CSC_IDENTITY_AUTO_DISCOVERY is only `true` on macOS when a cert is
+      #     present, so an unsigned local/dispatch build does not error hunting
+      #     for a keychain identity.
+      #   * Windows - WIN_CSC_LINK/WIN_CSC_KEY_PASSWORD (code-signing .pfx,
+      #     base64). Mapped onto the CSC_* env that electron-builder reads.
       - name: Package installer
+        env:
+          CSC_LINK: ${{ matrix.platform == 'win' && secrets.WIN_CSC_LINK || secrets.CSC_LINK }}
+          CSC_KEY_PASSWORD: ${{ matrix.platform == 'win' && secrets.WIN_CSC_KEY_PASSWORD || secrets.CSC_KEY_PASSWORD }}
+          CSC_IDENTITY_AUTO_DISCOVERY: ${{ matrix.platform == 'mac' && secrets.CSC_LINK != '' }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
         run: pnpm exec electron-builder --${{ matrix.platform }} --publish never
+
+      # Linux has no OS trust store like Gatekeeper/Authenticode, so we attach a
+      # detached GPG signature (when GPG_PRIVATE_KEY is provided) plus a
+      # SHA256SUMS manifest. Users verify with `gpg --verify` + `sha256sum -c`.
+      - name: Sign + checksum Linux artifacts
+        if: matrix.platform == 'linux'
+        env:
+          GPG_PRIVATE_KEY: ${{ secrets.GPG_PRIVATE_KEY }}
+          GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
+        run: |
+          set -euo pipefail
+          cd "$(dirname "$(ls release/*/*.AppImage | head -n1)")"
+          if [ -n "${GPG_PRIVATE_KEY:-}" ]; then
+            echo "$GPG_PRIVATE_KEY" | gpg --batch --import
+            KEYID=$(gpg --list-secret-keys --with-colons | awk -F: '/^sec:/ {print $5; exit}')
+            for f in *.AppImage; do
+              gpg --batch --yes --pinentry-mode loopback --passphrase "$GPG_PASSPHRASE" \
+                --local-user "$KEYID" --detach-sign "$f"
+            done
+          else
+            echo "No GPG_PRIVATE_KEY secret; emitting checksums only (UNSIGNED)."
+          fi
+          sha256sum *.AppImage > SHA256SUMS
 
       - name: Upload installer artifacts
         uses: actions/upload-artifact@v7
@@ -80,41 +114,96 @@ jobs:
             release/*/*.dmg
             release/*/*.exe
             release/*/*.AppImage
+            release/*/*.sig
+            release/*/SHA256SUMS
             release/*/*.yml
             release/*/*.blockmap
 
   docker:
     name: Build Docker image
     runs-on: ubuntu-latest
+    # packages: write -> push to ghcr.io; id-token: write -> cosign keyless
+    # (Sigstore) OIDC signing with the Actions-issued token (no key to manage).
+    permissions:
+      contents: read
+      packages: write
+      id-token: write
     steps:
       - name: Checkout
         uses: actions/checkout@v6
 
-      - name: Read version
+      - name: Read version + image name
         id: meta
-        run: echo "version=$(node -p "require('./package.json').version")" >> "$GITHUB_OUTPUT"
+        run: |
+          echo "version=$(node -p "require('./package.json').version")" >> "$GITHUB_OUTPUT"
+          # ghcr.io repository names must be lowercase.
+          echo "image=ghcr.io/$(echo '${{ github.repository_owner }}/gingermail' | tr '[:upper:]' '[:lower:]')" >> "$GITHUB_OUTPUT"
 
       - name: Set up Buildx
         uses: docker/setup-buildx-action@v3
 
-      # Browser-accessible convenience image (KasmVNC desktop). This is NOT a
-      # registry push: we export the image as a docker-loadable tarball and
-      # attach it to the GitHub Release alongside the native installers.
-      - name: Build image
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # Browser-accessible convenience image (KasmVNC desktop). We push it to
+      # ghcr.io (so it can be cosign-signed by digest) AND export a loadable
+      # tarball for direct download from the Release.
+      - name: Build and push image
+        id: build
         uses: docker/build-push-action@v6
         with:
           context: .
-          load: true
-          tags: gingermail:${{ steps.meta.outputs.version }}
+          push: true
+          tags: |
+            ${{ steps.meta.outputs.image }}:${{ steps.meta.outputs.version }}
+            ${{ steps.meta.outputs.image }}:latest
 
-      - name: Export image tarball + checksum
+      - name: Install cosign
+        uses: sigstore/cosign-installer@v3
+
+      # Keyless: cosign mints a short-lived cert from the Actions OIDC token and
+      # records the signature in the public Rekor transparency log. Verify with:
+      #   cosign verify <image>@<digest> \
+      #     --certificate-identity-regexp '...' \
+      #     --certificate-oidc-issuer https://token.actions.githubusercontent.com
+      - name: Sign image (cosign keyless)
+        env:
+          DIGEST: ${{ steps.build.outputs.digest }}
+          IMAGE: ${{ steps.meta.outputs.image }}
+        run: cosign sign --yes "${IMAGE}@${DIGEST}"
+
+      - name: Export image tarball + checksum + signature
+        env:
+          IMAGE: ${{ steps.meta.outputs.image }}
+          VERSION: ${{ steps.meta.outputs.version }}
         run: |
           set -euo pipefail
           mkdir -p docker-dist
-          docker save "gingermail:${{ steps.meta.outputs.version }}" \
-            | gzip > "docker-dist/gingermail-${{ steps.meta.outputs.version }}-docker.tar.gz"
+          # Pull the pushed tag so `docker load` yields a tagged local image.
+          docker pull "${IMAGE}:${VERSION}"
+          docker save "${IMAGE}:${VERSION}" \
+            | gzip > "docker-dist/gingermail-${VERSION}-docker.tar.gz"
           cd docker-dist
           sha256sum ./*.tar.gz > SHA256SUMS
+
+      # Independently verifiable signature for the downloadable tarball (the
+      # registry signature above only covers the pushed image). Verify with:
+      #   cosign verify-blob <file> --signature <file>.sig \
+      #     --certificate <file>.pem --certificate-identity-regexp '...' \
+      #     --certificate-oidc-issuer https://token.actions.githubusercontent.com
+      - name: Sign tarball (cosign blob, keyless)
+        run: |
+          set -euo pipefail
+          cd docker-dist
+          f=$(ls ./*.tar.gz)
+          cosign sign-blob --yes \
+            --output-signature "${f}.sig" \
+            --output-certificate "${f}.pem" \
+            "$f"
 
       - name: Upload Docker artifact
         uses: actions/upload-artifact@v7
