@@ -20,7 +20,7 @@
   "dependencies": {
     "@gingermail/core": "workspace:*",
     "@mantine/core": "^7.13.2",
-    "@mantine/hooks": "^7.13.2",
+    "@mantine/hooks": "^9.2.2",
     "@tabler/icons-react": "^3.19.0",
     "clsx": "^2.1.1",
     "react": "^18.3.1"
