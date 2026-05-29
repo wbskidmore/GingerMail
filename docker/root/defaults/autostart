@@ -1,0 +1,29 @@
+#!/usr/bin/env bash
+# KasmVNC autostart: launch GingerMail on the container desktop.
+#
+# --no-sandbox is required because the container has no user-namespace sandbox.
+# --ozone-platform=x11 pins Chromium to the X11 backend KasmVNC provides. The
+# HOME points at the persistent /config volume so accounts/cache survive
+# restarts. We loop so the desktop session stays alive if the app exits.
+
+set -u
+
+export HOME=/config
+export ELECTRON_DISABLE_SECURITY_WARNINGS=1
+
+# The executable name is derived from electron-builder's productName; resolve it
+# rather than hardcoding so a rename can't silently break the image.
+BIN="$(find /opt/gingermail -maxdepth 1 -type f -perm -u+x \
+        ! -name '*.so*' ! -name 'chrome_crashpad_handler' ! -name 'chrome-sandbox' \
+        | head -n1)"
+
+if [ -z "${BIN:-}" ]; then
+  echo "[gingermail] could not locate the app executable under /opt/gingermail" >&2
+  exit 1
+fi
+
+while true; do
+  "$BIN" --no-sandbox --ozone-platform=x11 --disable-dev-shm-usage
+  echo "[gingermail] app exited; restarting in 2s" >&2
+  sleep 2
+done

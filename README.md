@@ -33,6 +33,32 @@ pnpm dev                  # renderer + electron, hot reload both
 pnpm dist                 # build installers for current OS (UNSIGNED until certs are provisioned)
 ```
 
+## Run via Docker (browser-accessible)
+
+The native installers (`.dmg` / `.exe` / `.AppImage`) are the primary way to run
+GingerMail. As a convenience, each GitHub Release also ships a Docker image that
+runs the Linux build on a minimal KasmVNC desktop, so you can reach the full app
+from a browser without installing anything natively.
+
+```bash
+# 1. Download gingermail-<version>-docker.tar.gz from the GitHub Release, then:
+docker load < gingermail-<version>-docker.tar.gz
+
+# 2. Run it (data persists in the named volume):
+docker run -d --name gingermail \
+  -p 3001:3001 \
+  --shm-size=1g \
+  -v gingermail-data:/config \
+  gingermail:<version>
+
+# 3. Open https://localhost:3001 (self-signed cert on first load).
+```
+
+`--shm-size=1g` gives Chromium enough shared memory; `/config` is the persistent
+data/cache volume. The container runs Electron with `--no-sandbox` (containers
+lack the user-namespace sandbox), so it is a convenience channel rather than the
+hardened native build. See `docs/PACKAGING.md` for build details.
+
 ## ADHD-first defaults
 
 - Low-stimulation palette and generous spacing by default

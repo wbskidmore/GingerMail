@@ -1,0 +1,31 @@
+# The build stage runs its own clean `pnpm install`; keep host artifacts out of
+# the build context to keep it small and reproducible.
+node_modules
+**/node_modules
+.pnpm-store
+release
+dist
+**/dist
+*.tsbuildinfo
+
+.git
+.github
+.cursor
+.vscode
+
+coverage
+playwright-report
+test-results
+
+*.log
+npm-debug.log*
+pnpm-debug.log*
+
+.env
+.env.*
+
+sbom.cdx.json
+sbom.cdx.xml
+
+.DS_Store
+Thumbs.db

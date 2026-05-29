@@ -98,7 +98,10 @@ win:
   target:
     - target: nsis
       arch: [x64, arm64]
-  publisherName: William Skidmore
+  # electron-builder v26 moved Windows signing options (including publisherName)
+  # under `signtoolOptions`.
+  signtoolOptions:
+    publisherName: William Skidmore
 
 nsis:
   oneClick: false
@@ -110,6 +113,10 @@ nsis:
 linux:
   target:
     - AppImage
+    # `dir` emits an unpacked tree (release/<version>/linux-unpacked) that the
+    # Docker image copies in directly, avoiding AppImage FUSE issues in a
+    # container.
+    - dir
   category: Office
 
 # Auto-update channel.

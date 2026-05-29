@@ -42,6 +42,40 @@ SHAs are pinned yet — see `scripts/fetch-ollama.mjs` and POA&M PM-009); the ap
 falls back to a user-installed Ollama on `:11434`. Output lands in
 `release/<version>/`.
 
+## Docker distribution (browser-accessible)
+
+GingerMail also ships a Docker image that runs the Linux build on a minimal
+KasmVNC desktop, reachable from a browser at `https://<host>:3001`. This is a
+**convenience channel**, not the hardened native build: containers lack the
+user-namespace sandbox, so Electron runs with `--no-sandbox`.
+
+How it is built:
+
+- The root [`Dockerfile`](../Dockerfile) is multi-stage. Stage 1 (`node:20-bookworm`)
+  runs `pnpm install` + `pnpm build` + `electron-builder --linux dir` to emit an
+  unpacked tree (`release/<version>/linux-unpacked`). The `dir` target is added
+  in `electron-builder.yml` precisely so the container can copy the unpacked app
+  without AppImage FUSE issues.
+- Stage 2 (`lscr.io/linuxserver/baseimage-kasmvnc`) installs Chromium/Electron
+  runtime libraries, copies the app to `/opt/gingermail`, and starts it via
+  `docker/root/defaults/autostart`.
+
+Build and run locally:
+
+```bash
+docker build -t gingermail:dev .
+docker run -d --name gingermail -p 3001:3001 --shm-size=1g \
+  -v gingermail-data:/config gingermail:dev
+# open https://localhost:3001
+```
+
+In CI, the `docker` job in `.github/workflows/release.yml` builds the image,
+exports it with `docker save | gzip` to `gingermail-<version>-docker.tar.gz`,
+generates `SHA256SUMS`, and attaches both to the GitHub Release. Users install
+it with `docker load < gingermail-<version>-docker.tar.gz`. No registry push is
+configured; add a `docker/login-action` + push step targeting `ghcr.io` if you
+later want it in GitHub Packages too.
+
 ## Environment variables (build-time)
 
 | Variable | Purpose |

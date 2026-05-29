@@ -83,9 +83,49 @@ jobs:
             release/*/*.yml
             release/*/*.blockmap
 
+  docker:
+    name: Build Docker image
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Read version
+        id: meta
+        run: echo "version=$(node -p "require('./package.json').version")" >> "$GITHUB_OUTPUT"
+
+      - name: Set up Buildx
+        uses: docker/setup-buildx-action@v3
+
+      # Browser-accessible convenience image (KasmVNC desktop). This is NOT a
+      # registry push: we export the image as a docker-loadable tarball and
+      # attach it to the GitHub Release alongside the native installers.
+      - name: Build image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          load: true
+          tags: gingermail:${{ steps.meta.outputs.version }}
+
+      - name: Export image tarball + checksum
+        run: |
+          set -euo pipefail
+          mkdir -p docker-dist
+          docker save "gingermail:${{ steps.meta.outputs.version }}" \
+            | gzip > "docker-dist/gingermail-${{ steps.meta.outputs.version }}-docker.tar.gz"
+          cd docker-dist
+          sha256sum ./*.tar.gz > SHA256SUMS
+
+      - name: Upload Docker artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: gingermail-docker
+          if-no-files-found: error
+          path: docker-dist/*
+
   release:
     name: Publish GitHub Release
-    needs: build
+    needs: [build, docker]
     runs-on: ubuntu-latest
     if: startsWith(github.ref, 'refs/tags/')
     steps:
