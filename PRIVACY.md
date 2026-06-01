@@ -1,6 +1,6 @@
 # GingerMail privacy policy
 
-**Last updated: 2026-05-27**
+**Last updated: 2026-05-29**
 
 GingerMail is a desktop email + calendar + tasks application. It runs
 entirely on your own machine and connects directly to your mail
@@ -28,8 +28,10 @@ Everything mail-shaped stays on your machine:
 | When | What is sent | To whom | How to disable |
 |------|--------------|---------|----------------|
 | Always (mail sync) | Your mail credentials, IMAP/SMTP/Graph/Gmail API calls | The mail provider you configured | Remove the account in Settings → Accounts |
-| Slack connected (opt-in) | Your Slack token + Web API calls (read conversations/messages, send messages, mark read) | `slack.com` | Disconnect in Settings → Slack, or turn off "Enable Slack" |
-| Cloud AI on (opt-in) | The text of the email or thread you asked AI to act on, plus your prompt | The AI vendor you chose (OpenAI, Anthropic, or Google) | Settings → AI → Mode: Off (or Local) |
+| Slack connected (opt-in) | Your Slack token + Web API calls (read conversations/messages, send messages, mark read) | `slack.com` | Disconnect in Settings → Chat, or turn off "Enable chat" |
+| Discord connected (opt-in) | Your Discord bot token + REST/Gateway calls (read & send messages in invited servers, real-time message events) | `discord.com` | Disconnect in Settings → Chat, or turn off "Enable chat" |
+| Cloud AI on (opt-in) | The text of the email, chat message, or thread you asked AI to act on, plus your prompt | The AI vendor you chose (OpenAI, Anthropic, or Google) | Settings → AI → Mode: Off (or Local) |
+| Detection agents on (opt-in) | Incoming chat/mail message text scanned for actionable items, sent to the configured AI client | Your AI vendor (cloud) or nobody (local Ollama) | Settings → AI → Detection agents → Enable, plus the per-source toggles |
 | Local AI on | (none) — the Ollama sidecar runs on your machine; no traffic leaves | Loopback only | n/a |
 | Auto-update opt-in (off by default) | App version + OS + arch on update check | `updates.gingermail.app` (run by us) | Settings → Updates → Auto-update toggle |
 | One-click unsubscribe | An RFC 8058 HTTPS POST to the sender's unsubscribe URL | The sender / their email service provider | Don't click "Unsubscribe" |
@@ -68,6 +70,25 @@ When you enable cloud AI mode, the following protections apply:
 - Bundled or self-installed Ollama listens on `127.0.0.1` only.
 - No network traffic leaves the machine.
 - The model file lives in `~/.ollama/models`.
+
+## Privacy posture for detection agents
+
+Detection agents scan incoming chat (Slack/Discord) and/or mail messages for
+actionable items. They are **off by default** and inherit the AI privacy
+posture above:
+
+- With **Local (Ollama)** AI selected, scanning happens entirely on-device —
+  nothing about your messages leaves the machine.
+- With **Cloud** AI selected, the scanned message text is sent to your chosen
+  vendor under the same egress allowlist, optional PII redaction, and
+  sensitive-account block described above.
+- Scanning is scoped: only **newly-arrived** messages are scanned (never a bulk
+  re-scan of your whole history), and only for the sources you enable (chat
+  and/or mail).
+- The `email` category **never sends mail automatically** — auto-add only ever
+  saves a draft for you to review and send manually.
+- Detected items are stored locally in the encrypted SQLite DB (`suggestions`
+  table) so the review panel survives restarts; they are never uploaded.
 
 ## Children
 

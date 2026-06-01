@@ -1,4 +1,4 @@
-export type ProviderKind = 'gmail' | 'microsoft' | 'apple-caldav' | 'imap-smtp' | 'pop3' | 'slack';
+export type ProviderKind = 'gmail' | 'microsoft' | 'apple-caldav' | 'imap-smtp' | 'pop3' | 'slack' | 'discord';
 
 export interface Account {
   id: string;
@@ -311,6 +311,72 @@ export interface AiSummary {
   actionItems: string[];
 }
 
+// Suggestions (AI detection agents)
+
+/** What kind of actionable item the detection agent found. */
+export type SuggestionCategory = 'email' | 'reminder' | 'event' | 'task';
+
+/** Where a suggestion was detected from. */
+export type SuggestionSource = 'chat' | 'mail';
+
+/**
+ * Lifecycle of a suggestion:
+ *  - `pending`    : waiting for the user to accept / reject (ask mode)
+ *  - `accepted`   : the user accepted and the entity was created
+ *  - `rejected`   : the user declined
+ *  - `auto-added` : created automatically (auto mode); shown for Undo
+ *  - `dismissed`  : hidden from the panel without acting
+ */
+export type SuggestionStatus = 'pending' | 'accepted' | 'rejected' | 'auto-added' | 'dismissed';
+
+/**
+ * Category-specific payload the detection agent extracted. All fields are
+ * optional because the model fills in only what it found; the renderer + the
+ * entity-creation code degrade gracefully when fields are missing.
+ */
+export interface SuggestionPayload {
+  /** For `event`/`reminder`: ISO 8601 datetime the model parsed. */
+  when?: string;
+  /** For `task`: ISO 8601 due date. */
+  due?: string;
+  /** For `event`: ISO 8601 end datetime. */
+  end?: string;
+  /** For `email`: recipient address the model inferred (best-effort). */
+  to?: string;
+  /** For `email`: a suggested subject line. */
+  subject?: string;
+  /** For `email`: a suggested body. */
+  body?: string;
+  /** For `event`: location string, when present. */
+  location?: string;
+  /** Free-form notes / extra context the model surfaced. */
+  notes?: string;
+}
+
+/**
+ * An actionable item the AI detection agent found in a chat or mail message.
+ * Persisted in the `suggestions` table so the review panel survives restarts
+ * and auto-added items remain undoable.
+ */
+export interface Suggestion {
+  id: string;
+  source: SuggestionSource;
+  /** Provider message id this was detected from (for dedupe + linking). */
+  sourceId: string;
+  accountId: string;
+  /** Human-readable context: conversation/thread label or sender. */
+  sourceLabel?: string;
+  category: SuggestionCategory;
+  title: string;
+  payload: SuggestionPayload;
+  /** Model confidence in [0,1]. */
+  confidence: number;
+  status: SuggestionStatus;
+  createdAt: number;
+  /** Set once accepted/auto-added: the id of the created task/event/job/draft. */
+  createdEntityId?: string;
+}
+
 // Notifications + scheduling
 
 export type ScheduledJobKind =
@@ -318,7 +384,8 @@ export type ScheduledJobKind =
   | 'task-due'
   | 'snooze-wake'
   | 'ai-digest'
-  | 'focus-break';
+  | 'focus-break'
+  | 'reminder';
 
 export interface ScheduledJob {
   id: string;
@@ -489,7 +556,45 @@ export interface AiSettings {
     blockSensitiveAccounts: boolean;
     sensitiveAccountIds: string[];
   };
+  /**
+   * Detection agents: when enabled, the configured AI client scans incoming
+   * chat and/or mail messages for actionable items (emails to send, reminders,
+   * calendar events, tasks). Each category is independently set to auto-add,
+   * ask first, or off. With local Ollama this all stays on-device.
+   */
+  detection?: DetectionSettings;
 }
+
+/** How a detected category is handled. */
+export type DetectionMode = 'auto' | 'ask' | 'off';
+
+export interface DetectionSettings {
+  /** Master switch for all detection agents. */
+  enabled: boolean;
+  /** Scan incoming Slack/Discord messages. */
+  scanChat: boolean;
+  /** Scan incoming mail. */
+  scanMail: boolean;
+  /** Per-category handling. `email` never auto-sends — `auto` saves a draft. */
+  categories: {
+    email: DetectionMode;
+    reminder: DetectionMode;
+    event: DetectionMode;
+    task: DetectionMode;
+  };
+}
+
+export const defaultDetectionSettings: DetectionSettings = {
+  enabled: false,
+  scanChat: true,
+  scanMail: false,
+  categories: {
+    email: 'ask',
+    reminder: 'ask',
+    event: 'ask',
+    task: 'ask',
+  },
+};
 
 /**
  * Allowed AI egress hostnames per vendor. Production main process

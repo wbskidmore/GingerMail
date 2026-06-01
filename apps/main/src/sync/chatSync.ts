@@ -1,7 +1,8 @@
 import { IPC_CHANNELS, defaultChatSettings, type ChatMessage } from '@gingermail/core';
-import type { ChatProvider } from '@gingermail/providers';
+import type { ChatProvider, Unsubscribe } from '@gingermail/providers';
 import { Notification, log } from '../electronShim.js';
 import type { AppContext } from '../context.js';
+import { enqueueDetection } from '../ai/detectionAgent.js';
 
 /**
  * Poll-based Slack sync. For each connected workspace we refresh the user
@@ -21,11 +22,113 @@ import type { AppContext } from '../context.js';
 const inFlight = new Map<string, Promise<void>>();
 let pollTimer: ReturnType<typeof setTimeout> | null = null;
 
+/**
+ * Active real-time Gateway subscriptions, keyed by account id. Providers that
+ * implement `watch()` (Discord) get a persistent connection instead of being
+ * polled; we keep the handle so we can tear it down on disconnect / quit.
+ */
+const gatewaySubs = new Map<string, Unsubscribe>();
+
 export async function syncAllChat(ctx: AppContext): Promise<void> {
   const chat = ctx.getSettings().chat ?? defaultChatSettings;
-  if (!chat.enabled) return;
+  if (!chat.enabled) {
+    stopAllGateways();
+    return;
+  }
   const providers = await ctx.getAllChatProviders();
-  await Promise.all(providers.map((p) => syncWorkspace(ctx, p.accountId, p.provider)));
+  const liveAccountIds = new Set(providers.map((p) => p.accountId));
+
+  // Tear down gateways for accounts that are no longer connected/enabled.
+  for (const [accountId, unsub] of gatewaySubs) {
+    if (!liveAccountIds.has(accountId)) {
+      unsub();
+      gatewaySubs.delete(accountId);
+    }
+  }
+
+  const pollTargets: Array<{ accountId: string; provider: ChatProvider }> = [];
+  for (const p of providers) {
+    if (typeof p.provider.watch === 'function') {
+      ensureGateway(ctx, p.accountId, p.provider);
+      // Push providers still get a one-shot conversation refresh so the tab
+      // shows channels even before any new message arrives.
+      void refreshConversations(ctx, p.accountId, p.provider).catch(() => undefined);
+    } else {
+      pollTargets.push(p);
+    }
+  }
+  await Promise.all(pollTargets.map((p) => syncWorkspace(ctx, p.accountId, p.provider)));
+}
+
+/** Open a persistent Gateway subscription once per account. */
+function ensureGateway(ctx: AppContext, accountId: string, provider: ChatProvider): void {
+  if (gatewaySubs.has(accountId)) return;
+  if (typeof provider.watch !== 'function') return;
+  try {
+    const unsub = provider.watch((message) => handleLiveMessage(ctx, accountId, message));
+    gatewaySubs.set(accountId, unsub);
+    log.info(`[chatSync] opened gateway for ${accountId}`);
+  } catch (err) {
+    log.warn(`[chatSync] gateway open failed for ${accountId}:`, err);
+  }
+}
+
+/** Handle a message delivered in real time over a provider Gateway. */
+function handleLiveMessage(ctx: AppContext, accountId: string, message: ChatMessage): void {
+  try {
+    ctx.db.upsertChatMessages([message]);
+    // Bump unread for the conversation (best-effort; the panel recomputes).
+    const lastRead = ctx.db.getChatLastRead(accountId, message.conversationId);
+    const isNew = lastRead === undefined || tsGreater(message.ts, lastRead);
+    if (isNew) {
+      ctx.db.setChatUnread({
+        accountId,
+        conversationId: message.conversationId,
+        unreadCount: (ctx.db.listChatMessages(accountId, message.conversationId, 50).filter((m) => lastRead === undefined || tsGreater(m.ts, lastRead)).length) || 1,
+        hasMention: message.mentionsMe,
+      });
+    }
+    ctx.mainWindow?.webContents.send(IPC_CHANNELS.slackSyncEvent, {
+      type: 'new-message',
+      accountId,
+      conversationId: message.conversationId,
+      mentionsMe: message.mentionsMe,
+    });
+    feedDetection(ctx, accountId, message);
+  } catch (err) {
+    log.warn('[chatSync] live message handling failed:', err);
+  }
+}
+
+/** Pull the conversation list for a push provider so the tab has channels. */
+async function refreshConversations(ctx: AppContext, accountId: string, provider: ChatProvider): Promise<void> {
+  const conversations = await provider.listConversations();
+  ctx.db.upsertChatConversations(conversations);
+  ctx.mainWindow?.webContents.send(IPC_CHANNELS.slackSyncEvent, { type: 'conversations-updated', accountId });
+}
+
+/** Enqueue a chat message for the AI detection agent (no-op if disabled). */
+function feedDetection(ctx: AppContext, accountId: string, message: ChatMessage): void {
+  const conv = ctx.db.listChatConversations(accountId).find((c) => c.conversationId === message.conversationId);
+  enqueueDetection(ctx, {
+    source: 'chat',
+    sourceId: message.id,
+    accountId,
+    sourceLabel: conv?.name ?? message.conversationId,
+    text: message.text,
+    context: conv ? `Chat conversation: ${conv.name}` : 'Chat message',
+  });
+}
+
+export function stopAllGateways(): void {
+  for (const [, unsub] of gatewaySubs) {
+    try {
+      unsub();
+    } catch {
+      /* ignore */
+    }
+  }
+  gatewaySubs.clear();
 }
 
 function syncWorkspace(ctx: AppContext, accountId: string, provider: ChatProvider): Promise<void> {
@@ -81,6 +184,18 @@ async function doSyncWorkspace(ctx: AppContext, accountId: string, provider: Cha
       // Accumulate batched notification counts.
       if (c.kind === 'im' || c.kind === 'mpim') newDmCount += unread.length;
       else if (hasMention) newMentionCount += unread.filter((m) => m.mentionsMe).length;
+
+      // Feed genuinely-new messages to the detection agent (no-op if off).
+      for (const m of unread) {
+        enqueueDetection(ctx, {
+          source: 'chat',
+          sourceId: m.id,
+          accountId,
+          sourceLabel: c.name,
+          text: m.text,
+          context: `Chat conversation: ${c.name}`,
+        });
+      }
 
       if (unread.length) {
         ctx.mainWindow?.webContents.send(IPC_CHANNELS.slackSyncEvent, {

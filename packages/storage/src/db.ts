@@ -23,6 +23,11 @@ import type {
   ScheduledJob,
   ScheduledJobKind,
   SenderAction,
+  Suggestion,
+  SuggestionCategory,
+  SuggestionPayload,
+  SuggestionSource,
+  SuggestionStatus,
   Task,
   TaskList,
   TaskStatus,
@@ -175,6 +180,13 @@ export class GingerMailDb {
       // existing databases.
       if (current === 4) {
         current = 5;
+      }
+
+      // -- v5 -> v6: add the `suggestions` table for AI detection agents.
+      // The CREATE TABLE / INDEX statements live in SCHEMA_SQL (run on every
+      // open), so we only bump the version for existing databases.
+      if (current === 5) {
+        current = 6;
       }
 
       this.db
@@ -668,6 +680,123 @@ export class GingerMailDb {
       }
     });
     tx(users);
+  }
+
+  // ---- AI detection suggestions ----
+
+  /**
+   * Insert suggestions, ignoring any that collide on the
+   * (source_id, category, title) dedupe index. Returns the rows that were
+   * actually inserted (so the caller can notify only on genuinely new items).
+   */
+  insertSuggestions(suggestions: Suggestion[]): Suggestion[] {
+    const stmt = this.db.prepare(
+      `INSERT OR IGNORE INTO suggestions
+         (id, source, source_id, account_id, source_label, category, title, payload_json, confidence, status, created_at, created_entity_id)
+       VALUES (@id, @source, @sourceId, @accountId, @sourceLabel, @category, @title, @payloadJson, @confidence, @status, @createdAt, @createdEntityId)`,
+    );
+    const inserted: Suggestion[] = [];
+    const tx = this.db.transaction((items: Suggestion[]) => {
+      for (const s of items) {
+        const res = stmt.run({
+          id: s.id,
+          source: s.source,
+          sourceId: s.sourceId,
+          accountId: s.accountId ?? null,
+          sourceLabel: s.sourceLabel ?? null,
+          category: s.category,
+          title: s.title,
+          payloadJson: s.payload ? JSON.stringify(s.payload) : null,
+          confidence: s.confidence,
+          status: s.status,
+          createdAt: s.createdAt,
+          createdEntityId: s.createdEntityId ?? null,
+        });
+        if (res.changes > 0) inserted.push(s);
+      }
+    });
+    tx(suggestions);
+    return inserted;
+  }
+
+  listSuggestions(status?: SuggestionStatus): Suggestion[] {
+    const rows = (
+      status
+        ? this.db
+            .prepare(`SELECT * FROM suggestions WHERE status = ? ORDER BY created_at DESC LIMIT 500`)
+            .all(status)
+        : this.db.prepare(`SELECT * FROM suggestions ORDER BY created_at DESC LIMIT 500`).all()
+    ) as Array<{
+      id: string;
+      source: string;
+      source_id: string;
+      account_id: string | null;
+      source_label: string | null;
+      category: string;
+      title: string;
+      payload_json: string | null;
+      confidence: number;
+      status: string;
+      created_at: number;
+      created_entity_id: string | null;
+    }>;
+    return rows.map((r) => this.rowToSuggestion(r));
+  }
+
+  getSuggestion(id: string): Suggestion | undefined {
+    const r = this.db.prepare(`SELECT * FROM suggestions WHERE id = ?`).get(id) as
+      | {
+          id: string;
+          source: string;
+          source_id: string;
+          account_id: string | null;
+          source_label: string | null;
+          category: string;
+          title: string;
+          payload_json: string | null;
+          confidence: number;
+          status: string;
+          created_at: number;
+          created_entity_id: string | null;
+        }
+      | undefined;
+    return r ? this.rowToSuggestion(r) : undefined;
+  }
+
+  setSuggestionStatus(id: string, status: SuggestionStatus, createdEntityId?: string): void {
+    this.db
+      .prepare(`UPDATE suggestions SET status = ?, created_entity_id = COALESCE(?, created_entity_id) WHERE id = ?`)
+      .run(status, createdEntityId ?? null, id);
+  }
+
+  private rowToSuggestion(r: {
+    id: string;
+    source: string;
+    source_id: string;
+    account_id: string | null;
+    source_label: string | null;
+    category: string;
+    title: string;
+    payload_json: string | null;
+    confidence: number;
+    status: string;
+    created_at: number;
+    created_entity_id: string | null;
+  }): Suggestion {
+    return {
+      id: r.id,
+      source: r.source as SuggestionSource,
+      sourceId: r.source_id,
+      accountId: r.account_id ?? '',
+      sourceLabel: r.source_label ?? undefined,
+      category: r.category as SuggestionCategory,
+      title: r.title,
+      payload: r.payload_json ? (JSON.parse(r.payload_json) as SuggestionPayload) : {},
+      confidence: r.confidence,
+      status: r.status as SuggestionStatus,
+      createdAt: r.created_at,
+      createdEntityId: r.created_entity_id ?? undefined,
+    };
   }
 
   listSenderActions(actions: Array<SenderAction['action']>): SenderAction[] {

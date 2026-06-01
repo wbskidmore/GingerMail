@@ -98,6 +98,14 @@ export interface ChatProvider {
   markRead(conversationId: string, ts?: string): Promise<void>;
   /** Roster lookup used to resolve author names / DM partner labels. */
   listUsers(): Promise<ChatUser[]>;
+  /**
+   * Optional real-time push. Providers that maintain a persistent connection
+   * (e.g. Discord's Gateway WebSocket) implement this to deliver messages as
+   * they arrive instead of relying on the poll loop. Returns an unsubscribe
+   * that tears down the connection. Poll-only providers (Slack today) omit it
+   * and the sync layer falls back to interval polling.
+   */
+  watch?(onMessage: (message: ChatMessage) => void): Unsubscribe;
 }
 
 export interface ProviderBundle {

@@ -1,6 +1,7 @@
 import { ActionIcon, Group, Tooltip } from '@mantine/core';
 import { IconKeyboard } from '@tabler/icons-react';
 import { NavSearch } from './NavSearch.js';
+import { SuggestionsButton } from '../suggestions/SuggestionsPanel.js';
 import { useAppStore } from '../store.js';
 
 /**
@@ -17,6 +18,7 @@ export function ActionBar() {
     <div className="gm-actionbar-region">
       <Group justify="flex-end" align="center" h="100%" px="md" gap="sm">
         <NavSearch />
+        <SuggestionsButton />
         <Tooltip label="Keyboard shortcuts (?)">
           <ActionIcon
             data-no-drag

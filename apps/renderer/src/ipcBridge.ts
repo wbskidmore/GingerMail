@@ -21,6 +21,8 @@ import type {
   MutedSender,
   NlSearchResult,
   ScheduledJob,
+  Suggestion,
+  SuggestionStatus,
   Task,
   TaskList,
   UnsubscribeSuggestion,
@@ -142,6 +144,16 @@ export interface Api {
     markRead: (input: { conversationId: string }) => Promise<void>;
     refresh: () => Promise<void>;
     onSync: (cb: Listener<unknown>) => Unsubscribe;
+  };
+  discord: {
+    connectToken: (input: { token: string }) => Promise<Account>;
+  };
+  suggestions: {
+    list: (input?: { status?: SuggestionStatus }) => Promise<Suggestion[]>;
+    accept: (input: { id: string }) => Promise<{ ok: boolean; draft?: Draft }>;
+    reject: (input: { id: string }) => Promise<void>;
+    dismiss: (input: { id: string }) => Promise<void>;
+    onChanged: (cb: Listener<void>) => Unsubscribe;
   };
 }
 
@@ -327,6 +339,16 @@ function createMockApi(): Api {
       markRead: async () => {},
       refresh: async () => {},
       onSync: noListener,
+    },
+    discord: {
+      connectToken: async () => ({ ...baseAccount, kind: 'discord', displayName: 'Mock Discord' }),
+    },
+    suggestions: {
+      list: async () => [],
+      accept: async () => ({ ok: true }),
+      reject: async () => {},
+      dismiss: async () => {},
+      onChanged: noListener,
     },
   };
 }

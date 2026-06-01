@@ -138,9 +138,12 @@ How it is built:
   unpacked tree (`release/<version>/linux-unpacked`). The `dir` target is added
   in `electron-builder.yml` precisely so the container can copy the unpacked app
   without AppImage FUSE issues.
-- Stage 2 (`lscr.io/linuxserver/baseimage-kasmvnc`) installs Chromium/Electron
-  runtime libraries, copies the app to `/opt/gingermail`, and starts it via
-  `docker/root/defaults/autostart`.
+- Stage 2 (`lscr.io/linuxserver/baseimage-kasmvnc:debianbookworm`) installs
+  Chromium/Electron runtime libraries and copies the app to `/opt/gingermail`,
+  starting it via `docker/root/defaults/autostart`. Debian (glibc) is required:
+  the Alpine/musl base was tested and the prebuilt Electron binary fails to
+  relocate against musl (even with gcompat). The image install step uses
+  `--no-install-recommends` and prunes docs/man/locales to stay lean.
 
 Build and run locally:
 

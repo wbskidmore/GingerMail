@@ -78,7 +78,7 @@ function localClient(): OllamaClient {
  * the key exists. This keeps cloud AI keys out of the world-readable
  * `~/Library/Application Support/GingerMail/prefs.json` file.
  */
-function effectiveAiSettings(ctx: AppContext): ReturnType<AppContext['getSettings']>['ai'] {
+export function effectiveAiSettings(ctx: AppContext): ReturnType<AppContext['getSettings']>['ai'] {
   const ai = ctx.getSettings().ai;
   if (ai.mode !== 'cloud' || !ai.cloud) return ai;
   const key = ctx.vault.readAppSecret('aiCloudApiKey');

@@ -61,6 +61,26 @@ export function classifySendersForUnsubscribePrompt(): string {
   ].join(' ');
 }
 
+export function detectActionablesPrompt(): string {
+  const today = new Date().toISOString().slice(0, 10);
+  return [
+    'You scan a single chat or email message for ACTIONABLE items the user should act on.',
+    'There are four categories:',
+    '- "email": the message implies the user should send an email/reply to someone.',
+    '- "reminder": a simple time-based nudge with no calendar invite needed.',
+    '- "event": a meeting/appointment with a specific date/time (and optionally a location).',
+    '- "task": a concrete to-do the user must complete.',
+    `Today is ${today}. Resolve relative dates ("tomorrow", "next Friday 3pm") into absolute ISO 8601 datetimes.`,
+    'Be conservative: only report items that are clearly actionable. If nothing is actionable, return an empty array.',
+    'Never invent recipients, dates, or facts that are not supported by the message.',
+    'Reply with ONLY a JSON object of this shape:',
+    '{"items":[{"category":"email"|"reminder"|"event"|"task","title":string,"confidence":0..1,',
+    '"when":ISO8601 optional,"due":ISO8601 optional,"end":ISO8601 optional,',
+    '"to":string optional,"subject":string optional,"body":string optional,"location":string optional,"notes":string optional}]}',
+    'title is a short imperative summary (< 80 chars). confidence is your certainty it is genuinely actionable.',
+  ].join(' ');
+}
+
 export function prioritizeInboxPrompt(): string {
   return [
     'Classify each email by the user energy level it likely needs.',

@@ -5,5 +5,6 @@ export * from './gmail/index.js';
 export * from './microsoft/index.js';
 export * from './apple-caldav/index.js';
 export * from './slack/index.js';
+export * from './discord/index.js';
 export * from './ics.js';
 export * from './unsubscribe.js';

@@ -110,6 +110,8 @@ function describeJob(job: ScheduledJob): { title: string; body: string; urgency:
       return { title: 'Time for a break', body: 'Stand up, drink some water, look away from the screen.', urgency: 'low' };
     case 'ai-digest':
       return { title: 'GingerMail digest', body: payload['summary'] ?? 'A short summary is ready', urgency: 'low' };
+    case 'reminder':
+      return { title: payload['title'] ?? 'Reminder', body: payload['notes'] ?? payload['when'] ?? 'You asked to be reminded', urgency: 'normal' };
     default:
       return { title: 'GingerMail', body: 'A reminder fired', urgency: 'low' };
   }

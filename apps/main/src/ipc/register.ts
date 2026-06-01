@@ -9,6 +9,7 @@ import { syncAllMail } from '../sync/mailSync.js';
 import { syncAllCalendars } from '../sync/calendarSync.js';
 import { syncAllTasks } from '../sync/taskSync.js';
 import { syncAllChat } from '../sync/chatSync.js';
+import { applySuggestion } from '../ai/suggestionActions.js';
 import { parseIcsString } from '@gingermail/providers';
 import { randomUUID } from 'node:crypto';
 import { sanitiseMailHtmlMain } from '../security/mailHtml.js';
@@ -38,6 +39,10 @@ import {
   SlackListMessagesSchema,
   SlackMarkReadSchema,
   SlackSendSchema,
+  DiscordConnectTokenSchema,
+  SuggestionsAcceptSchema,
+  SuggestionsRejectSchema,
+  SuggestionsDismissSchema,
   TasksDeleteSchema,
   UnsubDismissSchema,
   UnsubMuteSchema,
@@ -564,8 +569,16 @@ export function registerIpc(ctx: AppContext): void {
   });
 
   handle(IPC_CHANNELS.slackListWorkspaces, () =>
-    ctx.db.listAccounts().filter((a) => a.kind === 'slack'),
+    ctx.db.listAccounts().filter((a) => a.kind === 'slack' || a.kind === 'discord'),
   );
+
+  // ----- Discord -----
+  safeHandle(IPC_CHANNELS.discordConnectToken, DiscordConnectTokenSchema, async (input) => {
+    const account = await ctx.connectDiscordToken(input.token);
+    // Kick off a first sync so the tab has data immediately. Non-blocking.
+    void syncAllChat(ctx).catch(() => undefined);
+    return account;
+  });
 
   handle(IPC_CHANNELS.slackListConversations, (_e, input?: { accountId?: string }) =>
     ctx.db.listChatConversations(input?.accountId),
@@ -611,6 +624,31 @@ export function registerIpc(ctx: AppContext): void {
 
   handle(IPC_CHANNELS.slackRefresh, async () => {
     await syncAllChat(ctx);
+  });
+
+  // ----- Suggestions (AI detection agents) -----
+  handle(IPC_CHANNELS.suggestionsList, (_e, input?: { status?: string }) =>
+    ctx.db.listSuggestions(input?.status as Parameters<typeof ctx.db.listSuggestions>[0]),
+  );
+
+  safeHandle(IPC_CHANNELS.suggestionsAccept, SuggestionsAcceptSchema, async (input) => {
+    const suggestion = ctx.db.getSuggestion(input.id);
+    if (!suggestion) throw new Error('Suggestion not found');
+    const result = applySuggestion(ctx, suggestion);
+    if (!result.ok) throw new Error(result.error ?? 'Could not create the item');
+    ctx.db.setSuggestionStatus(input.id, 'accepted', result.entityId);
+    ctx.mainWindow?.webContents.send(IPC_CHANNELS.suggestionsChanged);
+    return { ok: true, draft: result.draft };
+  });
+
+  safeHandle(IPC_CHANNELS.suggestionsReject, SuggestionsRejectSchema, async (input) => {
+    ctx.db.setSuggestionStatus(input.id, 'rejected');
+    ctx.mainWindow?.webContents.send(IPC_CHANNELS.suggestionsChanged);
+  });
+
+  safeHandle(IPC_CHANNELS.suggestionsDismiss, SuggestionsDismissSchema, async (input) => {
+    ctx.db.setSuggestionStatus(input.id, 'dismissed');
+    ctx.mainWindow?.webContents.send(IPC_CHANNELS.suggestionsChanged);
   });
 }
 

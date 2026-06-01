@@ -61,7 +61,12 @@ RUN set -eux; \
 # ---------------------------------------------------------------------------
 FROM lscr.io/linuxserver/baseimage-kasmvnc:debianbookworm
 
-# Electron/Chromium runtime libraries.
+# Electron/Chromium runtime libraries. Alpine/musl was evaluated but the
+# prebuilt (glibc-linked) Electron binary cannot relocate against musl even
+# with gcompat, so Debian (glibc) is the only viable base. We keep the image
+# lean instead: --no-install-recommends avoids pulling suggested extras, and
+# the post-install prune drops apt lists, docs, man pages, and locales that the
+# headless container never uses.
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
         libgtk-3-0 \
@@ -78,7 +83,15 @@ RUN apt-get update \
         libatspi2.0-0 \
         libcups2 \
     && apt-get clean \
-    && rm -rf /var/lib/apt/lists/*
+    && rm -rf /var/lib/apt/lists/* \
+        /usr/share/doc/* \
+        /usr/share/man/* \
+        /usr/share/info/* \
+        /usr/share/lintian/* \
+        /var/cache/apt/* \
+        /tmp/* \
+    && find /usr/share/locale -maxdepth 1 -mindepth 1 -type d \
+        ! -name 'en*' ! -name 'C*' ! -name 'locale.alias' -exec rm -rf {} +
 
 COPY --from=build /app /opt/gingermail
 COPY docker/root/ /

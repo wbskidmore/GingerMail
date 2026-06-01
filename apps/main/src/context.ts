@@ -24,6 +24,7 @@ import {
   MicrosoftTasksProvider,
   Pop3Provider,
   SlackProvider,
+  DiscordProvider,
   buildGoogleAuth,
 } from '@gingermail/providers';
 import { Scheduler } from './scheduler.js';
@@ -199,7 +200,9 @@ export class AppContext {
   }
 
   async getAllChatProviders(): Promise<Array<{ accountId: string; provider: ChatProvider }>> {
-    const accounts = this.db.listAccounts().filter((a) => a.enabled && a.kind === 'slack');
+    const accounts = this.db
+      .listAccounts()
+      .filter((a) => a.enabled && (a.kind === 'slack' || a.kind === 'discord'));
     const out: Array<{ accountId: string; provider: ChatProvider }> = [];
     for (const a of accounts) {
       const b = await this.getBundle(a.id);
@@ -314,6 +317,44 @@ export class AppContext {
     return account;
   }
 
+  /**
+   * Connect a Discord BOT from a pasted bot token. Validates the token via
+   * `GET /users/@me`, then persists the account + token. The account id is
+   * keyed off the bot's user id so re-pasting the same token updates it in
+   * place. A bot only sees servers it has been invited to (plus DMs to the
+   * bot) — a user/self token is intentionally unsupported (Discord ToS).
+   */
+  async connectDiscordToken(token: string): Promise<Account> {
+    const trimmed = token.trim();
+    if (trimmed.length < 50) {
+      throw new Error('That does not look like a Discord bot token.');
+    }
+    const probeAccount: Account = {
+      id: 'discord:probe',
+      kind: 'discord',
+      displayName: 'Discord',
+      emailAddress: 'probe@discord',
+      createdAt: Date.now(),
+      syncIntervalSec: 120,
+      enabled: true,
+    };
+    const probe = new DiscordProvider(probeAccount, trimmed);
+    const identity = await probe.authTest();
+    const account: Account = {
+      id: `discord:${identity.teamId}`,
+      kind: 'discord',
+      displayName: identity.teamName,
+      emailAddress: `${identity.userId}@discord.bot`,
+      createdAt: Date.now(),
+      syncIntervalSec: 120,
+      enabled: true,
+    };
+    this.db.upsertAccount(account, JSON.stringify({ botUserId: identity.userId }));
+    this.vault.write(account.id, { access_token: trimmed });
+    this.providerCache.delete(account.id);
+    return account;
+  }
+
   private async getBundle(accountId: string): Promise<ProviderBundleInternal | undefined> {
     if (this.providerCache.has(accountId)) return this.providerCache.get(accountId);
     const account = this.db.listAccounts().find((a) => a.id === accountId);
@@ -410,6 +451,11 @@ async function buildBundleFor(
       const token = secrets?.['access_token'];
       if (!token) return undefined;
       return { chat: new SlackProvider(account, token) };
+    }
+    case 'discord': {
+      const token = secrets?.['access_token'];
+      if (!token) return undefined;
+      return { chat: new DiscordProvider(account, token) };
     }
     default:
       return undefined;

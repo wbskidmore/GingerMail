@@ -13,6 +13,8 @@ import type {
   MutedSender,
   ProviderKind,
   ScheduledJob,
+  Suggestion,
+  SuggestionStatus,
   Task,
   TaskList,
   UnsubscribeSuggestion,
@@ -263,6 +265,32 @@ export interface IpcApi {
     /** Subscribe to background sync events (new messages / unread changes). */
     onSync: (cb: (evt: ChatSyncEvent) => void) => () => void;
   };
+
+  // ---- Discord ----
+  discord: {
+    /**
+     * Connect a Discord bot by pasting its bot token. Validates it via the
+     * Discord REST API, stores the token in the OS keychain, and creates a
+     * `kind:'discord'` account. Conversation listing/sending/etc. reuse the
+     * shared `slack` (chat) IPC channels since both speak the ChatProvider
+     * contract.
+     */
+    connectToken: (input: { token: string }) => Promise<Account>;
+  };
+
+  // ---- Suggestions (AI detection agents) ----
+  suggestions: {
+    /** List detected suggestions, optionally filtered by status. */
+    list: (input?: { status?: SuggestionStatus }) => Promise<Suggestion[]>;
+    /** Accept a pending suggestion: creates the entity and marks it accepted. */
+    accept: (input: { id: string }) => Promise<{ ok: boolean; draft?: Draft }>;
+    /** Reject a pending suggestion without creating anything. */
+    reject: (input: { id: string }) => Promise<void>;
+    /** Dismiss a suggestion (hide from the panel) without acting. */
+    dismiss: (input: { id: string }) => Promise<void>;
+    /** Subscribe to suggestion-list changes (new detections / status updates). */
+    onChanged: (cb: () => void) => () => void;
+  };
 }
 
 export type ChatSyncEvent =
@@ -425,6 +453,16 @@ export const IPC_CHANNELS = {
   slackMarkRead: 'slack:markRead',
   slackRefresh: 'slack:refresh',
   slackSyncEvent: 'slack:syncEvent',
+
+  // discord
+  discordConnectToken: 'discord:connectToken',
+
+  // suggestions (AI detection agents)
+  suggestionsList: 'suggestions:list',
+  suggestionsAccept: 'suggestions:accept',
+  suggestionsReject: 'suggestions:reject',
+  suggestionsDismiss: 'suggestions:dismiss',
+  suggestionsChanged: 'suggestions:changed',
 } as const;
 
 export type IpcChannel = (typeof IPC_CHANNELS)[keyof typeof IPC_CHANNELS];

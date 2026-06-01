@@ -1,6 +1,8 @@
 import { AI_VENDOR_HOSTS, redactPii, type AiSettings, type Message, type MessageThread, type Task } from '@gingermail/core';
+import type { SuggestionCategory, SuggestionPayload } from '@gingermail/core';
 import {
   classifySendersForUnsubscribePrompt,
+  detectActionablesPrompt,
   draftReplyPrompt,
   extractActionItemsPrompt,
   nlSearchPrompt,
@@ -437,6 +439,67 @@ export async function extractActionItems(client: AiClient, message: Message, lis
     position: i,
     linkedMessageId: message.id,
   }));
+}
+
+/** A single actionable item the detection agent found in a message. */
+export interface DetectedActionable {
+  category: SuggestionCategory;
+  title: string;
+  confidence: number;
+  payload: SuggestionPayload;
+}
+
+const VALID_CATEGORIES: ReadonlySet<string> = new Set(['email', 'reminder', 'event', 'task']);
+
+/**
+ * Scan a single message (chat or mail) for actionable items: emails to send,
+ * reminders, calendar events, and tasks. Returns a (possibly empty) typed
+ * list. Parsing is defensive: malformed model output yields an empty array
+ * rather than throwing, so a flaky local model never breaks message sync.
+ */
+export async function detectActionables(
+  client: AiClient,
+  input: { text: string; context?: string },
+): Promise<DetectedActionable[]> {
+  const out = await client.chat({
+    messages: [
+      { role: 'system', content: detectActionablesPrompt() },
+      {
+        role: 'user',
+        content: JSON.stringify({ context: input.context ?? '', message: input.text }),
+      },
+    ],
+    format: 'json',
+    temperature: 0.1,
+  });
+  let items: Array<Record<string, unknown>> = [];
+  try {
+    const parsed = JSON.parse(out) as { items?: Array<Record<string, unknown>> };
+    items = Array.isArray(parsed.items) ? parsed.items : [];
+  } catch {
+    return [];
+  }
+  const result: DetectedActionable[] = [];
+  for (const raw of items) {
+    const category = String(raw.category ?? '');
+    if (!VALID_CATEGORIES.has(category)) continue;
+    const title = typeof raw.title === 'string' ? raw.title.trim() : '';
+    if (!title) continue;
+    const confidenceRaw = typeof raw.confidence === 'number' ? raw.confidence : Number(raw.confidence);
+    const confidence = Number.isFinite(confidenceRaw) ? Math.min(1, Math.max(0, confidenceRaw)) : 0.5;
+    const payload: SuggestionPayload = {};
+    const str = (k: string): string | undefined => (typeof raw[k] === 'string' && raw[k] ? String(raw[k]) : undefined);
+    payload.when = str('when');
+    payload.due = str('due');
+    payload.end = str('end');
+    payload.to = str('to');
+    payload.subject = str('subject');
+    payload.body = str('body');
+    payload.location = str('location');
+    payload.notes = str('notes');
+    result.push({ category: category as SuggestionCategory, title, confidence, payload });
+  }
+  return result;
 }
 
 /**

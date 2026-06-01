@@ -213,4 +213,17 @@ export const SlackListMessagesSchema = z.object({
   limit: z.number().int().min(1).max(200).optional(),
 });
 
+// ---- Discord ----
+// Discord bot tokens are ~59-72 chars (three base64url segments). Cap
+// generously; the token is bound for the keychain, never logged.
+export const DiscordConnectTokenSchema = z.object({
+  token: z.string().min(50).max(256),
+});
+
+// ---- Suggestions (AI detection agents) ----
+const suggestionId = z.string().min(1).max(256);
+export const SuggestionsAcceptSchema = z.object({ id: suggestionId });
+export const SuggestionsRejectSchema = z.object({ id: suggestionId });
+export const SuggestionsDismissSchema = z.object({ id: suggestionId });
+
 void optEpoch;

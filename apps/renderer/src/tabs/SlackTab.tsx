@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { Box, Group, Loader, ScrollArea, Stack, Text } from '@mantine/core';
 import { useHotkeys } from '@mantine/hooks';
 import { notifications } from '@mantine/notifications';
-import { IconBrandSlack } from '@tabler/icons-react';
+import { IconMessages } from '@tabler/icons-react';
 import { EmptyState } from '@gingermail/ui-kit';
 import type { Account, ChatConversation, ChatMessage } from '@gingermail/core';
 import { getApi } from '../ipcBridge.js';
@@ -131,9 +131,9 @@ export function SlackTab() {
   if (workspaces.length === 0) {
     return (
       <EmptyState
-        icon={<IconBrandSlack size={28} />}
-        title="Connect Slack"
-        description="Bring your DMs, mentions, and channels into GingerMail so you never have to switch apps. Add a workspace from Settings → Slack."
+        icon={<IconMessages size={28} />}
+        title="Connect chat"
+        description="Bring your Slack and Discord conversations into GingerMail so you never have to switch apps. Add a workspace or bot from Settings → Chat."
         action={
           <Text
             size="sm"
@@ -159,7 +159,7 @@ export function SlackTab() {
             No conversations yet. They’ll appear here after the first sync.
           </Text>
         ) : (
-          <ConversationList conversations={conversations} activeId={active?.id ?? null} onSelect={openConversation} />
+          <ConversationList conversations={conversations} accounts={workspaces} activeId={active?.id ?? null} onSelect={openConversation} />
         )}
       </ScrollArea>
 
@@ -180,7 +180,7 @@ export function SlackTab() {
           </>
         ) : (
           <EmptyState
-            icon={<IconBrandSlack size={28} />}
+            icon={<IconMessages size={28} />}
             title="Pick a conversation"
             description="Choose a DM or channel on the left. Alt+↓ / Alt+↑ move between them."
           />

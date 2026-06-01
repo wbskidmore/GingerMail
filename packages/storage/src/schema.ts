@@ -276,6 +276,31 @@ CREATE TABLE IF NOT EXISTS slack_users (
   is_bot INTEGER NOT NULL DEFAULT 0,
   FOREIGN KEY (account_id) REFERENCES accounts(id) ON DELETE CASCADE
 );
+
+/* ---- AI detection suggestions (schema v6) ----
+ *
+ * Actionable items the AI detection agent found in chat/mail messages. Rows
+ * persist so the review panel survives restarts and auto-added items stay
+ * undoable. (source_id, category, title) form the dedupe key so re-scanning
+ * the same message does not pile up duplicates.
+ */
+CREATE TABLE IF NOT EXISTS suggestions (
+  id TEXT PRIMARY KEY,
+  source TEXT NOT NULL,                 -- chat | mail
+  source_id TEXT NOT NULL,             -- provider message id
+  account_id TEXT,
+  source_label TEXT,
+  category TEXT NOT NULL,              -- email | reminder | event | task
+  title TEXT NOT NULL DEFAULT '',
+  payload_json TEXT,
+  confidence REAL NOT NULL DEFAULT 0,
+  status TEXT NOT NULL DEFAULT 'pending',
+  created_at INTEGER NOT NULL,
+  created_entity_id TEXT
+);
+
+CREATE INDEX IF NOT EXISTS suggestions_status_idx ON suggestions(status, created_at DESC);
+CREATE UNIQUE INDEX IF NOT EXISTS suggestions_dedupe_idx ON suggestions(source_id, category, title);
 `;
 
-export const CURRENT_SCHEMA_VERSION = 5;
+export const CURRENT_SCHEMA_VERSION = 6;

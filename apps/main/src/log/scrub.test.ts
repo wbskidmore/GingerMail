@@ -37,6 +37,13 @@ describe('scrubSecrets', () => {
     expect(scrubSecrets('AIzaSy12345678901234567890ABC')).toContain('AIza***');
   });
 
+  it('redacts Discord bot tokens', () => {
+    const token = 'MTk4NjIyNDgzNDcxOTI1MjQ4.Gabcde.abcdefghijklmnopqrstuvwxyz123456789';
+    const out = scrubSecrets(`bot token: ${token}`);
+    expect(out).not.toContain(token);
+    expect(out).toContain('discord-***');
+  });
+
   it('redacts JWT-shaped values', () => {
     expect(
       scrubSecrets('token=eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxMjM0NSJ9.aBcDeFgHiJkLmNoP'),

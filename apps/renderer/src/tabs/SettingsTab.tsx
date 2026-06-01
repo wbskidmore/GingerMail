@@ -32,9 +32,11 @@ import { notifications } from '@mantine/notifications';
 import {
   IconBell,
   IconBrandApple,
+  IconBrandDiscord,
   IconBrandGoogle,
   IconBrandSlack,
   IconBrandWindows,
+  IconMessages,
   IconBrush,
   IconInbox,
   IconInfoCircle,
@@ -46,8 +48,8 @@ import {
   IconTrash,
   IconUsers,
 } from '@tabler/icons-react';
-import type { Account, AddAccountInput, AppSettings, MailToolbarSettings, MutedSender, ProviderKind } from '@gingermail/core';
-import { DEFAULT_MAIL_TOOLBAR, defaultChatSettings } from '@gingermail/core';
+import type { Account, AddAccountInput, AppSettings, DetectionMode, DetectionSettings, MailToolbarSettings, MutedSender, ProviderKind } from '@gingermail/core';
+import { DEFAULT_MAIL_TOOLBAR, defaultChatSettings, defaultDetectionSettings } from '@gingermail/core';
 import { AccountBadge } from '@gingermail/ui-kit';
 import { useAppStore } from '../store.js';
 import { getApi } from '../ipcBridge.js';
@@ -65,7 +67,7 @@ export function SettingsTab() {
             <Tabs.Tab value="notifications" leftSection={<IconBell size={14} />}>Notifications</Tabs.Tab>
             <Tabs.Tab value="appearance" leftSection={<IconBrush size={14} />}>Appearance</Tabs.Tab>
             <Tabs.Tab value="ai" leftSection={<IconSparkles size={14} />}>AI</Tabs.Tab>
-            <Tabs.Tab value="slack" leftSection={<IconBrandSlack size={14} />}>Slack</Tabs.Tab>
+            <Tabs.Tab value="slack" leftSection={<IconMessages size={14} />}>Chat</Tabs.Tab>
             <Tabs.Tab value="privacy" leftSection={<IconShield size={14} />}>Privacy</Tabs.Tab>
             <Tabs.Tab value="help" leftSection={<IconKeyboard size={14} />}>Help</Tabs.Tab>
           </Tabs.List>
@@ -587,6 +589,8 @@ function AiSection() {
         onSelectModel={(name) => setSettings({ ai: { ...settings.ai, mode: 'local', local: { ...local, model: name } } })}
       />
 
+      <DetectionAgentsCard />
+
       <Card withBorder radius="md" p="lg">
         <Stack gap="xs">
           <Group gap="xs">
@@ -603,6 +607,96 @@ function AiSection() {
         </Stack>
       </Card>
     </Stack>
+  );
+}
+
+// ---- Detection agents ----
+
+const DETECTION_MODE_OPTIONS = [
+  { value: 'ask', label: 'Ask first' },
+  { value: 'auto', label: 'Auto-add' },
+  { value: 'off', label: 'Off' },
+];
+
+const DETECTION_CATEGORIES: Array<{ key: keyof DetectionSettings['categories']; label: string; help: string }> = [
+  { key: 'email', label: 'Emails to send', help: 'Auto-add saves a draft — it never sends on its own.' },
+  { key: 'reminder', label: 'Reminders', help: 'Time-based nudges.' },
+  { key: 'event', label: 'Calendar events', help: 'Meetings/appointments with a date & time.' },
+  { key: 'task', label: 'Tasks', help: 'Concrete to-dos.' },
+];
+
+function DetectionAgentsCard() {
+  const settings = useAppStore((s) => s.settings);
+  const setSettings = useAppStore((s) => s.setSettings);
+  const det: DetectionSettings = settings.ai.detection ?? defaultDetectionSettings;
+
+  const update = (patch: Partial<DetectionSettings>): void => {
+    setSettings({ ai: { ...settings.ai, detection: { ...det, ...patch } } });
+  };
+  const setCategory = (key: keyof DetectionSettings['categories'], mode: DetectionMode): void => {
+    update({ categories: { ...det.categories, [key]: mode } });
+  };
+
+  return (
+    <Card withBorder radius="md" p="lg">
+      <Stack gap="md">
+        <Stack gap={2}>
+          <Title order={5}>Detection agents</Title>
+          <Text size="xs" c="dimmed">
+            Let the AI scan incoming messages for things you might want to act on — emails, reminders,
+            events, and tasks — then auto-add them or ask you first, per category. With Local (Ollama)
+            AI this all stays on this device.
+          </Text>
+        </Stack>
+
+        <Switch
+          label="Enable detection agents"
+          checked={det.enabled}
+          onChange={(e) => update({ enabled: e.currentTarget.checked })}
+        />
+
+        {settings.ai.mode === 'off' && det.enabled && (
+          <Alert variant="light" color="yellow" icon={<IconInfoCircle size={14} />}>
+            AI mode is Off, so nothing will be scanned. Turn on Cloud or Local AI above.
+          </Alert>
+        )}
+
+        <Group gap="lg">
+          <Switch
+            label="Scan chat (Slack & Discord)"
+            checked={det.scanChat}
+            disabled={!det.enabled}
+            onChange={(e) => update({ scanChat: e.currentTarget.checked })}
+          />
+          <Switch
+            label="Scan mail"
+            checked={det.scanMail}
+            disabled={!det.enabled}
+            onChange={(e) => update({ scanMail: e.currentTarget.checked })}
+          />
+        </Group>
+
+        <Divider label="Per-category handling" labelPosition="left" />
+
+        <Stack gap="sm">
+          {DETECTION_CATEGORIES.map((cat) => (
+            <Group key={cat.key} justify="space-between" wrap="nowrap" align="flex-start">
+              <Stack gap={0}>
+                <Text size="sm" fw={500}>{cat.label}</Text>
+                <Text size="xs" c="dimmed">{cat.help}</Text>
+              </Stack>
+              <Select
+                w={140}
+                disabled={!det.enabled}
+                data={DETECTION_MODE_OPTIONS}
+                value={det.categories[cat.key]}
+                onChange={(v) => v && setCategory(cat.key, v as DetectionMode)}
+              />
+            </Group>
+          ))}
+        </Stack>
+      </Stack>
+    </Card>
   );
 }
 
@@ -881,6 +975,7 @@ function SlackSection() {
   const setSettings = useAppStore((s) => s.setSettings);
   const [workspaces, setWorkspaces] = useState<Account[]>([]);
   const [token, setToken] = useState('');
+  const [discordToken, setDiscordToken] = useState('');
   const [busy, setBusy] = useState(false);
   const chat = settings.chat ?? defaultChatSettings;
 
@@ -923,6 +1018,21 @@ function SlackSection() {
     }
   };
 
+  const connectDiscord = async (): Promise<void> => {
+    if (!discordToken.trim()) return;
+    setBusy(true);
+    try {
+      const account = await getApi().discord.connectToken({ token: discordToken.trim() });
+      setDiscordToken('');
+      await refresh();
+      notifications.show({ title: 'Discord connected', message: account.displayName, color: 'green' });
+    } catch (e) {
+      notifications.show({ title: 'Could not connect', message: (e as Error).message, color: 'red' });
+    } finally {
+      setBusy(false);
+    }
+  };
+
   return (
     <Stack gap="md">
       <Card withBorder radius="md" p="lg">
@@ -955,9 +1065,37 @@ function SlackSection() {
         </Stack>
       </Card>
 
+      <Card withBorder radius="md" p="lg">
+        <Stack gap="sm">
+          <Group gap="xs">
+            <ThemeIcon variant="light" color="ginger" size="sm"><IconBrandDiscord size={14} /></ThemeIcon>
+            <Title order={5} m={0}>Connect a Discord bot</Title>
+          </Group>
+          <Text size="sm" c="dimmed">
+            Create a bot at <Code>discord.com/developers</Code>, enable the <Code>Message Content</Code> intent,
+            invite it to your server, then paste its bot token here. New messages arrive in real time over Discord&apos;s
+            Gateway. A bot only sees servers it has been invited to (personal DMs stay private).
+          </Text>
+          <PasswordInput
+            label="Discord bot token"
+            description="Stored in your OS keychain, never written to disk in plaintext."
+            placeholder="Bot token…"
+            value={discordToken}
+            onChange={(e) => setDiscordToken(e.currentTarget.value)}
+            autoComplete="off"
+            spellCheck={false}
+          />
+          <Group justify="flex-end">
+            <Button leftSection={<IconPlus size={14} />} onClick={() => void connectDiscord()} loading={busy} disabled={!discordToken.trim()}>
+              Connect bot
+            </Button>
+          </Group>
+        </Stack>
+      </Card>
+
       {workspaces.length === 0 ? (
         <Alert variant="light" color="ginger" title="No workspaces yet" icon={<IconInfoCircle size={16} />}>
-          Once connected, your DMs, group messages, and channels show up under the Slack tab &mdash; with mentions and direct
+          Once connected, your DMs, group messages, and channels show up under the Chat tab &mdash; with mentions and direct
           messages floated to the top so nothing important gets lost.
         </Alert>
       ) : (
@@ -965,17 +1103,22 @@ function SlackSection() {
           {workspaces.map((w) => (
             <Paper key={w.id} withBorder radius="md" p="sm">
               <Group justify="space-between">
-                <AccountBadge displayName={w.displayName} emailAddress={w.emailAddress} color={w.color} />
                 <Group gap="xs">
-                  <Badge variant="light" color="gray" tt="none">slack</Badge>
+                  <ThemeIcon variant="light" color={w.kind === 'discord' ? 'indigo' : 'grape'} size="sm">
+                    {w.kind === 'discord' ? <IconBrandDiscord size={14} /> : <IconBrandSlack size={14} />}
+                  </ThemeIcon>
+                  <AccountBadge displayName={w.displayName} emailAddress={w.emailAddress} color={w.color} />
+                </Group>
+                <Group gap="xs">
+                  <Badge variant="light" color="gray" tt="none">{w.kind}</Badge>
                   <Button
                     size="xs"
                     variant="subtle"
                     color="red"
                     leftSection={<IconTrash size={14} />}
                     onClick={() => modals.openConfirmModal({
-                      title: 'Disconnect workspace?',
-                      children: <Text size="sm">Removes the cached messages and token for {w.displayName}. Your Slack account is untouched.</Text>,
+                      title: 'Disconnect?',
+                      children: <Text size="sm">Removes the cached messages and token for {w.displayName}. Your {w.kind === 'discord' ? 'Discord bot' : 'Slack account'} is untouched.</Text>,
                       labels: { confirm: 'Disconnect', cancel: 'Cancel' },
                       confirmProps: { color: 'red' },
                       onConfirm: async () => {
@@ -995,16 +1138,16 @@ function SlackSection() {
 
       <Card withBorder radius="md" p="lg">
         <Stack gap="md">
-          <Title order={5}>Slack behaviour</Title>
+          <Title order={5}>Chat behaviour</Title>
           <Switch
-            label="Enable Slack"
-            description="Turn the Slack tab and background polling on or off."
+            label="Enable chat"
+            description="Turn the Chat tab and background sync on or off."
             checked={chat.enabled}
             onChange={(e) => setSettings({ chat: { ...chat, enabled: e.currentTarget.checked } })}
           />
           <NumberInput
             label="Check for new messages every (seconds)"
-            description="How often GingerMail polls Slack in the background. Lower = snappier, higher = lighter."
+            description="How often GingerMail polls Slack in the background. Discord arrives in real time, so this only affects Slack."
             min={15}
             max={600}
             value={chat.pollIntervalSec}
@@ -1018,7 +1161,7 @@ function SlackSection() {
           />
           <Switch
             label="Notify on @-mentions"
-            description="Ping when someone mentions you in a channel. Focus Mode suppresses all Slack pings."
+            description="Ping when someone mentions you in a channel. Focus Mode suppresses all chat pings."
             checked={chat.notifyOnMention}
             onChange={(e) => setSettings({ chat: { ...chat, notifyOnMention: e.currentTarget.checked } })}
           />

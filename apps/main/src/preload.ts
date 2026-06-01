@@ -116,6 +116,16 @@ const api = {
     refresh: () => ipcRenderer.invoke(IPC_CHANNELS.slackRefresh),
     onSync: (cb: Listener<unknown>) => subscribe(IPC_CHANNELS.slackSyncEvent, cb),
   },
+  discord: {
+    connectToken: (input: unknown) => ipcRenderer.invoke(IPC_CHANNELS.discordConnectToken, input),
+  },
+  suggestions: {
+    list: (input?: unknown) => ipcRenderer.invoke(IPC_CHANNELS.suggestionsList, input),
+    accept: (input: unknown) => ipcRenderer.invoke(IPC_CHANNELS.suggestionsAccept, input),
+    reject: (input: unknown) => ipcRenderer.invoke(IPC_CHANNELS.suggestionsReject, input),
+    dismiss: (input: unknown) => ipcRenderer.invoke(IPC_CHANNELS.suggestionsDismiss, input),
+    onChanged: (cb: Listener<void>) => subscribe(IPC_CHANNELS.suggestionsChanged, cb),
+  },
 };
 
 contextBridge.exposeInMainWorld('gingermail', api);

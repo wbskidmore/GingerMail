@@ -3,10 +3,10 @@ import { AppShell, MantineProvider, Tabs } from '@mantine/core';
 import { ModalsProvider } from '@mantine/modals';
 import { Notifications } from '@mantine/notifications';
 import {
-  IconBrandSlack,
   IconCalendar,
   IconChecklist,
   IconInbox,
+  IconMessages,
   IconSettings,
 } from '@tabler/icons-react';
 import { FocusOverlay, gingermailTheme } from '@gingermail/ui-kit';
@@ -112,7 +112,7 @@ export function App() {
                   <Tabs.Tab value="mail" leftSection={<IconInbox size={16} aria-hidden />}>Mail</Tabs.Tab>
                   <Tabs.Tab value="calendar" leftSection={<IconCalendar size={16} aria-hidden />}>Calendar</Tabs.Tab>
                   <Tabs.Tab value="tasks" leftSection={<IconChecklist size={16} aria-hidden />}>Tasks</Tabs.Tab>
-                  <Tabs.Tab value="slack" leftSection={<IconBrandSlack size={16} aria-hidden />}>Slack</Tabs.Tab>
+                  <Tabs.Tab value="slack" leftSection={<IconMessages size={16} aria-hidden />}>Chat</Tabs.Tab>
                   <Tabs.Tab value="settings" leftSection={<IconSettings size={16} aria-hidden />}>Settings</Tabs.Tab>
                 </Tabs.List>
               </Tabs>

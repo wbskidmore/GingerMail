@@ -6,7 +6,7 @@ import { app, BrowserWindow, log, nativeImage, nativeTheme, systemPreferences } 
 import { AppContext } from './context.js';
 import { registerIpc } from './ipc/register.js';
 import { startOllamaSidecar, stopOllamaSidecar } from './ipc/aiHandlers.js';
-import { startChatPolling, stopChatPolling } from './sync/chatSync.js';
+import { startChatPolling, stopChatPolling, stopAllGateways } from './sync/chatSync.js';
 import { setupAutoUpdater } from './autoUpdater.js';
 import { applySecurityHardening } from './security/hardening.js';
 import { installAiEgressFilter } from './security/aiEgress.js';
@@ -185,6 +185,7 @@ app.on('activate', () => {
 
 app.on('before-quit', async () => {
   stopChatPolling();
+  stopAllGateways();
   await Promise.allSettled([context.shutdown(), stopOllamaSidecar()]);
 });
 

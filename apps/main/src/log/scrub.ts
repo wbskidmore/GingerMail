@@ -64,6 +64,13 @@ const RULES: Array<{ name: string; re: RegExp; replace: string }> = [
   { name: 'pk', re: /\bpk-[A-Za-z0-9_\-]{16,}\b/g, replace: 'pk-***' },
   { name: 'slack-bot', re: /\bxoxb-[A-Za-z0-9_\-]{16,}\b/g, replace: 'xoxb-***' },
   { name: 'slack-user', re: /\bxoxp-[A-Za-z0-9_\-]{16,}\b/g, replace: 'xoxp-***' },
+  // Discord bot token: three base64url segments (id.timestamp.hmac). Must
+  // come before the generic JWT rule (those start with `eyJ`, these don't).
+  {
+    name: 'discord-bot',
+    re: /\b[A-Za-z0-9_\-]{23,28}\.[A-Za-z0-9_\-]{6,7}\.[A-Za-z0-9_\-]{27,}\b/g,
+    replace: 'discord-***',
+  },
   { name: 'google', re: /\bAIza[A-Za-z0-9_\-]{20,}\b/g, replace: 'AIza***' },
   // JWT-ish: three base64-url segments separated by dots, header almost
   // always starts with `eyJ` (the JSON `{"`).

@@ -1,5 +1,6 @@
 import { IPC_CHANNELS, type Folder, type FolderRole, type MessageHeader, type MessageThread } from '@gingermail/core';
 import type { AppContext } from '../context.js';
+import { enqueueDetection } from '../ai/detectionAgent.js';
 
 /**
  * Folder roles we proactively sync on every refresh. Inbox/sent/drafts are
@@ -118,6 +119,13 @@ async function syncFolder(
   const hydrateCount = folder.role === 'inbox' ? BODIES_PER_FOLDER : Math.min(5, page.items.length);
   const detailedIds = page.items.slice(0, hydrateCount).map((m) => m.uid);
 
+  // Track which inbox messages are brand-new (not previously cached) so the
+  // detection agent only scans freshly-arrived mail, never the whole inbox.
+  const newlySeenIds =
+    folder.role === 'inbox'
+      ? new Set(page.items.filter((h) => !ctx.db.getMessage(h.id)).map((h) => h.id))
+      : new Set<string>();
+
   const fullMessages: Array<MessageHeader & { body: { html?: string; text?: string }; attachments: unknown[] }> = [];
   for (const head of page.items) {
     if (detailedIds.includes(head.uid)) {
@@ -162,6 +170,23 @@ async function syncFolder(
   ctx.db.upsertMessages(fullMessages as any);
   const threads = buildThreads(page.items);
   ctx.db.upsertThreads(threads);
+
+  // Feed newly-arrived inbox mail to the detection agent (no-op when the
+  // "scan mail" toggle is off). Uses cached body text when available.
+  if (newlySeenIds.size) {
+    for (const head of fullMessages) {
+      if (!newlySeenIds.has(head.id)) continue;
+      const text = head.body?.text || head.snippet || '';
+      enqueueDetection(ctx, {
+        source: 'mail',
+        sourceId: head.id,
+        accountId: head.accountId,
+        sourceLabel: head.from?.email,
+        text,
+        context: `Email subject: ${head.subject}`,
+      });
+    }
+  }
 }
 
 function buildThreads(headers: MessageHeader[]): MessageThread[] {

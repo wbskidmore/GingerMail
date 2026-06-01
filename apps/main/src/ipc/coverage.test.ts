@@ -48,6 +48,10 @@ const WRITE_CHANNEL_SCHEMAS: Record<string, ZodTypeAny> = {
   [IPC_CHANNELS.aiSetCloudKey]: schemas.AiSetCloudKeySchema,
   [IPC_CHANNELS.aiPullModel]: schemas.AiPullModelSchema,
   [IPC_CHANNELS.aiDeleteModel]: schemas.AiDeleteModelSchema,
+  [IPC_CHANNELS.discordConnectToken]: schemas.DiscordConnectTokenSchema,
+  [IPC_CHANNELS.suggestionsAccept]: schemas.SuggestionsAcceptSchema,
+  [IPC_CHANNELS.suggestionsReject]: schemas.SuggestionsRejectSchema,
+  [IPC_CHANNELS.suggestionsDismiss]: schemas.SuggestionsDismissSchema,
 };
 
 describe('IPC validation coverage', () => {
