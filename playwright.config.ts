@@ -19,16 +19,16 @@ export default defineConfig({
   reporter: [['list']],
   timeout: 30_000,
   use: {
-    baseURL: 'http://localhost:5173',
+    baseURL: 'http://localhost:5174',
     trace: 'on-first-retry',
   },
   projects: [
     { name: 'chromium', use: { ...devices['Desktop Chrome'] } },
   ],
   webServer: {
-    command: 'pnpm --filter @gingermail/renderer dev --strictPort --port 5173',
-    url: 'http://localhost:5173',
-    reuseExistingServer: true,
+    command: 'pnpm --filter @gingermail/renderer dev --strictPort --port 5174',
+    url: 'http://localhost:5174',
+    reuseExistingServer: !process.env['CI'],
     timeout: 60_000,
   },
 });

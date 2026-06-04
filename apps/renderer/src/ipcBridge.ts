@@ -168,13 +168,17 @@ declare global {
  * regular browser tab), we return a mock that satisfies the type so the UI
  * still renders for design work.
  */
+let _mockApi: Api | undefined;
 export function getApi(): Api {
   if (typeof window !== 'undefined' && window.gingermail) return window.gingermail;
-  return createMockApi();
+  if (!_mockApi) _mockApi = createMockApi();
+  return _mockApi;
 }
 
 function createMockApi(): Api {
   const noListener: <T>(cb: Listener<T>) => Unsubscribe = () => () => {};
+  const focusListeners: ((s: unknown) => void)[] = [];
+  let focusState: { active: boolean; endsAt?: number } = { active: false };
   const baseAccount: Account = {
     id: 'mock',
     kind: 'imap-smtp',
@@ -298,10 +302,22 @@ function createMockApi(): Api {
       clearCloudKey: async () => {},
     },
     focus: {
-      start: async () => {},
-      stop: async () => {},
-      status: async () => ({ active: false }),
-      onChange: noListener,
+      start: async ({ durationMin }: { durationMin: number }) => {
+        focusState = { active: true, endsAt: Date.now() + durationMin * 60_000 };
+        focusListeners.forEach((l) => l(focusState));
+      },
+      stop: async () => {
+        focusState = { active: false };
+        focusListeners.forEach((l) => l(focusState));
+      },
+      status: async () => focusState,
+      onChange: (cb) => {
+        focusListeners.push(cb as (s: unknown) => void);
+        return () => {
+          const i = focusListeners.indexOf(cb as (s: unknown) => void);
+          if (i >= 0) focusListeners.splice(i, 1);
+        };
+      },
     },
     scheduler: {
       listJobs: async () => [],

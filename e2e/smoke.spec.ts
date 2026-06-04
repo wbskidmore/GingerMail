@@ -41,6 +41,6 @@ test('boots the four tabs', async ({ page }) => {
 test('focus mode hotkey toggles overlay', async ({ page }) => {
   await page.goto('/');
   await page.getByRole('button', { name: /^focus$/i }).click();
-  await expect(page.getByText(/focus mode/i)).toBeVisible();
+  await expect(page.getByRole('heading', { name: /focus mode/i })).toBeVisible();
   await page.getByRole('button', { name: /end/i }).click();
 });
