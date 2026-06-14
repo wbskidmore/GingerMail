@@ -19,7 +19,7 @@
   },
   "dependencies": {
     "@gingermail/core": "workspace:*",
-    "@mantine/core": "^7.13.2",
+    "@mantine/core": "^9.3.1",
     "@mantine/hooks": "^7.13.2",
     "@tabler/icons-react": "^3.19.0",
     "clsx": "^2.1.1",
