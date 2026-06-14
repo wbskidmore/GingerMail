@@ -6,16 +6,27 @@ import type { Account } from '@gingermail/core';
 
 export interface MicrosoftAuthOutcome {
   account: Account;
-  tokens: { access_token: string; refresh_token?: string; expires_on?: number; home_account_id?: string };
+  tokens: {
+    access_token: string;
+    refresh_token?: string;
+    expires_on?: number;
+    home_account_id?: string;
+  };
 }
 
 export class MicrosoftOAuthFlow {
-  constructor(private readonly clientId: string, private readonly tenant = 'common') {}
+  constructor(
+    private readonly clientId: string,
+    private readonly tenant = 'common',
+  ) {}
 
   async run(): Promise<MicrosoftAuthOutcome> {
     const { PublicClientApplication, CryptoProvider } = getMsalNode();
     const pca = new PublicClientApplication({
-      auth: { clientId: this.clientId, authority: `https://login.microsoftonline.com/${this.tenant}` },
+      auth: {
+        clientId: this.clientId,
+        authority: `https://login.microsoftonline.com/${this.tenant}`,
+      },
     });
     const cryptoProvider = new CryptoProvider();
     const { verifier, challenge } = await cryptoProvider.generatePkceCodes();

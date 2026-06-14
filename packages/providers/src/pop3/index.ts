@@ -3,13 +3,7 @@ import type * as Nodemailer from 'nodemailer';
 import type { Transporter } from 'nodemailer';
 const localRequire = createRequire(import.meta.url);
 const nodemailer = localRequire('nodemailer') as typeof Nodemailer;
-import type {
-  Account,
-  Draft,
-  Folder,
-  Message,
-  MessageHeader,
-} from '@gingermail/core';
+import type { Account, Draft, Folder, Message, MessageHeader } from '@gingermail/core';
 import type { MailProvider, Page } from '../types.js';
 
 export interface Pop3Credentials {
@@ -62,7 +56,11 @@ export class Pop3Provider implements MailProvider {
     ];
   }
 
-  async listMessageHeaders(folderId: string, _cursor?: string, _limit = 50): Promise<Page<MessageHeader>> {
+  async listMessageHeaders(
+    folderId: string,
+    _cursor?: string,
+    _limit = 50,
+  ): Promise<Page<MessageHeader>> {
     // Stub: a real implementation would connect to the POP3 server, run STAT/LIST/UIDL/TOP.
     // Returning empty until real wire protocol is wired in v2.
     void folderId;

@@ -7,12 +7,12 @@ It assumes one or two people respond. Adjust headcount as needed.
 
 ## Severity ladder
 
-| Sev | Definition | Example | Target time to first fix |
-|-----|-----------|---------|-------------------------|
-| SEV-1 | Active exploitation OR likely RCE / token theft in the wild | A drive-by HTML email steals OAuth tokens | < 24 h ship + kill-switch |
-| SEV-2 | Privilege escalation, data exfil, or auth bypass that's exploitable but not seen in the wild | Loopback OAuth listener accepts arbitrary state | < 7 d ship |
-| SEV-3 | Local-only or attacker-with-physical-access issues | Disk-cached body readable by another OS user via lax `~/Library` perms | < 30 d ship |
-| SEV-4 | Hardening gap with no clear exploit | Missing `X-Content-Type-Options` on a static asset | Next regular release |
+| Sev   | Definition                                                                                   | Example                                                                | Target time to first fix  |
+| ----- | -------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------- | ------------------------- |
+| SEV-1 | Active exploitation OR likely RCE / token theft in the wild                                  | A drive-by HTML email steals OAuth tokens                              | < 24 h ship + kill-switch |
+| SEV-2 | Privilege escalation, data exfil, or auth bypass that's exploitable but not seen in the wild | Loopback OAuth listener accepts arbitrary state                        | < 7 d ship                |
+| SEV-3 | Local-only or attacker-with-physical-access issues                                           | Disk-cached body readable by another OS user via lax `~/Library` perms | < 30 d ship               |
+| SEV-4 | Hardening gap with no clear exploit                                                          | Missing `X-Content-Type-Options` on a static asset                     | Next regular release      |
 
 ## First 30 minutes
 

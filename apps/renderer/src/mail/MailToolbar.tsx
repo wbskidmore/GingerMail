@@ -2,14 +2,14 @@ import { useCallback, useState } from 'react';
 import { ActionIcon, Menu, Popover, Stack, Text, TextInput, Tooltip, Group } from '@mantine/core';
 import { useHotkeys } from '@mantine/hooks';
 import { IconDots } from '@tabler/icons-react';
-import type {
-  Folder,
-  MailActionId,
-  MailToolbarSettings,
-  Message,
-} from '@gingermail/core';
+import type { Folder, MailActionId, MailToolbarSettings, Message } from '@gingermail/core';
 import { DEFAULT_MAIL_TOOLBAR } from '@gingermail/core';
-import { FLAG_ON_ICON, MAIL_ACTION_BY_ID, partitionActions, type MailActionContext } from './actions.js';
+import {
+  FLAG_ON_ICON,
+  MAIL_ACTION_BY_ID,
+  partitionActions,
+  type MailActionContext,
+} from './actions.js';
 
 interface MailToolbarProps {
   message: Message;
@@ -30,7 +30,13 @@ interface MailToolbarProps {
  * Bind the registry's keyboard shortcuts here too, so they fire whenever a
  * message is in view (not only when the toolbar has focus).
  */
-export function MailToolbar({ message, folders, settings = DEFAULT_MAIL_TOOLBAR, ctx, onMoveToFolder }: MailToolbarProps) {
+export function MailToolbar({
+  message,
+  folders,
+  settings = DEFAULT_MAIL_TOOLBAR,
+  ctx,
+  onMoveToFolder,
+}: MailToolbarProps) {
   const { visible, overflow } = partitionActions(settings);
 
   // Bind keyboard shortcuts for every action that has one — including the
@@ -157,7 +163,14 @@ function MovePopover({
   if (!a) return null;
 
   return (
-    <Popover opened={opened} onChange={setOpened} position="bottom-end" withArrow shadow="md" trapFocus>
+    <Popover
+      opened={opened}
+      onChange={setOpened}
+      position="bottom-end"
+      withArrow
+      shadow="md"
+      trapFocus
+    >
       <Popover.Target>
         <Tooltip label={a.label}>
           <ActionIcon variant="subtle" aria-label={a.label} onClick={() => setOpened((v) => !v)}>
@@ -180,18 +193,27 @@ function MovePopover({
                 key={f.id}
                 variant="subtle"
                 component="button"
-                style={{ width: '100%', justifyContent: 'flex-start', height: 'auto', padding: '6px 8px' }}
+                style={{
+                  width: '100%',
+                  justifyContent: 'flex-start',
+                  height: 'auto',
+                  padding: '6px 8px',
+                }}
                 onClick={() => {
                   onSelect(f.id);
                   close();
                 }}
                 aria-label={`Move to ${f.name}`}
               >
-                <Text size="sm" ta="left" w="100%">{f.name}</Text>
+                <Text size="sm" ta="left" w="100%">
+                  {f.name}
+                </Text>
               </ActionIcon>
             ))}
             {filtered.length === 0 && (
-              <Text size="xs" c="dimmed">No folders match.</Text>
+              <Text size="xs" c="dimmed">
+                No folders match.
+              </Text>
             )}
           </Stack>
         </Stack>

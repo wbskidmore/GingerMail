@@ -95,41 +95,50 @@ export function handleAi(ctx: AppContext): void {
     return summarizeThread(client, thread, fullMessages);
   });
 
-  handle(IPC_CHANNELS.aiDraftReply, async (_e, input: { threadId: string; tone?: string; intent?: string }) => {
-    const client = buildAiClient(effectiveAiSettings(ctx));
-    if (!client) throw new Error('AI is off. Configure it in Settings.');
-    const messages = ctx.db.listMessages({ threadId: input.threadId });
-    const thread = synthesisThread(messages, input.threadId);
-    const fullMessages = messages.map((m) => ctx.db.getMessage(m.id)).filter(Boolean) as Message[];
-    return draftReply(client, thread, fullMessages, { tone: input.tone, intent: input.intent });
-  });
+  handle(
+    IPC_CHANNELS.aiDraftReply,
+    async (_e, input: { threadId: string; tone?: string; intent?: string }) => {
+      const client = buildAiClient(effectiveAiSettings(ctx));
+      if (!client) throw new Error('AI is off. Configure it in Settings.');
+      const messages = ctx.db.listMessages({ threadId: input.threadId });
+      const thread = synthesisThread(messages, input.threadId);
+      const fullMessages = messages
+        .map((m) => ctx.db.getMessage(m.id))
+        .filter(Boolean) as Message[];
+      return draftReply(client, thread, fullMessages, { tone: input.tone, intent: input.intent });
+    },
+  );
 
-  handle(IPC_CHANNELS.aiExtractActions, async (_e, input: { messageId?: string; threadId?: string }) => {
-    const client = buildAiClient(effectiveAiSettings(ctx));
-    if (!client) throw new Error('AI is off. Configure it in Settings.');
-    const taskLists = ctx.db.listTaskLists();
-    const listId = taskLists[0]?.id ?? 'local:default';
-    if (!taskLists.length) ctx.db.upsertTaskLists([{ id: 'local:default', accountId: 'local', name: 'Local tasks' }]);
-    if (input.messageId) {
-      const message = ctx.db.getMessage(input.messageId);
-      if (!message) throw new Error('Message not found');
-      const tasks: Task[] = await extractActionItems(client, message, listId);
-      ctx.db.upsertTasks(tasks);
-      return tasks;
-    }
-    if (input.threadId) {
-      const heads = ctx.db.listMessages({ threadId: input.threadId, limit: 20 });
-      const combined = heads.map((h) => ctx.db.getMessage(h.id)).filter(Boolean) as Message[];
-      const tasks: Task[] = [];
-      for (const m of combined) {
-        const ts = await extractActionItems(client, m, listId);
-        tasks.push(...ts);
+  handle(
+    IPC_CHANNELS.aiExtractActions,
+    async (_e, input: { messageId?: string; threadId?: string }) => {
+      const client = buildAiClient(effectiveAiSettings(ctx));
+      if (!client) throw new Error('AI is off. Configure it in Settings.');
+      const taskLists = ctx.db.listTaskLists();
+      const listId = taskLists[0]?.id ?? 'local:default';
+      if (!taskLists.length)
+        ctx.db.upsertTaskLists([{ id: 'local:default', accountId: 'local', name: 'Local tasks' }]);
+      if (input.messageId) {
+        const message = ctx.db.getMessage(input.messageId);
+        if (!message) throw new Error('Message not found');
+        const tasks: Task[] = await extractActionItems(client, message, listId);
+        ctx.db.upsertTasks(tasks);
+        return tasks;
       }
-      ctx.db.upsertTasks(tasks);
-      return tasks;
-    }
-    return [];
-  });
+      if (input.threadId) {
+        const heads = ctx.db.listMessages({ threadId: input.threadId, limit: 20 });
+        const combined = heads.map((h) => ctx.db.getMessage(h.id)).filter(Boolean) as Message[];
+        const tasks: Task[] = [];
+        for (const m of combined) {
+          const ts = await extractActionItems(client, m, listId);
+          tasks.push(...ts);
+        }
+        ctx.db.upsertTasks(tasks);
+        return tasks;
+      }
+      return [];
+    },
+  );
 
   handle(IPC_CHANNELS.aiPrioritize, async () => {
     const client = buildAiClient(effectiveAiSettings(ctx));
@@ -195,7 +204,9 @@ export function handleAi(ctx: AppContext): void {
     try {
       // Touch the sidecar resolver lazily; if the binary is missing it
       // reports lastError after the first start() attempt.
-      const probe = await fetch(`http://${SIDECAR_HOST}:${SIDECAR_PORT}/api/tags`).catch(() => null);
+      const probe = await fetch(`http://${SIDECAR_HOST}:${SIDECAR_PORT}/api/tags`).catch(
+        () => null,
+      );
       binaryFound = (probe?.ok ?? false) || s.running;
     } catch {
       binaryFound = false;
@@ -247,12 +258,15 @@ export function handleAi(ctx: AppContext): void {
 
   // ---- Cloud AI key vault (kept out of prefs.json) ----
 
-  handle(IPC_CHANNELS.aiGetCloudKeyStatus, async (): Promise<{ configured: boolean; last4?: string }> => {
-    const key = ctx.vault.readAppSecret('aiCloudApiKey');
-    if (!key) return { configured: false };
-    const last4 = key.slice(-4);
-    return { configured: true, last4 };
-  });
+  handle(
+    IPC_CHANNELS.aiGetCloudKeyStatus,
+    async (): Promise<{ configured: boolean; last4?: string }> => {
+      const key = ctx.vault.readAppSecret('aiCloudApiKey');
+      if (!key) return { configured: false };
+      const last4 = key.slice(-4);
+      return { configured: true, last4 };
+    },
+  );
 
   safeHandle(IPC_CHANNELS.aiSetCloudKey, AiSetCloudKeySchema, async (input) => {
     const key = (input?.key ?? '').trim();

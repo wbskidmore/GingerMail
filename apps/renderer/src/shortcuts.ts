@@ -23,10 +23,22 @@ export interface ShortcutDef {
 
 export const SHORTCUTS: ShortcutDef[] = [
   { id: 'tab-mail', hotkey: 'mod+1', label: 'Go to Mail', group: 'Navigation', tab: 'mail' },
-  { id: 'tab-calendar', hotkey: 'mod+2', label: 'Go to Calendar', group: 'Navigation', tab: 'calendar' },
+  {
+    id: 'tab-calendar',
+    hotkey: 'mod+2',
+    label: 'Go to Calendar',
+    group: 'Navigation',
+    tab: 'calendar',
+  },
   { id: 'tab-tasks', hotkey: 'mod+3', label: 'Go to Tasks', group: 'Navigation', tab: 'tasks' },
   { id: 'tab-slack', hotkey: 'mod+4', label: 'Go to Slack', group: 'Navigation', tab: 'slack' },
-  { id: 'tab-settings', hotkey: 'mod+5', label: 'Go to Settings', group: 'Navigation', tab: 'settings' },
+  {
+    id: 'tab-settings',
+    hotkey: 'mod+5',
+    label: 'Go to Settings',
+    group: 'Navigation',
+    tab: 'settings',
+  },
   { id: 'refresh', hotkey: 'mod+R', label: 'Refresh / re-sync everything', group: 'Global' },
   { id: 'focus', hotkey: 'mod+shift+F', label: 'Toggle Focus Mode', group: 'Global' },
   { id: 'help', hotkey: 'shift+?', label: 'Show keyboard shortcuts', group: 'Global' },

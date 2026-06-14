@@ -105,10 +105,21 @@ export function setupAutoUpdater(deps: SetupUpdaterDeps): UpdaterController {
         }
         if (v === '0.0.0-killswitch') {
           lastAvailableVersion = null;
-          return { available: false, error: 'This build has been retired by the publisher. Please reinstall from gingermail.app.' };
+          return {
+            available: false,
+            error:
+              'This build has been retired by the publisher. Please reinstall from gingermail.app.',
+          };
         }
         lastAvailableVersion = v;
-        return { available: true, version: v, notes: typeof result?.updateInfo?.releaseNotes === 'string' ? result.updateInfo.releaseNotes : undefined };
+        return {
+          available: true,
+          version: v,
+          notes:
+            typeof result?.updateInfo?.releaseNotes === 'string'
+              ? result.updateInfo.releaseNotes
+              : undefined,
+        };
       } catch (err) {
         lastAvailableVersion = null;
         return { available: false, error: err instanceof Error ? err.message : String(err) };
@@ -125,14 +136,24 @@ export function setupAutoUpdater(deps: SetupUpdaterDeps): UpdaterController {
         const v = recheck?.updateInfo?.version;
         if (v === '0.0.0-killswitch') {
           log.warn('[updater] kill-switch detected at download time; aborting');
-          return { ok: false, error: 'This build has been retired by the publisher. Please reinstall from gingermail.app.' };
+          return {
+            ok: false,
+            error:
+              'This build has been retired by the publisher. Please reinstall from gingermail.app.',
+          };
         }
         if (!v) {
           return { ok: false, error: 'No update is currently available.' };
         }
         if (lastAvailableVersion !== null && v !== lastAvailableVersion) {
-          log.warn(`[updater] feed version changed ${lastAvailableVersion} -> ${v} between check and download; aborting`);
-          return { ok: false, error: 'The available update changed since you last checked. Please check for updates again.' };
+          log.warn(
+            `[updater] feed version changed ${lastAvailableVersion} -> ${v} between check and download; aborting`,
+          );
+          return {
+            ok: false,
+            error:
+              'The available update changed since you last checked. Please check for updates again.',
+          };
         }
         await updater.downloadUpdate();
         return { ok: true };

@@ -11,7 +11,12 @@ import {
 } from '@gingermail/storage';
 import type { Account, AppSettings, FocusState, ProviderKind } from '@gingermail/core';
 import { defaultAppSettings } from '@gingermail/core';
-import type { CalendarProvider, ChatProvider, MailProvider, TaskProvider } from '@gingermail/providers';
+import type {
+  CalendarProvider,
+  ChatProvider,
+  MailProvider,
+  TaskProvider,
+} from '@gingermail/providers';
 import {
   AppleCalendarProvider,
   AppleMailProvider,
@@ -101,7 +106,10 @@ export class AppContext {
     this.scheduler = new Scheduler({
       db: this.db,
       onFire: (job) => {
-        this.mainWindow?.webContents.send('notifications:action', { jobId: job.id, action: 'fired' });
+        this.mainWindow?.webContents.send('notifications:action', {
+          jobId: job.id,
+          action: 'fired',
+        });
       },
       log,
     });
@@ -131,7 +139,10 @@ export class AppContext {
    * In every other configuration we always have a key.
    */
   private resolveDbEncryptionKey(): string | undefined {
-    if (process.env.GM_ALLOW_UNENCRYPTED_DB === '1' && !this.vault.readAppSecret('dbEncryptionKey')) {
+    if (
+      process.env.GM_ALLOW_UNENCRYPTED_DB === '1' &&
+      !this.vault.readAppSecret('dbEncryptionKey')
+    ) {
       // Explicit opt-out, first run. Don't generate, leave DB plaintext.
       return undefined;
     }
@@ -254,7 +265,9 @@ export class AppContext {
   beginGoogleOAuth(): Promise<{ account: Account; tokens: unknown }> {
     const cfg = getBuildConfig();
     if (!cfg.googleClientId || !cfg.googleClientSecret) {
-      return Promise.reject(new Error('Google OAuth client not configured. See apps/main/src/config.ts.'));
+      return Promise.reject(
+        new Error('Google OAuth client not configured. See apps/main/src/config.ts.'),
+      );
     }
     return new GoogleOAuthFlow(cfg.googleClientId, cfg.googleClientSecret).run();
   }
@@ -262,7 +275,9 @@ export class AppContext {
   beginMicrosoftOAuth(): Promise<{ account: Account; tokens: unknown }> {
     const cfg = getBuildConfig();
     if (!cfg.microsoftClientId) {
-      return Promise.reject(new Error('Microsoft OAuth client not configured. See apps/main/src/config.ts.'));
+      return Promise.reject(
+        new Error('Microsoft OAuth client not configured. See apps/main/src/config.ts.'),
+      );
     }
     return new MicrosoftOAuthFlow(cfg.microsoftClientId).run();
   }
@@ -271,7 +286,9 @@ export class AppContext {
     const cfg = getBuildConfig();
     if (!cfg.slackClientId || !cfg.slackClientSecret) {
       return Promise.reject(
-        new Error('Slack OAuth client not configured. Paste a token instead, or set GM_SLACK_CLIENT_ID/SECRET.'),
+        new Error(
+          'Slack OAuth client not configured. Paste a token instead, or set GM_SLACK_CLIENT_ID/SECRET.',
+        ),
       );
     }
     return new SlackOAuthFlow(cfg.slackClientId, cfg.slackClientSecret).run();
@@ -310,7 +327,10 @@ export class AppContext {
       enabled: true,
     };
     // Persist account config (team/user ids) + the token in the keychain.
-    this.db.upsertAccount(account, JSON.stringify({ teamId: identity.teamId, userId: identity.userId }));
+    this.db.upsertAccount(
+      account,
+      JSON.stringify({ teamId: identity.teamId, userId: identity.userId }),
+    );
     this.vault.write(account.id, { access_token: trimmed });
     // Drop any cached bundle for this id so the next access rebuilds with the new token.
     this.providerCache.delete(account.id);
@@ -379,7 +399,9 @@ async function buildBundleFor(
   configJson: string | undefined,
   secrets: Record<string, string> | undefined,
 ): Promise<ProviderBundleInternal | undefined> {
-  const cfg = configJson ? (JSON.parse(configJson) as Record<string, string | number | boolean>) : {};
+  const cfg = configJson
+    ? (JSON.parse(configJson) as Record<string, string | number | boolean>)
+    : {};
   switch (account.kind as ProviderKind) {
     case 'imap-smtp': {
       const password = secrets?.['password'];
@@ -429,9 +451,19 @@ async function buildBundleFor(
     case 'gmail': {
       const buildCfg = getBuildConfig();
       if (!buildCfg.googleClientId || !buildCfg.googleClientSecret) return undefined;
-      const tokens = secrets ? { access_token: secrets['access_token'] ?? '', refresh_token: secrets['refresh_token'] ?? '' } : undefined;
+      const tokens = secrets
+        ? {
+            access_token: secrets['access_token'] ?? '',
+            refresh_token: secrets['refresh_token'] ?? '',
+          }
+        : undefined;
       if (!tokens) return undefined;
-      const auth = buildGoogleAuth(buildCfg.googleClientId, buildCfg.googleClientSecret, 'http://127.0.0.1:0/callback', tokens);
+      const auth = buildGoogleAuth(
+        buildCfg.googleClientId,
+        buildCfg.googleClientSecret,
+        'http://127.0.0.1:0/callback',
+        tokens,
+      );
       return {
         mail: new GmailMailProvider(account, auth),
         calendar: new GoogleCalendarProvider(account, auth),

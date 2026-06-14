@@ -1,4 +1,10 @@
-import { IPC_CHANNELS, type Folder, type FolderRole, type MessageHeader, type MessageThread } from '@gingermail/core';
+import {
+  IPC_CHANNELS,
+  type Folder,
+  type FolderRole,
+  type MessageHeader,
+  type MessageThread,
+} from '@gingermail/core';
 import type { AppContext } from '../context.js';
 import { enqueueDetection } from '../ai/detectionAgent.js';
 
@@ -13,7 +19,14 @@ import { enqueueDetection } from '../ai/detectionAgent.js';
  * on demand via `mail:listThreads` so we don't pull a million Gmail "All
  * Mail" entries every refresh.
  */
-const SYNCED_ROLES: ReadonlyArray<FolderRole> = ['inbox', 'sent', 'drafts', 'archive', 'trash', 'spam'];
+const SYNCED_ROLES: ReadonlyArray<FolderRole> = [
+  'inbox',
+  'sent',
+  'drafts',
+  'archive',
+  'trash',
+  'spam',
+];
 
 const HEADERS_PER_FOLDER = 100;
 const BODIES_PER_FOLDER = 25;
@@ -108,7 +121,11 @@ async function doSyncAccount(ctx: AppContext, accountId: string): Promise<void> 
 async function syncFolder(
   ctx: AppContext,
   provider: {
-    listMessageHeaders: (folderId: string, cursor?: string, limit?: number) => Promise<{ items: MessageHeader[]; nextCursor?: string }>;
+    listMessageHeaders: (
+      folderId: string,
+      cursor?: string,
+      limit?: number,
+    ) => Promise<{ items: MessageHeader[]; nextCursor?: string }>;
     getMessage: (folderId: string, uid: string) => Promise<unknown>;
   },
   folder: Folder,
@@ -126,12 +143,19 @@ async function syncFolder(
       ? new Set(page.items.filter((h) => !ctx.db.getMessage(h.id)).map((h) => h.id))
       : new Set<string>();
 
-  const fullMessages: Array<MessageHeader & { body: { html?: string; text?: string }; attachments: unknown[] }> = [];
+  const fullMessages: Array<
+    MessageHeader & { body: { html?: string; text?: string }; attachments: unknown[] }
+  > = [];
   for (const head of page.items) {
     if (detailedIds.includes(head.uid)) {
       try {
         const full = await provider.getMessage(folder.id, head.uid);
-        fullMessages.push(full as MessageHeader & { body: { html?: string; text?: string }; attachments: unknown[] });
+        fullMessages.push(
+          full as MessageHeader & {
+            body: { html?: string; text?: string };
+            attachments: unknown[];
+          },
+        );
       } catch (err) {
         // CRITICAL: don't overwrite an already-cached body with an empty
         // stub. The previous version did `fullMessages.push({...head, body:{}})`
@@ -140,7 +164,12 @@ async function syncFolder(
         // will try again.
         const cached = ctx.db.getMessage(head.id);
         if (cached?.body && (cached.body.html || cached.body.text)) {
-          fullMessages.push(cached as MessageHeader & { body: { html?: string; text?: string }; attachments: unknown[] });
+          fullMessages.push(
+            cached as MessageHeader & {
+              body: { html?: string; text?: string };
+              attachments: unknown[];
+            },
+          );
         }
         const msg = err instanceof Error ? err.message : String(err);
         ctx.mainWindow?.webContents.send(IPC_CHANNELS.mailSyncEvent, {

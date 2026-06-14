@@ -22,13 +22,22 @@ export function UnsubscribePill({ message }: { message: Message }): JSX.Element 
   const senderEmail = message.from.email;
   let httpHost = '';
   if (http) {
-    try { httpHost = new URL(http).host; } catch { httpHost = ''; }
+    try {
+      httpHost = new URL(http).host;
+    } catch {
+      httpHost = '';
+    }
   }
 
   const unsubscribe = async (): Promise<void> => {
     setBusy(true);
     try {
-      const res = await getApi().unsubscribe.perform({ email: senderEmail, http, mailto, oneClick });
+      const res = await getApi().unsubscribe.perform({
+        email: senderEmail,
+        http,
+        mailto,
+        oneClick,
+      });
       if (res.ok && res.method === 'http') {
         notifications.show({ title: 'Unsubscribed', message: senderEmail, color: 'green' });
       } else if (res.method === 'mailto') {
@@ -38,7 +47,11 @@ export function UnsubscribePill({ message }: { message: Message }): JSX.Element 
           color: 'orange',
         });
       } else {
-        notifications.show({ title: 'Unsubscribe failed', message: res.error ?? 'Unknown error', color: 'red' });
+        notifications.show({
+          title: 'Unsubscribe failed',
+          message: res.error ?? 'Unknown error',
+          color: 'red',
+        });
       }
     } finally {
       setBusy(false);
@@ -50,7 +63,11 @@ export function UnsubscribePill({ message }: { message: Message }): JSX.Element 
     setBusy(true);
     try {
       await getApi().unsubscribe.mute({ email: senderEmail });
-      notifications.show({ title: 'Muted', message: `Future mail from ${senderEmail} will be hidden from your inbox and search.`, color: 'gray' });
+      notifications.show({
+        title: 'Muted',
+        message: `Future mail from ${senderEmail} will be hidden from your inbox and search.`,
+        color: 'gray',
+      });
     } finally {
       setBusy(false);
       setOpen(false);
@@ -83,15 +100,22 @@ export function UnsubscribePill({ message }: { message: Message }): JSX.Element 
       <Popover.Dropdown>
         {confirmingHttp ? (
           <Stack gap="xs" maw={320}>
-            <Text size="sm">
-              GingerMail will POST a one-click unsubscribe to:
-            </Text>
-            <Code block style={{ wordBreak: 'break-all' }}>{http}</Code>
+            <Text size="sm">GingerMail will POST a one-click unsubscribe to:</Text>
+            <Code block style={{ wordBreak: 'break-all' }}>
+              {http}
+            </Code>
             {httpHost && (
-              <Text size="xs" c="dimmed">Destination host: <Code>{httpHost}</Code></Text>
+              <Text size="xs" c="dimmed">
+                Destination host: <Code>{httpHost}</Code>
+              </Text>
             )}
             <Group gap="xs" justify="flex-end" wrap="nowrap">
-              <Button size="xs" variant="default" disabled={busy} onClick={() => setConfirmingHttp(false)}>
+              <Button
+                size="xs"
+                variant="default"
+                disabled={busy}
+                onClick={() => setConfirmingHttp(false)}
+              >
                 Cancel
               </Button>
               <Button size="xs" color="ginger" loading={busy} onClick={() => void unsubscribe()}>
@@ -102,12 +126,20 @@ export function UnsubscribePill({ message }: { message: Message }): JSX.Element 
         ) : (
           <Stack gap="xs" maw={280}>
             <Text size="sm">
-              This sender supports unsubscribing. Pick one: send the real unsubscribe to the sender, or mute them privately
-              inside GingerMail.
+              This sender supports unsubscribing. Pick one: send the real unsubscribe to the sender,
+              or mute them privately inside GingerMail.
             </Text>
             <Group gap="xs" wrap="nowrap">
-              <Button size="xs" disabled={busy} onClick={startUnsubscribe}>Unsubscribe</Button>
-              <Button size="xs" variant="light" color="gray" disabled={busy} onClick={() => void mute()}>
+              <Button size="xs" disabled={busy} onClick={startUnsubscribe}>
+                Unsubscribe
+              </Button>
+              <Button
+                size="xs"
+                variant="light"
+                color="gray"
+                disabled={busy}
+                onClick={() => void mute()}
+              >
                 Mute sender
               </Button>
             </Group>

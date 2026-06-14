@@ -25,7 +25,8 @@ const api = {
     add: (input: unknown) => ipcRenderer.invoke(IPC_CHANNELS.accountsAdd, input),
     remove: (id: string) => ipcRenderer.invoke(IPC_CHANNELS.accountsRemove, id),
     test: (input: unknown) => ipcRenderer.invoke(IPC_CHANNELS.accountsTest, input),
-    beginOAuth: (kind: 'gmail' | 'microsoft') => ipcRenderer.invoke(IPC_CHANNELS.accountsBeginOAuth, kind),
+    beginOAuth: (kind: 'gmail' | 'microsoft') =>
+      ipcRenderer.invoke(IPC_CHANNELS.accountsBeginOAuth, kind),
   },
   mail: {
     listFolders: (accountId: string) => ipcRenderer.invoke(IPC_CHANNELS.mailListFolders, accountId),
@@ -69,7 +70,8 @@ const api = {
     summarizeThread: (threadId: string) => ipcRenderer.invoke(IPC_CHANNELS.aiSummarize, threadId),
     draftReply: (input: unknown) => ipcRenderer.invoke(IPC_CHANNELS.aiDraftReply, input),
     prioritizeInbox: () => ipcRenderer.invoke(IPC_CHANNELS.aiPrioritize),
-    extractActionItems: (input: unknown) => ipcRenderer.invoke(IPC_CHANNELS.aiExtractActions, input),
+    extractActionItems: (input: unknown) =>
+      ipcRenderer.invoke(IPC_CHANNELS.aiExtractActions, input),
     nlSearch: (q: string) => ipcRenderer.invoke(IPC_CHANNELS.aiNlSearch, q),
     testConnection: () => ipcRenderer.invoke(IPC_CHANNELS.aiTest),
     localStatus: () => ipcRenderer.invoke(IPC_CHANNELS.aiLocalStatus),
@@ -109,7 +111,8 @@ const api = {
     beginOAuth: () => ipcRenderer.invoke(IPC_CHANNELS.slackBeginOAuth),
     disconnect: (input: unknown) => ipcRenderer.invoke(IPC_CHANNELS.slackDisconnect, input),
     listWorkspaces: () => ipcRenderer.invoke(IPC_CHANNELS.slackListWorkspaces),
-    listConversations: (input?: unknown) => ipcRenderer.invoke(IPC_CHANNELS.slackListConversations, input),
+    listConversations: (input?: unknown) =>
+      ipcRenderer.invoke(IPC_CHANNELS.slackListConversations, input),
     listMessages: (input: unknown) => ipcRenderer.invoke(IPC_CHANNELS.slackListMessages, input),
     send: (input: unknown) => ipcRenderer.invoke(IPC_CHANNELS.slackSend, input),
     markRead: (input: unknown) => ipcRenderer.invoke(IPC_CHANNELS.slackMarkRead, input),

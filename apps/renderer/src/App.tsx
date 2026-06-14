@@ -1,5 +1,5 @@
-import { useEffect } from 'react';
-import { AppShell, MantineProvider, Tabs } from '@mantine/core';
+import { lazy, Suspense, useEffect } from 'react';
+import { AppShell, Center, Loader, MantineProvider, Tabs } from '@mantine/core';
 import { ModalsProvider } from '@mantine/modals';
 import { Notifications } from '@mantine/notifications';
 import {
@@ -11,11 +11,18 @@ import {
 } from '@tabler/icons-react';
 import { FocusOverlay, gingermailTheme } from '@gingermail/ui-kit';
 import { useAppStore, type TabId } from './store.js';
-import { MailTab } from './tabs/MailTab.js';
-import { CalendarTab } from './tabs/CalendarTab.js';
-import { TasksTab } from './tabs/TasksTab.js';
-import { SlackTab } from './tabs/SlackTab.js';
-import { SettingsTab } from './tabs/SettingsTab.js';
+// Tabs are code-split: only the active tab's chunk is fetched, so the initial
+// renderer bundle stays lean (the heavy SettingsTab/MailTab load on demand).
+// These modules use named exports, hence the `default` re-map for React.lazy.
+const MailTab = lazy(() => import('./tabs/MailTab.js').then((m) => ({ default: m.MailTab })));
+const CalendarTab = lazy(() =>
+  import('./tabs/CalendarTab.js').then((m) => ({ default: m.CalendarTab })),
+);
+const TasksTab = lazy(() => import('./tabs/TasksTab.js').then((m) => ({ default: m.TasksTab })));
+const SlackTab = lazy(() => import('./tabs/SlackTab.js').then((m) => ({ default: m.SlackTab })));
+const SettingsTab = lazy(() =>
+  import('./tabs/SettingsTab.js').then((m) => ({ default: m.SettingsTab })),
+);
 import { TitleBar } from './shell/TitleBar.js';
 import { ActionBar } from './shell/ActionBar.js';
 import { ShortcutsModal } from './shell/ShortcutsModal.js';
@@ -76,7 +83,13 @@ export function App() {
       }
       // Switch top-level tabs: Cmd/Ctrl+1..5. Skip while typing so number
       // keys still work inside inputs.
-      if (meta && !evt.shiftKey && !evt.altKey && tabByDigit[evt.key] && !isTypingTarget(evt.target)) {
+      if (
+        meta &&
+        !evt.shiftKey &&
+        !evt.altKey &&
+        tabByDigit[evt.key] &&
+        !isTypingTarget(evt.target)
+      ) {
         evt.preventDefault();
         useAppStore.getState().setTab(tabByDigit[evt.key]!);
         return;
@@ -87,14 +100,20 @@ export function App() {
   }, [init]);
 
   return (
-    <MantineProvider theme={gingermailTheme} defaultColorScheme="auto" forceColorScheme={colorScheme}>
+    <MantineProvider
+      theme={gingermailTheme}
+      defaultColorScheme="auto"
+      forceColorScheme={colorScheme}
+    >
       <Notifications position="bottom-right" zIndex={2000} limit={5} />
       <ModalsProvider>
         {/* Skip-to-content link: first focusable element in the tree so
             keyboard / screen reader users can bypass the multi-row header
             in one keystroke. See packages/ui-kit/src/theme.css for the
             visible-on-focus styling. */}
-        <a href="#gm-main" className="gm-skip-link">Skip to main content</a>
+        <a href="#gm-main" className="gm-skip-link">
+          Skip to main content
+        </a>
         <AppShell header={{ height: HEADER_HEIGHT }} padding={0} layout="alt">
           <AppShell.Header withBorder role="banner">
             <TitleBar />
@@ -109,11 +128,21 @@ export function App() {
                 styles={{ list: { paddingInline: 12, borderBottom: 'none' } }}
               >
                 <Tabs.List role="tablist" aria-label="Sections">
-                  <Tabs.Tab value="mail" leftSection={<IconInbox size={16} aria-hidden />}>Mail</Tabs.Tab>
-                  <Tabs.Tab value="calendar" leftSection={<IconCalendar size={16} aria-hidden />}>Calendar</Tabs.Tab>
-                  <Tabs.Tab value="tasks" leftSection={<IconChecklist size={16} aria-hidden />}>Tasks</Tabs.Tab>
-                  <Tabs.Tab value="slack" leftSection={<IconMessages size={16} aria-hidden />}>Chat</Tabs.Tab>
-                  <Tabs.Tab value="settings" leftSection={<IconSettings size={16} aria-hidden />}>Settings</Tabs.Tab>
+                  <Tabs.Tab value="mail" leftSection={<IconInbox size={16} aria-hidden />}>
+                    Mail
+                  </Tabs.Tab>
+                  <Tabs.Tab value="calendar" leftSection={<IconCalendar size={16} aria-hidden />}>
+                    Calendar
+                  </Tabs.Tab>
+                  <Tabs.Tab value="tasks" leftSection={<IconChecklist size={16} aria-hidden />}>
+                    Tasks
+                  </Tabs.Tab>
+                  <Tabs.Tab value="slack" leftSection={<IconMessages size={16} aria-hidden />}>
+                    Chat
+                  </Tabs.Tab>
+                  <Tabs.Tab value="settings" leftSection={<IconSettings size={16} aria-hidden />}>
+                    Settings
+                  </Tabs.Tab>
                 </Tabs.List>
               </Tabs>
             </nav>
@@ -125,11 +154,19 @@ export function App() {
             aria-label={`${tab.charAt(0).toUpperCase()}${tab.slice(1)} content`}
             style={{ height: `calc(100vh - ${HEADER_HEIGHT}px)`, overflow: 'hidden' }}
           >
-            {tab === 'mail' && <MailTab />}
-            {tab === 'calendar' && <CalendarTab />}
-            {tab === 'tasks' && <TasksTab />}
-            {tab === 'slack' && <SlackTab />}
-            {tab === 'settings' && <SettingsTab />}
+            <Suspense
+              fallback={
+                <Center h="100%" aria-busy="true">
+                  <Loader />
+                </Center>
+              }
+            >
+              {tab === 'mail' && <MailTab />}
+              {tab === 'calendar' && <CalendarTab />}
+              {tab === 'tasks' && <TasksTab />}
+              {tab === 'slack' && <SlackTab />}
+              {tab === 'settings' && <SettingsTab />}
+            </Suspense>
           </AppShell.Main>
         </AppShell>
         <FocusOverlay state={focus} onStop={() => void stopFocus()} />

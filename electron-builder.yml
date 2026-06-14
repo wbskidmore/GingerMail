@@ -10,31 +10,31 @@ directories:
 
 files:
   # Source / compiled output.
-  - "apps/main/entry.cjs"
-  - "apps/main/dist/**"
-  - "apps/main/package.json"
-  - "apps/renderer/dist/**"
-  - "packages/*/dist/**"
-  - "packages/*/package.json"
-  - "package.json"
+  - 'apps/main/entry.cjs'
+  - 'apps/main/dist/**'
+  - 'apps/main/package.json'
+  - 'apps/renderer/dist/**'
+  - 'packages/*/dist/**'
+  - 'packages/*/package.json'
+  - 'package.json'
   # Dependency tree. WITHOUT these globs electron-builder ships zero
   # node_modules and entry.cjs crashes with `Cannot find module
   # 'electron-log'` on first launch (we hit this between v1.0.0 builds).
   # electron-builder follows pnpm symlinks correctly when both the
   # per-app node_modules dir AND the hoisted .pnpm store are listed.
-  - "node_modules/**"
-  - "apps/main/node_modules/**"
-  - "packages/*/node_modules/**"
+  - 'node_modules/**'
+  - 'apps/main/node_modules/**'
+  - 'packages/*/node_modules/**'
   # Exclusions: source maps and tests bloat the package and may leak
   # internal paths. Native bindings are kept (they live under
   # node_modules/<pkg>/build/Release/*.node and are matched by the
   # generic `node_modules/**` glob above).
-  - "!**/*.map"
-  - "!**/*.test.*"
-  - "!**/test/**"
-  - "!**/tests/**"
-  - "!**/*.md"
-  - "!**/.bin/**"
+  - '!**/*.map'
+  - '!**/*.test.*'
+  - '!**/test/**'
+  - '!**/tests/**'
+  - '!**/*.md'
+  - '!**/.bin/**'
 
 # Bundle the platform-specific Ollama binary alongside the app so local AI
 # works on first launch without the user installing Ollama separately. The
@@ -42,9 +42,9 @@ files:
 # (run via `pnpm prepackage`). At runtime the OllamaSidecar looks for the
 # binary under `<resourcesPath>/ollama/<binary>` (mapped below per platform).
 extraResources:
-  - from: "apps/main/resources/ollama/${platform}-${arch}"
-    to: "ollama"
-    filter: ["**/*"]
+  - from: 'apps/main/resources/ollama/${platform}-${arch}'
+    to: 'ollama'
+    filter: ['**/*']
 
 extraMetadata:
   main: apps/main/entry.cjs

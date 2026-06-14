@@ -30,11 +30,21 @@ export function TitleBar() {
   }, []);
 
   useHotkeys([
-    ['mod+shift+F', () => focus.active ? void stopFocus() : void startFocus(settings.focus.defaultDurationMin)],
-    ['mod+R', async () => {
-      setBusy(true);
-      try { await getApi().mail.refreshAll(); } finally { setBusy(false); }
-    }],
+    [
+      'mod+shift+F',
+      () => (focus.active ? void stopFocus() : void startFocus(settings.focus.defaultDurationMin)),
+    ],
+    [
+      'mod+R',
+      async () => {
+        setBusy(true);
+        try {
+          await getApi().mail.refreshAll();
+        } finally {
+          setBusy(false);
+        }
+      },
+    ],
   ]);
 
   return (
@@ -82,9 +92,17 @@ export function TitleBar() {
               setBusy(true);
               try {
                 await getApi().mail.refreshAll();
-                notifications.show({ title: 'Inbox refreshed', message: 'All accounts re-synced.', autoClose: 1800 });
+                notifications.show({
+                  title: 'Inbox refreshed',
+                  message: 'All accounts re-synced.',
+                  autoClose: 1800,
+                });
               } catch (e) {
-                notifications.show({ title: 'Refresh failed', message: (e as Error).message, color: 'red' });
+                notifications.show({
+                  title: 'Refresh failed',
+                  message: (e as Error).message,
+                  color: 'red',
+                });
               } finally {
                 setBusy(false);
               }
@@ -95,7 +113,14 @@ export function TitleBar() {
           </ActionIcon>
         </Tooltip>
         {focus.active ? (
-          <Button data-no-drag size="xs" variant="filled" color="ginger" leftSection={<IconFocus2 size={14} />} onClick={() => stopFocus()}>
+          <Button
+            data-no-drag
+            size="xs"
+            variant="filled"
+            color="ginger"
+            leftSection={<IconFocus2 size={14} />}
+            onClick={() => stopFocus()}
+          >
             Focus running
           </Button>
         ) : (
@@ -107,7 +132,14 @@ export function TitleBar() {
               </Group>
             }
           >
-            <Button data-no-drag size="xs" variant="subtle" color="gray" leftSection={<IconFocus2 size={14} />} onClick={() => startFocus(settings.focus.defaultDurationMin)}>
+            <Button
+              data-no-drag
+              size="xs"
+              variant="subtle"
+              color="gray"
+              leftSection={<IconFocus2 size={14} />}
+              onClick={() => startFocus(settings.focus.defaultDurationMin)}
+            >
               Focus
             </Button>
           </Tooltip>

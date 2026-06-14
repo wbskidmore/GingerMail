@@ -47,7 +47,9 @@ describe('sanitiseMailHtml', () => {
   });
 
   it('allows remote <img> when explicitly opted in', () => {
-    const out = sanitiseMailHtml('<img src="https://example.com/cat.png">', { allowRemoteImages: true });
+    const out = sanitiseMailHtml('<img src="https://example.com/cat.png">', {
+      allowRemoteImages: true,
+    });
     expect(out).toMatch(/src="https:\/\/example\.com\/cat\.png"/);
   });
 
@@ -69,20 +71,26 @@ describe('sanitiseMailHtml', () => {
   });
 
   it('strips <iframe>, <object>, <embed>', () => {
-    const out = sanitiseMailHtml('<iframe src="https://x"></iframe><object data="x"></object><embed src="x">');
+    const out = sanitiseMailHtml(
+      '<iframe src="https://x"></iframe><object data="x"></object><embed src="x">',
+    );
     expect(out).not.toContain('iframe');
     expect(out).not.toContain('object');
     expect(out).not.toContain('embed');
   });
 
   it('strips <link> and <meta> (avoid CSP overrides)', () => {
-    const out = sanitiseMailHtml('<link rel="stylesheet" href="https://x"><meta http-equiv="refresh" content="0;url=https://x">');
+    const out = sanitiseMailHtml(
+      '<link rel="stylesheet" href="https://x"><meta http-equiv="refresh" content="0;url=https://x">',
+    );
     expect(out).not.toContain('link');
     expect(out).not.toContain('meta');
   });
 
   it('drops srcdoc, formaction, ping attributes', () => {
-    const out = sanitiseMailHtml('<img srcdoc="<script>alert(1)</script>"><form formaction="https://x"></form><a ping="https://x">y</a>');
+    const out = sanitiseMailHtml(
+      '<img srcdoc="<script>alert(1)</script>"><form formaction="https://x"></form><a ping="https://x">y</a>',
+    );
     expect(out).not.toMatch(/srcdoc/);
     expect(out).not.toMatch(/formaction/);
     expect(out).not.toMatch(/ping=/);

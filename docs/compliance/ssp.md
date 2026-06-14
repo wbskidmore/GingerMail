@@ -36,12 +36,12 @@ See the boundary diagram in [README.md](README.md). In scope: `apps/main`,
 
 ### Interconnections (external systems)
 
-| External system | Data exchanged | Protection |
-|-----------------|----------------|------------|
-| Mail providers (Gmail/Graph/Apple/IMAP/SMTP/POP3) | Credentials, mail | TLS; OAuth PKCE where supported |
-| Cloud AI vendors (opt-in) | Selected message text + prompt | HTTPS, host allowlist, optional PII redaction, sensitive-account block |
-| `updates.gingermail.app` (opt-in) | App version/OS/arch; installer download | HTTPS; SHA512 manifest; (planned) signature requirement |
-| Local Ollama sidecar | Prompt/response | Loopback `127.0.0.1` only |
+| External system                                   | Data exchanged                          | Protection                                                             |
+| ------------------------------------------------- | --------------------------------------- | ---------------------------------------------------------------------- |
+| Mail providers (Gmail/Graph/Apple/IMAP/SMTP/POP3) | Credentials, mail                       | TLS; OAuth PKCE where supported                                        |
+| Cloud AI vendors (opt-in)                         | Selected message text + prompt          | HTTPS, host allowlist, optional PII redaction, sensitive-account block |
+| `updates.gingermail.app` (opt-in)                 | App version/OS/arch; installer download | HTTPS; SHA512 manifest; (planned) signature requirement                |
+| Local Ollama sidecar                              | Prompt/response                         | Loopback `127.0.0.1` only                                              |
 
 ### Boundary expansion required for a real FedRAMP ATO
 

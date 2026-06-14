@@ -8,13 +8,14 @@ export interface AccountBadgeProps {
 
 /** Compact account row used in the mail sidebar and account list. */
 export function AccountBadge({ displayName, emailAddress, color }: AccountBadgeProps) {
-  const initials = displayName
-    .split(/\s+/)
-    .map((p) => p[0])
-    .filter(Boolean)
-    .slice(0, 2)
-    .join('')
-    .toUpperCase() || emailAddress.slice(0, 1).toUpperCase();
+  const initials =
+    displayName
+      .split(/\s+/)
+      .map((p) => p[0])
+      .filter(Boolean)
+      .slice(0, 2)
+      .join('')
+      .toUpperCase() || emailAddress.slice(0, 1).toUpperCase();
 
   return (
     <Group gap="sm" wrap="nowrap">

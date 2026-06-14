@@ -7,12 +7,12 @@ yardstick and (b) hand a reviewer a coherent control story.
 
 ## Frameworks targeted
 
-| Framework | Version | Role in this program |
-|-----------|---------|----------------------|
-| NIST SP 800-53 | Rev 5 | Primary control catalog. We track the FedRAMP **Moderate** baseline subset. |
-| NIST SP 800-171 | Rev 3 | CUI-protection requirement mapping (for deployment into contractor/CUI environments). |
-| NIST CSF | 2.0 | Program structure (Govern / Identify / Protect / Detect / Respond / Recover). |
-| FedRAMP | Rev 5 baselines | Parameter values + baseline selection layered on top of 800-53. |
+| Framework       | Version         | Role in this program                                                                  |
+| --------------- | --------------- | ------------------------------------------------------------------------------------- |
+| NIST SP 800-53  | Rev 5           | Primary control catalog. We track the FedRAMP **Moderate** baseline subset.           |
+| NIST SP 800-171 | Rev 3           | CUI-protection requirement mapping (for deployment into contractor/CUI environments). |
+| NIST CSF        | 2.0             | Program structure (Govern / Identify / Protect / Detect / Respond / Recover).         |
+| FedRAMP         | Rev 5 baselines | Parameter values + baseline selection layered on top of 800-53.                       |
 
 ## Scope and authorization boundary
 
@@ -81,14 +81,14 @@ never mistaken for an authorization package.
 
 ## Artifacts in this directory
 
-| File | Purpose |
-|------|---------|
-| [control-crosswalk.md](control-crosswalk.md) | 800-53 <-> 800-171 <-> CSF crosswalk mapped to GingerMail implementations with status. |
-| [threat-model.md](threat-model.md) | STRIDE + data-flow threat model for the desktop boundary. |
-| [ssp.md](ssp.md) | System Security Plan scaffold (OSCAL-convertible). |
-| [poam.md](poam.md) | Plan of Action & Milestones generated from the gap assessment. |
-| [policies/](policies/) | Per-family policy and procedure set. |
-| [assessment/continuous-monitoring.md](assessment/continuous-monitoring.md) | Continuous-monitoring cadence and CI enforcement. |
+| File                                                                       | Purpose                                                                                |
+| -------------------------------------------------------------------------- | -------------------------------------------------------------------------------------- |
+| [control-crosswalk.md](control-crosswalk.md)                               | 800-53 <-> 800-171 <-> CSF crosswalk mapped to GingerMail implementations with status. |
+| [threat-model.md](threat-model.md)                                         | STRIDE + data-flow threat model for the desktop boundary.                              |
+| [ssp.md](ssp.md)                                                           | System Security Plan scaffold (OSCAL-convertible).                                     |
+| [poam.md](poam.md)                                                         | Plan of Action & Milestones generated from the gap assessment.                         |
+| [policies/](policies/)                                                     | Per-family policy and procedure set.                                                   |
+| [assessment/continuous-monitoring.md](assessment/continuous-monitoring.md) | Continuous-monitoring cadence and CI enforcement.                                      |
 
 ## How to maintain
 

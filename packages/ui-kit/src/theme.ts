@@ -1,4 +1,9 @@
-import { createTheme, type MantineColorsTuple, type MantineThemeOverride, rem } from '@mantine/core';
+import {
+  createTheme,
+  type MantineColorsTuple,
+  type MantineThemeOverride,
+  rem,
+} from '@mantine/core';
 
 /**
  * GingerMail ginger/orange brand ramp.
@@ -91,7 +96,11 @@ export const gingermailTheme: MantineThemeOverride = createTheme({
       defaultProps: { radius: 'md' },
     },
     Modal: {
-      defaultProps: { radius: 'lg', centered: true, overlayProps: { backgroundOpacity: 0.45, blur: 4 } },
+      defaultProps: {
+        radius: 'lg',
+        centered: true,
+        overlayProps: { backgroundOpacity: 0.45, blur: 4 },
+      },
     },
     Menu: {
       defaultProps: { shadow: 'md', radius: 'md', position: 'bottom-end' },

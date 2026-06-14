@@ -5,9 +5,9 @@ sensitive workflow most people have on their computer.
 
 ## Supported versions
 
-| Version | Status |
-|---------|--------|
-| 1.x     | Supported with security patches |
+| Version | Status                                      |
+| ------- | ------------------------------------------- |
+| 1.x     | Supported with security patches             |
 | < 1.0   | Pre-release; not supported. Please upgrade. |
 
 ## How to report a vulnerability
@@ -53,16 +53,16 @@ same URL).
 For reviewers planning a quick audit, the highest-impact protections
 live here:
 
-| Concern | Location |
-|---------|----------|
-| At-rest DB encryption (SQLCipher) | `packages/storage/src/openEncryptedDb.ts` |
-| Secret-scrubbing logger          | `apps/main/src/log/scrub.ts` |
-| Renderer CSP + nav guards        | `apps/main/src/security/hardening.ts` |
-| Mail-body iframe sandbox=""      | `apps/renderer/src/tabs/MailTab.tsx` + lint test |
-| OAuth PKCE + state nonce         | `apps/main/src/oauth/{google,microsoft,loopback}.ts` |
-| AI egress allowlist              | `apps/main/src/security/aiEgress.ts` |
-| IPC sender guard + zod validation| `apps/main/src/ipc/{guards,schemas}.ts` |
-| Auto-updater opt-in + kill-switch| `apps/main/src/autoUpdater.ts` |
+| Concern                           | Location                                             |
+| --------------------------------- | ---------------------------------------------------- |
+| At-rest DB encryption (SQLCipher) | `packages/storage/src/openEncryptedDb.ts`            |
+| Secret-scrubbing logger           | `apps/main/src/log/scrub.ts`                         |
+| Renderer CSP + nav guards         | `apps/main/src/security/hardening.ts`                |
+| Mail-body iframe sandbox=""       | `apps/renderer/src/tabs/MailTab.tsx` + lint test     |
+| OAuth PKCE + state nonce          | `apps/main/src/oauth/{google,microsoft,loopback}.ts` |
+| AI egress allowlist               | `apps/main/src/security/aiEgress.ts`                 |
+| IPC sender guard + zod validation | `apps/main/src/ipc/{guards,schemas}.ts`              |
+| Auto-updater opt-in + kill-switch | `apps/main/src/autoUpdater.ts`                       |
 
 ## Incident response
 

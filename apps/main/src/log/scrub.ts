@@ -123,7 +123,10 @@ export function wrapLoggerWithScrub<T extends MinimalLogger>(logger: T): T {
     const original = logger[method];
     if (typeof original !== 'function') return;
     (logger as Record<string, unknown>)[method] = (...args: unknown[]) =>
-      (original as (...a: unknown[]) => void).apply(logger, args.map((a) => scrubSecrets(a)));
+      (original as (...a: unknown[]) => void).apply(
+        logger,
+        args.map((a) => scrubSecrets(a)),
+      );
   };
   (['info', 'warn', 'error', 'debug'] as const).forEach(wrap);
   return logger;
@@ -143,6 +146,10 @@ export function installConsoleScrubbing(): void {
   const methods = ['log', 'info', 'warn', 'error', 'debug', 'trace'] as const;
   for (const m of methods) {
     const original = console[m] as (...args: unknown[]) => void;
-    console[m] = (...args: unknown[]) => original.apply(console, args.map((a) => scrubSecrets(a)));
+    console[m] = (...args: unknown[]) =>
+      original.apply(
+        console,
+        args.map((a) => scrubSecrets(a)),
+      );
   }
 }

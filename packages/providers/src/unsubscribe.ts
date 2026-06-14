@@ -16,7 +16,10 @@ export interface ParsedListUnsubscribe {
   oneClick: boolean;
 }
 
-export function parseListUnsubscribe(value: string | undefined, post?: string): ParsedListUnsubscribe {
+export function parseListUnsubscribe(
+  value: string | undefined,
+  post?: string,
+): ParsedListUnsubscribe {
   const out: ParsedListUnsubscribe = { oneClick: false };
   if (post && /one[-\s]?click/i.test(post)) {
     out.oneClick = true;

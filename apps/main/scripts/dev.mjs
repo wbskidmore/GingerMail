@@ -4,7 +4,10 @@ import { existsSync } from 'node:fs';
 import path from 'node:path';
 
 const cwd = process.cwd();
-const tsc = spawn('pnpm', ['exec', 'tsc', '-p', 'tsconfig.json', '--watch'], { stdio: 'inherit', cwd });
+const tsc = spawn('pnpm', ['exec', 'tsc', '-p', 'tsconfig.json', '--watch'], {
+  stdio: 'inherit',
+  cwd,
+});
 
 const electronBin = process.platform === 'win32' ? 'electron.cmd' : 'electron';
 function waitForBuild(attempts = 60) {
@@ -21,7 +24,11 @@ function launch() {
   // Electron binary to run as a plain Node.js process - no `process.type`,
   // no `require('electron')` interception, no app boot. Strip it from the
   // spawn env so Electron starts as a real desktop process.
-  const env = { ...process.env, GM_DEV: '1', GM_RENDERER_URL: process.env.GM_RENDERER_URL ?? 'http://localhost:5173' };
+  const env = {
+    ...process.env,
+    GM_DEV: '1',
+    GM_RENDERER_URL: process.env.GM_RENDERER_URL ?? 'http://localhost:5173',
+  };
   delete env.ELECTRON_RUN_AS_NODE;
   const electron = spawn(electronBin, ['.'], { stdio: 'inherit', cwd, env });
   electron.on('exit', (code) => {

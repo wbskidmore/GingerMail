@@ -45,12 +45,15 @@ const draftSchema = z.object({
   subject: z.string().max(998).optional(), // RFC 5322 line-length cap
   bodyHtml: z.string().max(5_000_000).optional(), // ~5 MB body cap
   bodyText: z.string().max(5_000_000).optional(),
-  attachments: z.array(
-    z.object({
-      filename: z.string().max(512),
-      path: z.string().max(4096),
-    }),
-  ).max(50).optional(),
+  attachments: z
+    .array(
+      z.object({
+        filename: z.string().max(512),
+        path: z.string().max(4096),
+      }),
+    )
+    .max(50)
+    .optional(),
 });
 
 // ---- per-channel schemas ----
@@ -86,11 +89,13 @@ export const AccountIdSchema = accountId;
 // passthrough here would STRIP those required fields and break account setup.
 // We therefore bound the top-level shape (kind + email) and let the provider
 // builder own the rest. (SI-10 with a documented exception.)
-export const AddAccountInputSchema = z.object({
-  kind: z.enum(['gmail', 'microsoft', 'imap-smtp', 'pop3', 'apple-caldav']),
-  displayName: z.string().max(256).optional(),
-  emailAddress: z.string().email().max(320),
-}).passthrough();
+export const AddAccountInputSchema = z
+  .object({
+    kind: z.enum(['gmail', 'microsoft', 'imap-smtp', 'pop3', 'apple-caldav']),
+    displayName: z.string().max(256).optional(),
+    emailAddress: z.string().email().max(320),
+  })
+  .passthrough();
 
 export const OAuthKindSchema = z.enum(['gmail', 'microsoft']);
 
@@ -164,12 +169,20 @@ export const AiSetCloudKeySchema = z.object({
   key: z.string().min(1).max(4096),
 });
 export const AiPullModelSchema = z.object({
-  name: z.string().min(1).max(256).regex(/^[A-Za-z0-9._:\-/]+$/, 'invalid model name'),
+  name: z
+    .string()
+    .min(1)
+    .max(256)
+    .regex(/^[A-Za-z0-9._:\-/]+$/, 'invalid model name'),
 });
 export const AiDeleteModelSchema = AiPullModelSchema;
 
 export const FocusStartSchema = z.object({
-  durationMin: z.number().int().min(1).max(24 * 60),
+  durationMin: z
+    .number()
+    .int()
+    .min(1)
+    .max(24 * 60),
   allowMailFrom: z.array(z.string().email().max(320)).max(100).optional(),
 });
 
@@ -181,8 +194,16 @@ export const SchedulerCancelSchema = z.string().min(1).max(512);
 // http (would expose the unsubscribe token to passive observers).
 export const UnsubPerformSchema = z.object({
   email: z.string().email().max(320),
-  http: z.string().url().regex(/^https:\/\//i, 'unsubscribe HTTP URL must be https').optional(),
-  mailto: z.string().regex(/^mailto:/i).max(2048).optional(),
+  http: z
+    .string()
+    .url()
+    .regex(/^https:\/\//i, 'unsubscribe HTTP URL must be https')
+    .optional(),
+  mailto: z
+    .string()
+    .regex(/^mailto:/i)
+    .max(2048)
+    .optional(),
   oneClick: z.boolean(),
 });
 export const UnsubMuteSchema = z.object({ email: z.string().email().max(320) });

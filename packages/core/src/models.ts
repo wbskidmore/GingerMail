@@ -1,4 +1,11 @@
-export type ProviderKind = 'gmail' | 'microsoft' | 'apple-caldav' | 'imap-smtp' | 'pop3' | 'slack' | 'discord';
+export type ProviderKind =
+  | 'gmail'
+  | 'microsoft'
+  | 'apple-caldav'
+  | 'imap-smtp'
+  | 'pop3'
+  | 'slack'
+  | 'discord';
 
 export interface Account {
   id: string;

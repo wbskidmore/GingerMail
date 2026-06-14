@@ -1,4 +1,11 @@
-import { AI_VENDOR_HOSTS, redactPii, type AiSettings, type Message, type MessageThread, type Task } from '@gingermail/core';
+import {
+  AI_VENDOR_HOSTS,
+  redactPii,
+  type AiSettings,
+  type Message,
+  type MessageThread,
+  type Task,
+} from '@gingermail/core';
 import type { SuggestionCategory, SuggestionPayload } from '@gingermail/core';
 import {
   classifySendersForUnsubscribePrompt,
@@ -15,7 +22,11 @@ import {
  * Throws (instead of returning) so callers don't accidentally swallow the
  * failure and silently fall through to a worse default.
  */
-function assertCloudUrlAllowed(url: string, vendor: 'openai' | 'anthropic' | 'google', baseUrl: string): void {
+function assertCloudUrlAllowed(
+  url: string,
+  vendor: 'openai' | 'anthropic' | 'google',
+  baseUrl: string,
+): void {
   let parsed: URL;
   try {
     parsed = new URL(url);
@@ -32,10 +43,14 @@ function assertCloudUrlAllowed(url: string, vendor: 'openai' | 'anthropic' | 'go
   } catch {
     /* malformed baseUrl: vendor list only */
   }
-  const ok = Array.from(allowed).some((h) => parsed.hostname === h || parsed.hostname.endsWith(`.${h}`));
+  const ok = Array.from(allowed).some(
+    (h) => parsed.hostname === h || parsed.hostname.endsWith(`.${h}`),
+  );
   if (!ok) {
     // Log the host explicitly but never the URL (URL may carry tokens).
-    throw new Error(`[ai] refusing call to non-allowlisted host '${parsed.hostname}' (vendor=${vendor})`);
+    throw new Error(
+      `[ai] refusing call to non-allowlisted host '${parsed.hostname}' (vendor=${vendor})`,
+    );
   }
 }
 
@@ -130,7 +145,10 @@ export class CloudAiClient implements AiClient {
   private async chatAnthropic(input: CompletionInput): Promise<string> {
     const url = `${this.baseUrl.replace(/\/$/, '')}/messages`;
     assertCloudUrlAllowed(url, this.vendor, this.baseUrl);
-    const system = input.messages.filter((m) => m.role === 'system').map((m) => m.content).join('\n');
+    const system = input.messages
+      .filter((m) => m.role === 'system')
+      .map((m) => m.content)
+      .join('\n');
     const rest = input.messages.filter((m) => m.role !== 'system');
     const res = await fetch(url, {
       method: 'POST',
@@ -228,7 +246,10 @@ export class CloudAiClient implements AiClient {
 
   async testConnection(): Promise<{ ok: boolean; error?: string; model?: string }> {
     try {
-      const out = await this.chat({ messages: [{ role: 'user', content: 'reply with the single word OK' }], maxTokens: 10 });
+      const out = await this.chat({
+        messages: [{ role: 'user', content: 'reply with the single word OK' }],
+        maxTokens: 10,
+      });
       return { ok: out.trim().length > 0, model: this.modelName };
     } catch (e) {
       return { ok: false, error: e instanceof Error ? e.message : String(e) };
@@ -238,7 +259,10 @@ export class CloudAiClient implements AiClient {
 
 /** Local Ollama client (http://localhost:11434/api/chat). */
 export class OllamaClient implements AiClient {
-  constructor(private readonly baseUrl: string, public readonly modelName: string) {}
+  constructor(
+    private readonly baseUrl: string,
+    public readonly modelName: string,
+  ) {}
 
   get provenance(): string {
     return `local:${this.modelName}`;
@@ -291,10 +315,14 @@ export class OllamaClient implements AiClient {
   }
 
   /** Tag the locally-installed models (Ollama `/api/tags`). */
-  async listInstalledModels(): Promise<Array<{ name: string; sizeBytes: number; modifiedAt: number }>> {
+  async listInstalledModels(): Promise<
+    Array<{ name: string; sizeBytes: number; modifiedAt: number }>
+  > {
     const r = await fetch(`${this.baseUrl.replace(/\/$/, '')}/api/tags`);
     if (!r.ok) throw new Error(`Ollama not reachable at ${this.baseUrl}`);
-    const json = (await r.json()) as { models?: Array<{ name: string; size: number; modified_at: string }> };
+    const json = (await r.json()) as {
+      models?: Array<{ name: string; size: number; modified_at: string }>;
+    };
     return (json.models ?? []).map((m) => ({
       name: m.name,
       sizeBytes: m.size,
@@ -307,7 +335,10 @@ export class OllamaClient implements AiClient {
    * NDJSON line Ollama emits; the renderer translates these into a Mantine
    * `Progress` bar. Resolves when the server closes the stream.
    */
-  async pullModel(name: string, onProgress: (evt: { status: string; completed?: number; total?: number }) => void): Promise<void> {
+  async pullModel(
+    name: string,
+    onProgress: (evt: { status: string; completed?: number; total?: number }) => void,
+  ): Promise<void> {
     const r = await fetch(`${this.baseUrl.replace(/\/$/, '')}/api/pull`, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
@@ -327,9 +358,18 @@ export class OllamaClient implements AiClient {
         const trimmed = line.trim();
         if (!trimmed) continue;
         try {
-          const evt = JSON.parse(trimmed) as { status?: string; completed?: number; total?: number; error?: string };
+          const evt = JSON.parse(trimmed) as {
+            status?: string;
+            completed?: number;
+            total?: number;
+            error?: string;
+          };
           if (evt.error) throw new Error(evt.error);
-          onProgress({ status: evt.status ?? 'pulling', completed: evt.completed, total: evt.total });
+          onProgress({
+            status: evt.status ?? 'pulling',
+            completed: evt.completed,
+            total: evt.total,
+          });
         } catch (e) {
           // Swallow malformed lines so a single bad chunk doesn't abort the pull.
           if (e instanceof Error && e.message && !e.message.includes('JSON')) throw e;
@@ -367,7 +407,11 @@ export function buildAiClient(settings: AiSettings): AiClient | null {
 
 // ---- High-level features ----
 
-export async function summarizeThread(client: AiClient, thread: MessageThread, messages: Message[]): Promise<{ summary: string; actionItems: string[] }> {
+export async function summarizeThread(
+  client: AiClient,
+  thread: MessageThread,
+  messages: Message[],
+): Promise<{ summary: string; actionItems: string[] }> {
   const out = await client.chat({
     messages: [
       { role: 'system', content: summarizeThreadPrompt() },
@@ -394,7 +438,12 @@ export async function summarizeThread(client: AiClient, thread: MessageThread, m
   }
 }
 
-export async function draftReply(client: AiClient, thread: MessageThread, messages: Message[], opts: { tone?: string; intent?: string }): Promise<string> {
+export async function draftReply(
+  client: AiClient,
+  thread: MessageThread,
+  messages: Message[],
+  opts: { tone?: string; intent?: string },
+): Promise<string> {
   const out = await client.chat({
     messages: [
       { role: 'system', content: draftReplyPrompt(opts.tone, opts.intent) },
@@ -402,7 +451,11 @@ export async function draftReply(client: AiClient, thread: MessageThread, messag
         role: 'user',
         content: JSON.stringify({
           subject: thread.subject,
-          history: messages.map((m) => ({ from: m.from, text: m.body?.text ?? m.snippet, date: new Date(m.date).toISOString() })),
+          history: messages.map((m) => ({
+            from: m.from,
+            text: m.body?.text ?? m.snippet,
+            date: new Date(m.date).toISOString(),
+          })),
         }),
       },
     ],
@@ -411,11 +464,21 @@ export async function draftReply(client: AiClient, thread: MessageThread, messag
   return out.trim();
 }
 
-export async function extractActionItems(client: AiClient, message: Message, listId: string): Promise<Task[]> {
+export async function extractActionItems(
+  client: AiClient,
+  message: Message,
+  listId: string,
+): Promise<Task[]> {
   const out = await client.chat({
     messages: [
       { role: 'system', content: extractActionItemsPrompt() },
-      { role: 'user', content: JSON.stringify({ subject: message.subject, text: message.body?.text ?? message.snippet }) },
+      {
+        role: 'user',
+        content: JSON.stringify({
+          subject: message.subject,
+          text: message.body?.text ?? message.snippet,
+        }),
+      },
     ],
     format: 'json',
     temperature: 0.1,
@@ -485,10 +548,14 @@ export async function detectActionables(
     if (!VALID_CATEGORIES.has(category)) continue;
     const title = typeof raw.title === 'string' ? raw.title.trim() : '';
     if (!title) continue;
-    const confidenceRaw = typeof raw.confidence === 'number' ? raw.confidence : Number(raw.confidence);
-    const confidence = Number.isFinite(confidenceRaw) ? Math.min(1, Math.max(0, confidenceRaw)) : 0.5;
+    const confidenceRaw =
+      typeof raw.confidence === 'number' ? raw.confidence : Number(raw.confidence);
+    const confidence = Number.isFinite(confidenceRaw)
+      ? Math.min(1, Math.max(0, confidenceRaw))
+      : 0.5;
     const payload: SuggestionPayload = {};
-    const str = (k: string): string | undefined => (typeof raw[k] === 'string' && raw[k] ? String(raw[k]) : undefined);
+    const str = (k: string): string | undefined =>
+      typeof raw[k] === 'string' && raw[k] ? String(raw[k]) : undefined;
     payload.when = str('when');
     payload.due = str('due');
     payload.end = str('end');
@@ -520,7 +587,10 @@ export interface NlSearchSpec {
  * spec. Returns null if the model produced unparseable JSON or junk — callers
  * are expected to fall back to plain FTS in that case.
  */
-export async function buildNlSearchSpec(client: AiClient, query: string): Promise<NlSearchSpec | null> {
+export async function buildNlSearchSpec(
+  client: AiClient,
+  query: string,
+): Promise<NlSearchSpec | null> {
   const out = await client.chat({
     messages: [
       { role: 'system', content: nlSearchPrompt() },
@@ -531,7 +601,11 @@ export async function buildNlSearchSpec(client: AiClient, query: string): Promis
     maxTokens: 256,
   });
   // Models love to wrap JSON in ```json fences; strip them defensively.
-  const cleaned = out.trim().replace(/^```(?:json)?\s*/i, '').replace(/```$/i, '').trim();
+  const cleaned = out
+    .trim()
+    .replace(/^```(?:json)?\s*/i, '')
+    .replace(/```$/i, '')
+    .trim();
   try {
     const parsed = JSON.parse(cleaned) as Partial<NlSearchSpec>;
     if (typeof parsed !== 'object' || parsed === null) return null;
@@ -547,7 +621,10 @@ export async function buildNlSearchSpec(client: AiClient, query: string): Promis
   }
 }
 
-export async function prioritizeInbox(client: AiClient, messages: Message[]): Promise<Map<string, 'high' | 'medium' | 'low'>> {
+export async function prioritizeInbox(
+  client: AiClient,
+  messages: Message[],
+): Promise<Map<string, 'high' | 'medium' | 'low'>> {
   const out = await client.chat({
     messages: [
       { role: 'system', content: prioritizeInboxPrompt() },
@@ -569,7 +646,9 @@ export async function prioritizeInbox(client: AiClient, messages: Message[]): Pr
   });
   const map = new Map<string, 'high' | 'medium' | 'low'>();
   try {
-    const parsed = JSON.parse(out) as { items?: Array<{ id: string; energy: 'high' | 'medium' | 'low' }> };
+    const parsed = JSON.parse(out) as {
+      items?: Array<{ id: string; energy: 'high' | 'medium' | 'low' }>;
+    };
     for (const it of parsed.items ?? []) map.set(it.id, it.energy);
   } catch {
     // ignore
@@ -596,7 +675,13 @@ export interface UnsubscribeVerdict {
  */
 export async function classifySendersForUnsubscribe(
   client: AiClient,
-  candidates: Array<{ email: string; sampleSubjects: string[]; trashed: number; total: number; hasListUnsubscribe: boolean }>,
+  candidates: Array<{
+    email: string;
+    sampleSubjects: string[];
+    trashed: number;
+    total: number;
+    hasListUnsubscribe: boolean;
+  }>,
 ): Promise<UnsubscribeVerdict[]> {
   if (candidates.length === 0) return [];
   const out = await client.chat({
@@ -610,7 +695,8 @@ export async function classifySendersForUnsubscribe(
   try {
     const parsed = JSON.parse(out) as { items?: UnsubscribeVerdict[] };
     return (parsed.items ?? []).filter(
-      (v) => v && typeof v.email === 'string' && ['unsubscribe', 'mute', 'keep'].includes(v.verdict),
+      (v) =>
+        v && typeof v.email === 'string' && ['unsubscribe', 'mute', 'keep'].includes(v.verdict),
     );
   } catch {
     return [];

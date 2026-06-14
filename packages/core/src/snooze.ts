@@ -61,7 +61,7 @@ export const SNOOZE_PRESETS: SnoozePreset[] = [
     compute: (now) => {
       const x = startOfDay(now);
       const day = x.getDay();
-      const delta = ((1 - day + 7) % 7) || 7;
+      const delta = (1 - day + 7) % 7 || 7;
       x.setDate(x.getDate() + delta);
       x.setHours(9);
       return x;

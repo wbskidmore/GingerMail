@@ -97,9 +97,12 @@ export function MailTab() {
   const [refreshing, setRefreshing] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
-  const mailToolbarSettings: MailToolbarSettings = settings.appearance.mailToolbar ?? DEFAULT_MAIL_TOOLBAR;
+  const mailToolbarSettings: MailToolbarSettings =
+    settings.appearance.mailToolbar ?? DEFAULT_MAIL_TOOLBAR;
 
-  useEffect(() => { void refreshAccounts(); }, [refreshAccounts]);
+  useEffect(() => {
+    void refreshAccounts();
+  }, [refreshAccounts]);
 
   useEffect(() => {
     if (accounts.length === 0) return;
@@ -121,7 +124,11 @@ export function MailTab() {
   }, [selection]);
 
   useEffect(() => {
-    if (!selectedThreadId) { setThreadMessages([]); setCurrentMessage(null); return; }
+    if (!selectedThreadId) {
+      setThreadMessages([]);
+      setCurrentMessage(null);
+      return;
+    }
     void (async () => {
       const list = await getApi().mail.listMessages({ threadId: selectedThreadId, limit: 50 });
       setThreadMessages(list);
@@ -188,7 +195,8 @@ export function MailTab() {
           ? {
               message: (
                 <Text size="sm">
-                  {message} &mdash; <a
+                  {message} &mdash;{' '}
+                  <a
                     href="#undo"
                     onClick={(e) => {
                       e.preventDefault();
@@ -196,7 +204,9 @@ export function MailTab() {
                     }}
                     style={{ textDecoration: 'underline', fontWeight: 600 }}
                     aria-label={`Undo ${title}`}
-                  >Undo</a>
+                  >
+                    Undo
+                  </a>
                 </Text>
               ) as unknown as string,
             }
@@ -228,7 +238,10 @@ export function MailTab() {
       folders={folders}
       threads={threads}
       selection={selection}
-      onSelect={(s) => { setSelection(s); setSidebarOpen(false); }}
+      onSelect={(s) => {
+        setSelection(s);
+        setSidebarOpen(false);
+      }}
     />
   );
 
@@ -257,7 +270,10 @@ export function MailTab() {
           const r = await getApi().mail.move({ id: currentMessage.id, folderId });
           actionUi.notify('Moved', currentMessage.subject || '(no subject)', {
             undo: r.previousFolderId
-              ? () => getApi().mail.move({ id: r.newId, folderId: r.previousFolderId }).then(() => undefined)
+              ? () =>
+                  getApi()
+                    .mail.move({ id: r.newId, folderId: r.previousFolderId })
+                    .then(() => undefined)
               : undefined,
           });
           actionUi.reloadAfterMove();
@@ -275,12 +291,18 @@ export function MailTab() {
             size: 'lg',
             children: (
               <Stack gap="sm">
-                <Text size="sm" style={{ whiteSpace: 'pre-wrap' }}>{r.summary}</Text>
+                <Text size="sm" style={{ whiteSpace: 'pre-wrap' }}>
+                  {r.summary}
+                </Text>
                 {r.actionItems.length > 0 && (
                   <>
                     <Divider label="Action items" labelPosition="left" />
                     <Stack gap={4}>
-                      {r.actionItems.map((a, i) => <Text key={i} size="sm">- {a}</Text>)}
+                      {r.actionItems.map((a, i) => (
+                        <Text key={i} size="sm">
+                          - {a}
+                        </Text>
+                      ))}
                     </Stack>
                   </>
                 )}
@@ -288,7 +310,11 @@ export function MailTab() {
             ),
           });
         } catch (e) {
-          notifications.show({ title: 'AI is off', message: (e as Error).message, color: 'orange' });
+          notifications.show({
+            title: 'AI is off',
+            message: (e as Error).message,
+            color: 'orange',
+          });
         } finally {
           setAiBusy(false);
         }
@@ -301,7 +327,10 @@ export function MailTab() {
     <Button
       size="xs"
       leftSection={<IconPencilPlus size={14} />}
-      onClick={() => { setReplyTo(null); setComposerOpen(true); }}
+      onClick={() => {
+        setReplyTo(null);
+        setComposerOpen(true);
+      }}
     >
       New message
     </Button>
@@ -319,10 +348,20 @@ export function MailTab() {
 
       <Box style={{ flex: 1, minHeight: 0 }}>
         {layout === 'columns' && (
-          <ColumnsLayout sidebar={sidebar} threadList={threadList} message={messagePane} compose={composeButton} />
+          <ColumnsLayout
+            sidebar={sidebar}
+            threadList={threadList}
+            message={messagePane}
+            compose={composeButton}
+          />
         )}
         {layout === 'stacked' && (
-          <StackedLayout sidebar={sidebar} threadList={threadList} message={messagePane} compose={composeButton} />
+          <StackedLayout
+            sidebar={sidebar}
+            threadList={threadList}
+            message={messagePane}
+            compose={composeButton}
+          />
         )}
         {layout === 'focus' && (
           <>
@@ -351,7 +390,11 @@ export function MailTab() {
           accounts={accounts}
           replyTo={replyTo}
           initialDraft={initialDraft}
-          onClose={() => { setComposerOpen(false); setReplyTo(null); setInitialDraft(null); }}
+          onClose={() => {
+            setComposerOpen(false);
+            setReplyTo(null);
+            setInitialDraft(null);
+          }}
         />
       )}
     </Stack>
@@ -360,29 +403,84 @@ export function MailTab() {
 
 // ---- Layouts ----
 
-function ColumnsLayout({ sidebar, threadList, message, compose }: { sidebar: React.ReactNode; threadList: React.ReactNode; message: React.ReactNode; compose: React.ReactNode }) {
+function ColumnsLayout({
+  sidebar,
+  threadList,
+  message,
+  compose,
+}: {
+  sidebar: React.ReactNode;
+  threadList: React.ReactNode;
+  message: React.ReactNode;
+  compose: React.ReactNode;
+}) {
   return (
-    <Box style={{ display: 'grid', gridTemplateColumns: '260px 380px 1fr', height: '100%', minHeight: 0 }}>
+    <Box
+      style={{
+        display: 'grid',
+        gridTemplateColumns: '260px 380px 1fr',
+        height: '100%',
+        minHeight: 0,
+      }}
+    >
       <SidebarPane compose={compose}>{sidebar}</SidebarPane>
-      <Paper withBorder={false} radius={0} style={{ borderRight: '1px solid var(--mantine-color-default-border)', minHeight: 0, display: 'flex', flexDirection: 'column' }}>
+      <Paper
+        withBorder={false}
+        radius={0}
+        style={{
+          borderRight: '1px solid var(--mantine-color-default-border)',
+          minHeight: 0,
+          display: 'flex',
+          flexDirection: 'column',
+        }}
+      >
         {threadList}
       </Paper>
-      <Paper withBorder={false} radius={0} style={{ minHeight: 0, display: 'flex', flexDirection: 'column' }}>
+      <Paper
+        withBorder={false}
+        radius={0}
+        style={{ minHeight: 0, display: 'flex', flexDirection: 'column' }}
+      >
         {message}
       </Paper>
     </Box>
   );
 }
 
-function StackedLayout({ sidebar, threadList, message, compose }: { sidebar: React.ReactNode; threadList: React.ReactNode; message: React.ReactNode; compose: React.ReactNode }) {
+function StackedLayout({
+  sidebar,
+  threadList,
+  message,
+  compose,
+}: {
+  sidebar: React.ReactNode;
+  threadList: React.ReactNode;
+  message: React.ReactNode;
+  compose: React.ReactNode;
+}) {
   return (
-    <Box style={{ display: 'grid', gridTemplateColumns: '260px 1fr', height: '100%', minHeight: 0 }}>
+    <Box
+      style={{ display: 'grid', gridTemplateColumns: '260px 1fr', height: '100%', minHeight: 0 }}
+    >
       <SidebarPane compose={compose}>{sidebar}</SidebarPane>
       <Box style={{ display: 'grid', gridTemplateRows: '40% 1fr', minHeight: 0 }}>
-        <Paper withBorder={false} radius={0} style={{ borderBottom: '1px solid var(--mantine-color-default-border)', minHeight: 0, display: 'flex', flexDirection: 'column' }}>
+        <Paper
+          withBorder={false}
+          radius={0}
+          style={{
+            borderBottom: '1px solid var(--mantine-color-default-border)',
+            minHeight: 0,
+            display: 'flex',
+            flexDirection: 'column',
+          }}
+        >
           {threadList}
         </Paper>
-        <Paper withBorder={false} radius={0} style={{ minHeight: 0, display: 'flex', flexDirection: 'column' }}>
+        <Paper
+          withBorder={false}
+          radius={0}
+          style={{ minHeight: 0, display: 'flex', flexDirection: 'column' }}
+        >
           {message}
         </Paper>
       </Box>
@@ -390,22 +488,53 @@ function StackedLayout({ sidebar, threadList, message, compose }: { sidebar: Rea
   );
 }
 
-function FocusLayout({ threadList, message }: { threadList: React.ReactNode; message: React.ReactNode }) {
+function FocusLayout({
+  threadList,
+  message,
+}: {
+  threadList: React.ReactNode;
+  message: React.ReactNode;
+}) {
   return (
-    <Box style={{ display: 'grid', gridTemplateColumns: '320px 1fr', height: '100%', minHeight: 0 }}>
-      <Paper withBorder={false} radius={0} style={{ borderRight: '1px solid var(--mantine-color-default-border)', minHeight: 0, display: 'flex', flexDirection: 'column' }}>
+    <Box
+      style={{ display: 'grid', gridTemplateColumns: '320px 1fr', height: '100%', minHeight: 0 }}
+    >
+      <Paper
+        withBorder={false}
+        radius={0}
+        style={{
+          borderRight: '1px solid var(--mantine-color-default-border)',
+          minHeight: 0,
+          display: 'flex',
+          flexDirection: 'column',
+        }}
+      >
         {threadList}
       </Paper>
-      <Paper withBorder={false} radius={0} style={{ minHeight: 0, display: 'flex', flexDirection: 'column' }}>
+      <Paper
+        withBorder={false}
+        radius={0}
+        style={{ minHeight: 0, display: 'flex', flexDirection: 'column' }}
+      >
         {message}
       </Paper>
     </Box>
   );
 }
 
-function SidebarPane({ children, compose }: { children: React.ReactNode; compose: React.ReactNode }) {
+function SidebarPane({
+  children,
+  compose,
+}: {
+  children: React.ReactNode;
+  compose: React.ReactNode;
+}) {
   return (
-    <Paper withBorder={false} radius={0} style={{ borderRight: '1px solid var(--mantine-color-default-border)', minHeight: 0 }}>
+    <Paper
+      withBorder={false}
+      radius={0}
+      style={{ borderRight: '1px solid var(--mantine-color-default-border)', minHeight: 0 }}
+    >
       <Stack p="sm" gap="xs" h="100%" style={{ minHeight: 0 }}>
         {compose}
         <ScrollArea h="100%" type="hover" offsetScrollbars>
@@ -454,17 +583,32 @@ function ViewToolbar({
           </Menu.Target>
           <Menu.Dropdown>
             <Menu.Label>Folder organisation</Menu.Label>
-            <Menu.Item leftSection={<IconUsers size={14} />} onClick={() => onFolderViewChange('by-account')}>
+            <Menu.Item
+              leftSection={<IconUsers size={14} />}
+              onClick={() => onFolderViewChange('by-account')}
+            >
               By account
-              <Text size="xs" c="dimmed">Original folder tree per account</Text>
+              <Text size="xs" c="dimmed">
+                Original folder tree per account
+              </Text>
             </Menu.Item>
-            <Menu.Item leftSection={<IconInbox size={14} />} onClick={() => onFolderViewChange('unified')}>
+            <Menu.Item
+              leftSection={<IconInbox size={14} />}
+              onClick={() => onFolderViewChange('unified')}
+            >
               Unified
-              <Text size="xs" c="dimmed">Merge inbox / sent / drafts across all accounts</Text>
+              <Text size="xs" c="dimmed">
+                Merge inbox / sent / drafts across all accounts
+              </Text>
             </Menu.Item>
-            <Menu.Item leftSection={<IconSparkles size={14} />} onClick={() => onFolderViewChange('smart')}>
+            <Menu.Item
+              leftSection={<IconSparkles size={14} />}
+              onClick={() => onFolderViewChange('smart')}
+            >
               Smart mailboxes
-              <Text size="xs" c="dimmed">Today, Unread, Starred, Snoozed, With attachments</Text>
+              <Text size="xs" c="dimmed">
+                Today, Unread, Starred, Snoozed, With attachments
+              </Text>
             </Menu.Item>
           </Menu.Dropdown>
         </Menu>
@@ -475,8 +619,14 @@ function ViewToolbar({
         value={layout}
         onChange={(v) => onLayoutChange(v as MailLayout)}
         data={[
-          { value: 'columns', label: <LayoutLabel icon={<IconLayoutColumns size={12} />} text="Columns" /> },
-          { value: 'stacked', label: <LayoutLabel icon={<IconLayoutRows size={12} />} text="Stacked" /> },
+          {
+            value: 'columns',
+            label: <LayoutLabel icon={<IconLayoutColumns size={12} />} text="Columns" />,
+          },
+          {
+            value: 'stacked',
+            label: <LayoutLabel icon={<IconLayoutRows size={12} />} text="Stacked" />,
+          },
           { value: 'focus', label: <LayoutLabel icon={<IconFocus2 size={12} />} text="Focus" /> },
         ]}
         aria-label="Mail layout"
@@ -489,23 +639,33 @@ function LayoutLabel({ icon, text }: { icon: React.ReactNode; text: string }) {
   return (
     <Group gap={4} wrap="nowrap" style={{ paddingInline: 4 }}>
       {icon}
-      <Text size="xs" span>{text}</Text>
+      <Text size="xs" span>
+        {text}
+      </Text>
     </Group>
   );
 }
 
 function folderViewLabel(v: MailFolderView): string {
   switch (v) {
-    case 'unified': return 'Unified';
-    case 'smart': return 'Smart mailboxes';
-    default: return 'By account';
+    case 'unified':
+      return 'Unified';
+    case 'smart':
+      return 'Smart mailboxes';
+    default:
+      return 'By account';
   }
 }
 
 // ---- Sidebars ----
 
 function SidebarRouter({
-  view, accounts, folders, threads, selection, onSelect,
+  view,
+  accounts,
+  folders,
+  threads,
+  selection,
+  onSelect,
 }: {
   view: MailFolderView;
   accounts: Account[];
@@ -514,12 +674,46 @@ function SidebarRouter({
   selection: SidebarSelection;
   onSelect: (s: SidebarSelection) => void;
 }) {
-  if (view === 'unified') return <UnifiedSidebar accounts={accounts} folders={folders} selection={selection} onSelect={onSelect} />;
-  if (view === 'smart') return <SmartSidebar accounts={accounts} folders={folders} threads={threads} selection={selection} onSelect={onSelect} />;
-  return <ByAccountSidebar accounts={accounts} folders={folders} selection={selection} onSelect={onSelect} />;
+  if (view === 'unified')
+    return (
+      <UnifiedSidebar
+        accounts={accounts}
+        folders={folders}
+        selection={selection}
+        onSelect={onSelect}
+      />
+    );
+  if (view === 'smart')
+    return (
+      <SmartSidebar
+        accounts={accounts}
+        folders={folders}
+        threads={threads}
+        selection={selection}
+        onSelect={onSelect}
+      />
+    );
+  return (
+    <ByAccountSidebar
+      accounts={accounts}
+      folders={folders}
+      selection={selection}
+      onSelect={onSelect}
+    />
+  );
 }
 
-function ByAccountSidebar({ accounts, folders, selection, onSelect }: { accounts: Account[]; folders: Folder[]; selection: SidebarSelection; onSelect: (s: SidebarSelection) => void }) {
+function ByAccountSidebar({
+  accounts,
+  folders,
+  selection,
+  onSelect,
+}: {
+  accounts: Account[];
+  folders: Folder[];
+  selection: SidebarSelection;
+  onSelect: (s: SidebarSelection) => void;
+}) {
   return (
     <Stack gap="md">
       <NavLink
@@ -534,7 +728,11 @@ function ByAccountSidebar({ accounts, folders, selection, onSelect }: { accounts
         return (
           <Stack key={a.id} gap={4}>
             <Box px="sm">
-              <AccountBadge displayName={a.displayName} emailAddress={a.emailAddress} color={a.color} />
+              <AccountBadge
+                displayName={a.displayName}
+                emailAddress={a.emailAddress}
+                color={a.color}
+              />
             </Box>
             {list.map((f) => (
               <NavLink
@@ -543,7 +741,13 @@ function ByAccountSidebar({ accounts, folders, selection, onSelect }: { accounts
                 active={selection.kind === 'folder' && selection.id === f.id}
                 onClick={() => onSelect({ kind: 'folder', id: f.id })}
                 leftSection={iconForRole(f.role)}
-                rightSection={f.unreadCount > 0 ? <Badge size="xs" variant="light" color="ginger">{f.unreadCount}</Badge> : null}
+                rightSection={
+                  f.unreadCount > 0 ? (
+                    <Badge size="xs" variant="light" color="ginger">
+                      {f.unreadCount}
+                    </Badge>
+                  ) : null
+                }
                 variant="filled"
               />
             ))}
@@ -563,7 +767,17 @@ const UNIFIED_ROLES: { role: FolderRole; label: string }[] = [
   { role: 'trash', label: 'Trash' },
 ];
 
-function UnifiedSidebar({ accounts, folders, selection, onSelect }: { accounts: Account[]; folders: Folder[]; selection: SidebarSelection; onSelect: (s: SidebarSelection) => void }) {
+function UnifiedSidebar({
+  accounts,
+  folders,
+  selection,
+  onSelect,
+}: {
+  accounts: Account[];
+  folders: Folder[];
+  selection: SidebarSelection;
+  onSelect: (s: SidebarSelection) => void;
+}) {
   return (
     <Stack gap="xs">
       <NavLink
@@ -585,7 +799,13 @@ function UnifiedSidebar({ accounts, folders, selection, onSelect }: { accounts: 
             active={selection.kind === 'role' && selection.role === role}
             onClick={() => onSelect({ kind: 'role', role })}
             leftSection={iconForRole(role)}
-            rightSection={unread > 0 ? <Badge size="xs" variant="light" color="ginger">{unread}</Badge> : null}
+            rightSection={
+              unread > 0 ? (
+                <Badge size="xs" variant="light" color="ginger">
+                  {unread}
+                </Badge>
+              ) : null
+            }
             variant="filled"
           />
         );
@@ -595,7 +815,11 @@ function UnifiedSidebar({ accounts, folders, selection, onSelect }: { accounts: 
           <Divider label="Accounts" labelPosition="left" />
           {accounts.map((a) => (
             <Box key={a.id} px="sm">
-              <AccountBadge displayName={a.displayName} emailAddress={a.emailAddress} color={a.color} />
+              <AccountBadge
+                displayName={a.displayName}
+                emailAddress={a.emailAddress}
+                color={a.color}
+              />
             </Box>
           ))}
         </>
@@ -605,14 +829,51 @@ function UnifiedSidebar({ accounts, folders, selection, onSelect }: { accounts: 
 }
 
 const SMART_DEFS: { id: SmartId; label: string; icon: React.ReactNode; description: string }[] = [
-  { id: 'today', label: 'Today', icon: <IconClock size={16} />, description: 'Arrived in the last 24h' },
-  { id: 'unread', label: 'Unread', icon: <IconMail size={16} />, description: 'Everything you haven’t opened yet' },
-  { id: 'starred', label: 'Starred', icon: <IconStarFilled size={16} />, description: 'Flagged for follow-up' },
-  { id: 'snoozed', label: 'Snoozed', icon: <IconClock size={16} />, description: 'Coming back later' },
-  { id: 'attachments', label: 'With attachments', icon: <IconPaperclip size={16} />, description: 'Threads carrying files' },
+  {
+    id: 'today',
+    label: 'Today',
+    icon: <IconClock size={16} />,
+    description: 'Arrived in the last 24h',
+  },
+  {
+    id: 'unread',
+    label: 'Unread',
+    icon: <IconMail size={16} />,
+    description: 'Everything you haven’t opened yet',
+  },
+  {
+    id: 'starred',
+    label: 'Starred',
+    icon: <IconStarFilled size={16} />,
+    description: 'Flagged for follow-up',
+  },
+  {
+    id: 'snoozed',
+    label: 'Snoozed',
+    icon: <IconClock size={16} />,
+    description: 'Coming back later',
+  },
+  {
+    id: 'attachments',
+    label: 'With attachments',
+    icon: <IconPaperclip size={16} />,
+    description: 'Threads carrying files',
+  },
 ];
 
-function SmartSidebar({ accounts, folders, threads, selection, onSelect }: { accounts: Account[]; folders: Folder[]; threads: MessageThread[]; selection: SidebarSelection; onSelect: (s: SidebarSelection) => void }) {
+function SmartSidebar({
+  accounts,
+  folders,
+  threads,
+  selection,
+  onSelect,
+}: {
+  accounts: Account[];
+  folders: Folder[];
+  threads: MessageThread[];
+  selection: SidebarSelection;
+  onSelect: (s: SidebarSelection) => void;
+}) {
   const smartCounts = useMemo(() => smartMailboxCounts(threads), [threads]);
   return (
     <Stack gap="xs">
@@ -626,7 +887,13 @@ function SmartSidebar({ accounts, folders, threads, selection, onSelect }: { acc
               active={selection.kind === 'smart' && selection.id === m.id}
               onClick={() => onSelect({ kind: 'smart', id: m.id })}
               leftSection={m.icon}
-              rightSection={count > 0 ? <Badge size="xs" variant="light" color="ginger">{count}</Badge> : null}
+              rightSection={
+                count > 0 ? (
+                  <Badge size="xs" variant="light" color="ginger">
+                    {count}
+                  </Badge>
+                ) : null
+              }
               variant="filled"
             />
           </Tooltip>
@@ -646,7 +913,11 @@ function SmartSidebar({ accounts, folders, threads, selection, onSelect }: { acc
         return (
           <Stack key={a.id} gap={2}>
             <Box px="sm" mt={4}>
-              <AccountBadge displayName={a.displayName} emailAddress={a.emailAddress} color={a.color} />
+              <AccountBadge
+                displayName={a.displayName}
+                emailAddress={a.emailAddress}
+                color={a.color}
+              />
             </Box>
             {list.map((f) => (
               <NavLink
@@ -655,7 +926,13 @@ function SmartSidebar({ accounts, folders, threads, selection, onSelect }: { acc
                 active={selection.kind === 'folder' && selection.id === f.id}
                 onClick={() => onSelect({ kind: 'folder', id: f.id })}
                 leftSection={iconForRole(f.role)}
-                rightSection={f.unreadCount > 0 ? <Badge size="xs" variant="light" color="ginger">{f.unreadCount}</Badge> : null}
+                rightSection={
+                  f.unreadCount > 0 ? (
+                    <Badge size="xs" variant="light" color="ginger">
+                      {f.unreadCount}
+                    </Badge>
+                  ) : null
+                }
                 variant="filled"
               />
             ))}
@@ -668,7 +945,11 @@ function SmartSidebar({ accounts, folders, threads, selection, onSelect }: { acc
 
 // ---- Thread list + filtering ----
 
-function filterThreads(threads: MessageThread[], selection: SidebarSelection, folders: Folder[]): MessageThread[] {
+function filterThreads(
+  threads: MessageThread[],
+  selection: SidebarSelection,
+  folders: Folder[],
+): MessageThread[] {
   if (selection.kind === 'unified') return threads;
   if (selection.kind === 'folder') {
     const folder = folders.find((f) => f.id === selection.id);
@@ -677,19 +958,26 @@ function filterThreads(threads: MessageThread[], selection: SidebarSelection, fo
     return threads.filter((t) => t.accountId === folder.accountId);
   }
   if (selection.kind === 'role') {
-    const accountIds = new Set(folders.filter((f) => f.role === selection.role).map((f) => f.accountId));
+    const accountIds = new Set(
+      folders.filter((f) => f.role === selection.role).map((f) => f.accountId),
+    );
     return threads.filter((t) => accountIds.has(t.accountId));
   }
   // smart
   const now = Date.now();
   switch (selection.id) {
-    case 'today': return threads.filter((t) => now - t.lastMessageAt < 24 * 3600_000);
-    case 'unread': return threads.filter((t) => t.unread);
-    case 'starred': return threads.filter((t) => t.flagged);
+    case 'today':
+      return threads.filter((t) => now - t.lastMessageAt < 24 * 3600_000);
+    case 'unread':
+      return threads.filter((t) => t.unread);
+    case 'starred':
+      return threads.filter((t) => t.flagged);
     // We don't have these flags hydrated on the thread list yet — surface zero
     // for now so the badge counts stay honest. Per-message search is the fix.
-    case 'snoozed': return [];
-    case 'attachments': return [];
+    case 'snoozed':
+      return [];
+    case 'attachments':
+      return [];
   }
 }
 
@@ -717,7 +1005,13 @@ function titleFor(selection: SidebarSelection, folders: Folder[]): string {
 }
 
 function ThreadListPane({
-  title, threads, selectedThreadId, refreshing, onRefresh, onSelect, onToggleSidebar,
+  title,
+  threads,
+  selectedThreadId,
+  refreshing,
+  onRefresh,
+  onSelect,
+  onToggleSidebar,
 }: {
   title: string;
   threads: MessageThread[];
@@ -729,17 +1023,31 @@ function ThreadListPane({
 }) {
   return (
     <>
-      <Group justify="space-between" px="md" py="xs" style={{ borderBottom: '1px solid var(--mantine-color-default-border)' }}>
+      <Group
+        justify="space-between"
+        px="md"
+        py="xs"
+        style={{ borderBottom: '1px solid var(--mantine-color-default-border)' }}
+      >
         <Group gap="xs">
           {onToggleSidebar && (
             <ActionIcon variant="subtle" onClick={onToggleSidebar} aria-label="Show folders">
               <IconMenu2 size={14} />
             </ActionIcon>
           )}
-          <Text size="sm" fw={600} tt="uppercase" c="dimmed">{title}</Text>
-          <Badge size="xs" variant="light" color="gray">{threads.length}</Badge>
+          <Text size="sm" fw={600} tt="uppercase" c="dimmed">
+            {title}
+          </Text>
+          <Badge size="xs" variant="light" color="gray">
+            {threads.length}
+          </Badge>
         </Group>
-        <ActionIcon variant="subtle" loading={refreshing} onClick={onRefresh} aria-label="Refresh inbox">
+        <ActionIcon
+          variant="subtle"
+          loading={refreshing}
+          onClick={onRefresh}
+          aria-label="Refresh inbox"
+        >
           <IconRefresh size={14} />
         </ActionIcon>
       </Group>
@@ -771,7 +1079,15 @@ function ThreadListPane({
   );
 }
 
-function ThreadRow({ thread, selected, onClick }: { thread: MessageThread; selected: boolean; onClick: () => void }) {
+function ThreadRow({
+  thread,
+  selected,
+  onClick,
+}: {
+  thread: MessageThread;
+  selected: boolean;
+  onClick: () => void;
+}) {
   // Build a complete accessible name so screen readers announce unread state,
   // sender, subject, and time in a single utterance rather than relying on
   // colour/font-weight cues. WCAG 1.4.1 + 1.3.1.
@@ -812,7 +1128,13 @@ function ThreadRow({ thread, selected, onClick }: { thread: MessageThread; selec
       }}
     >
       <Group gap="sm" wrap="nowrap" align="flex-start">
-        <Indicator color="ginger" size={6} offset={-2} disabled={!thread.unread} position="middle-start">
+        <Indicator
+          color="ginger"
+          size={6}
+          offset={-2}
+          disabled={!thread.unread}
+          position="middle-start"
+        >
           <Box w={2} />
         </Indicator>
         <Stack gap={2} style={{ flex: 1, minWidth: 0 }}>
@@ -820,7 +1142,9 @@ function ThreadRow({ thread, selected, onClick }: { thread: MessageThread; selec
             <Text size="sm" fw={thread.unread ? 700 : 500} lineClamp={1}>
               {participants}
             </Text>
-            <Text size="xs" c="dimmed">{formatRelative(thread.lastMessageAt)}</Text>
+            <Text size="xs" c="dimmed">
+              {formatRelative(thread.lastMessageAt)}
+            </Text>
           </Group>
           <Text size="sm" c={thread.unread ? undefined : 'dimmed'} lineClamp={1}>
             {subject}
@@ -828,7 +1152,13 @@ function ThreadRow({ thread, selected, onClick }: { thread: MessageThread; selec
           <Group justify="space-between" gap="xs" wrap="nowrap">
             <Group gap="xs" wrap="nowrap">
               {thread.flagged && (
-                <ThemeIcon size={14} radius="sm" variant="transparent" color="yellow" aria-label="Flagged">
+                <ThemeIcon
+                  size={14}
+                  radius="sm"
+                  variant="transparent"
+                  color="yellow"
+                  aria-label="Flagged"
+                >
                   <IconStarFilled size={12} aria-hidden />
                 </ThemeIcon>
               )}
@@ -861,7 +1191,11 @@ function ThreadRow({ thread, selected, onClick }: { thread: MessageThread; selec
 function useThreadActionUi(): MailActionContext['ui'] {
   return {
     openCompose: () => {
-      notifications.show({ title: 'Open the message first', message: 'Reply/Forward live on the message pane.', color: 'orange' });
+      notifications.show({
+        title: 'Open the message first',
+        message: 'Reply/Forward live on the message pane.',
+        color: 'orange',
+      });
     },
     confirmDestructive: ({ title, body, confirmLabel }) =>
       new Promise<boolean>((resolve) => {
@@ -874,12 +1208,13 @@ function useThreadActionUi(): MailActionContext['ui'] {
           onCancel: () => resolve(false),
         });
       }),
-    notify: (title, message, opts) => notifications.show({
-      title,
-      message,
-      color: opts?.color,
-      autoClose: opts?.undo ? 10_000 : 3500,
-    }),
+    notify: (title, message, opts) =>
+      notifications.show({
+        title,
+        message,
+        color: opts?.color,
+        autoClose: opts?.undo ? 10_000 : 3500,
+      }),
     reloadAfterMove: () => {
       // Row-level moves don't auto-refresh the thread list — a full
       // refresh after every hover-click would be noisy. The user will
@@ -901,7 +1236,16 @@ interface MessagePaneProps {
   aiBusy: boolean;
 }
 
-function MessagePane({ currentMessage, thread, folders, toolbarSettings, actionUi, onMoveToFolder, onAiSummariseFull, aiBusy }: MessagePaneProps) {
+function MessagePane({
+  currentMessage,
+  thread,
+  folders,
+  toolbarSettings,
+  actionUi,
+  onMoveToFolder,
+  onAiSummariseFull,
+  aiBusy,
+}: MessagePaneProps) {
   if (!currentMessage) {
     return (
       <EmptyState
@@ -929,11 +1273,17 @@ function MessagePane({ currentMessage, thread, folders, toolbarSettings, actionU
     <Stack p="md" h="100%" gap="md" style={{ minHeight: 0 }}>
       <Group justify="space-between" align="flex-start" wrap="nowrap">
         <Stack gap={2} style={{ flex: 1, minWidth: 0 }}>
-          <Text size="lg" fw={600}>{message.subject || '(no subject)'}</Text>
+          <Text size="lg" fw={600}>
+            {message.subject || '(no subject)'}
+          </Text>
           <Group gap={6} wrap="wrap">
-            <Text size="sm" fw={500}>{message.from.name || message.from.email}</Text>
+            <Text size="sm" fw={500}>
+              {message.from.name || message.from.email}
+            </Text>
             <Code>{message.from.email}</Code>
-            <Text size="xs" c="dimmed">{new Date(message.date).toLocaleString()}</Text>
+            <Text size="xs" c="dimmed">
+              {new Date(message.date).toLocaleString()}
+            </Text>
             <UnsubscribePill message={message} />
           </Group>
         </Stack>
@@ -945,18 +1295,28 @@ function MessagePane({ currentMessage, thread, folders, toolbarSettings, actionU
             ctx={ctx}
             onMoveToFolder={onMoveToFolder}
           />
-          {aiBusy && <Text size="xs" c="dimmed">AI thinking...</Text>}
+          {aiBusy && (
+            <Text size="xs" c="dimmed">
+              AI thinking...
+            </Text>
+          )}
         </Group>
       </Group>
       {thread.length > 1 && (
-        <Text size="xs" c="dimmed">{thread.length} messages in this thread</Text>
+        <Text size="xs" c="dimmed">
+          {thread.length} messages in this thread
+        </Text>
       )}
       <MessageBodyFrame message={message} />
       {message.attachments && message.attachments.length > 0 && (
         <Group gap="xs">
           <IconPaperclip size={14} />
           <Text size="xs" c="dimmed">
-            {message.attachments.length} attachment{message.attachments.length === 1 ? '' : 's'}: {message.attachments.map((a) => a.filename).filter(Boolean).join(', ')}
+            {message.attachments.length} attachment{message.attachments.length === 1 ? '' : 's'}:{' '}
+            {message.attachments
+              .map((a) => a.filename)
+              .filter(Boolean)
+              .join(', ')}
           </Text>
         </Group>
       )}
@@ -971,18 +1331,27 @@ function MessagePane({ currentMessage, thread, folders, toolbarSettings, actionU
 
 function iconForRole(role: FolderRole) {
   switch (role) {
-    case 'inbox': return <IconInbox size={16} />;
-    case 'sent': return <IconMail size={16} />;
-    case 'drafts': return <IconPencilPlus size={16} />;
-    case 'trash': return <IconTrash size={16} />;
-    case 'spam': return <IconFlag size={16} />;
-    case 'archive': return <IconArchive size={16} />;
-    default: return <IconMail size={16} />;
+    case 'inbox':
+      return <IconInbox size={16} />;
+    case 'sent':
+      return <IconMail size={16} />;
+    case 'drafts':
+      return <IconPencilPlus size={16} />;
+    case 'trash':
+      return <IconTrash size={16} />;
+    case 'spam':
+      return <IconFlag size={16} />;
+    case 'archive':
+      return <IconArchive size={16} />;
+    default:
+      return <IconMail size={16} />;
   }
 }
 
 function summarizeParticipants(thread: MessageThread): string {
-  const names = thread.participants.map((p) => p.name || p.email.split('@')[0] || p.email).slice(0, 3);
+  const names = thread.participants
+    .map((p) => p.name || p.email.split('@')[0] || p.email)
+    .slice(0, 3);
   return names.join(', ');
 }
 
@@ -1010,7 +1379,9 @@ function MessageBodyFrame({ message }: { message: Message }) {
     return (
       <Paper withBorder radius="md" style={{ flex: 1, minHeight: 0, overflow: 'hidden' }}>
         <ScrollArea h="100%" p="md">
-          <Text size="sm" style={{ whiteSpace: 'pre-wrap' }}>{message.body?.text ?? message.snippet}</Text>
+          <Text size="sm" style={{ whiteSpace: 'pre-wrap' }}>
+            {message.body?.text ?? message.snippet}
+          </Text>
         </ScrollArea>
       </Paper>
     );
@@ -1020,7 +1391,8 @@ function MessageBodyFrame({ message }: { message: Message }) {
   const csp = allowImages
     ? "default-src 'none'; img-src https: data: cid:; style-src 'unsafe-inline'; font-src data:;"
     : "default-src 'none'; img-src data: cid:; style-src 'unsafe-inline'; font-src data:;";
-  const srcDoc = `<!DOCTYPE html><html><head>` +
+  const srcDoc =
+    `<!DOCTYPE html><html><head>` +
     `<meta charset="utf-8">` +
     `<meta http-equiv="Content-Security-Policy" content="${csp}">` +
     `<base target="_blank">` +
@@ -1031,7 +1403,9 @@ function MessageBodyFrame({ message }: { message: Message }) {
     <Stack gap={6} style={{ flex: 1, minHeight: 0 }}>
       {!allowImages && /<img[\s>]/i.test(message.body.html) && (
         <Group gap="xs">
-          <Text size="xs" c="dimmed">Remote images blocked for your privacy.</Text>
+          <Text size="xs" c="dimmed">
+            Remote images blocked for your privacy.
+          </Text>
           <UnstyledButton
             onClick={() => setAllowImages(true)}
             style={{ fontSize: 12, color: 'var(--mantine-color-ginger-6)', fontWeight: 500 }}

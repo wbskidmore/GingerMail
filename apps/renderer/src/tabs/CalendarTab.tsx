@@ -61,21 +61,45 @@ export function CalendarTab() {
       reminders: [10],
     });
     setEvents((prev) => [...prev, ev]);
-    notifications.show({ title: 'Event created', message: `${ev.title} at ${new Date(ev.start).toLocaleTimeString()}` });
+    notifications.show({
+      title: 'Event created',
+      message: `${ev.title} at ${new Date(ev.start).toLocaleTimeString()}`,
+    });
   };
 
   return (
     <Stack gap={0} h="100%">
-      <Group justify="space-between" px="md" py="xs" style={{ borderBottom: '1px solid var(--mantine-color-default-border)' }}>
+      <Group
+        justify="space-between"
+        px="md"
+        py="xs"
+        style={{ borderBottom: '1px solid var(--mantine-color-default-border)' }}
+      >
         <Group gap="xs">
           <Tooltip label="Previous">
-            <ActionIcon variant="subtle" onClick={() => setAnchor(shift(anchor, view, -1))} aria-label="Previous"><IconChevronLeft size={16} /></ActionIcon>
+            <ActionIcon
+              variant="subtle"
+              onClick={() => setAnchor(shift(anchor, view, -1))}
+              aria-label="Previous"
+            >
+              <IconChevronLeft size={16} />
+            </ActionIcon>
           </Tooltip>
-          <Button variant="default" size="xs" onClick={() => setAnchor(new Date())}>Today</Button>
+          <Button variant="default" size="xs" onClick={() => setAnchor(new Date())}>
+            Today
+          </Button>
           <Tooltip label="Next">
-            <ActionIcon variant="subtle" onClick={() => setAnchor(shift(anchor, view, 1))} aria-label="Next"><IconChevronRight size={16} /></ActionIcon>
+            <ActionIcon
+              variant="subtle"
+              onClick={() => setAnchor(shift(anchor, view, 1))}
+              aria-label="Next"
+            >
+              <IconChevronRight size={16} />
+            </ActionIcon>
           </Tooltip>
-          <Title order={5} m={0} ml="sm">{formatHeader(view, anchor)}</Title>
+          <Title order={5} m={0} ml="sm">
+            {formatHeader(view, anchor)}
+          </Title>
           {loading && <Loader size="xs" type="dots" />}
         </Group>
         <Group gap="sm">
@@ -119,16 +143,35 @@ function openEventModal(event: CalendarEvent) {
     children: (
       <Stack gap="xs">
         <Text size="sm" c="dimmed">
-          {event.allDay ? 'All day' : `${new Date(event.start).toLocaleString()} → ${new Date(event.end).toLocaleString()}`}
+          {event.allDay
+            ? 'All day'
+            : `${new Date(event.start).toLocaleString()} → ${new Date(event.end).toLocaleString()}`}
         </Text>
-        {event.location && <Text size="sm"><strong>Location: </strong>{event.location}</Text>}
-        {event.description && <Text size="sm" style={{ whiteSpace: 'pre-wrap' }}>{event.description}</Text>}
+        {event.location && (
+          <Text size="sm">
+            <strong>Location: </strong>
+            {event.location}
+          </Text>
+        )}
+        {event.description && (
+          <Text size="sm" style={{ whiteSpace: 'pre-wrap' }}>
+            {event.description}
+          </Text>
+        )}
       </Stack>
     ),
   });
 }
 
-function WeekView({ events, range, onOpen }: { events: CalendarEvent[]; range: { from: number; to: number }; onOpen: (e: CalendarEvent) => void }) {
+function WeekView({
+  events,
+  range,
+  onOpen,
+}: {
+  events: CalendarEvent[];
+  range: { from: number; to: number };
+  onOpen: (e: CalendarEvent) => void;
+}) {
   const days: Date[] = [];
   const start = new Date(range.from);
   const dayCount = Math.ceil((range.to - range.from) / 86_400_000);
@@ -140,7 +183,15 @@ function WeekView({ events, range, onOpen }: { events: CalendarEvent[]; range: {
   const today = new Date();
   return (
     <ScrollArea h="100%">
-      <Box style={{ display: 'grid', gridTemplateColumns: `repeat(${days.length}, 1fr)`, gap: 1, background: 'var(--mantine-color-default-border)', minHeight: '100%' }}>
+      <Box
+        style={{
+          display: 'grid',
+          gridTemplateColumns: `repeat(${days.length}, 1fr)`,
+          gap: 1,
+          background: 'var(--mantine-color-default-border)',
+          minHeight: '100%',
+        }}
+      >
         {days.map((d) => {
           const dayEvents = events.filter(
             (e) => sameDay(new Date(e.start), d) || (new Date(e.start) < d && new Date(e.end) > d),
@@ -152,7 +203,12 @@ function WeekView({ events, range, onOpen }: { events: CalendarEvent[]; range: {
                 <Text size="xs" c="dimmed" tt="uppercase">
                   {d.toLocaleDateString(undefined, { weekday: 'short' })}
                 </Text>
-                <Badge size="sm" variant={isToday ? 'filled' : 'transparent'} color={isToday ? 'ginger' : 'gray'} radius="xl">
+                <Badge
+                  size="sm"
+                  variant={isToday ? 'filled' : 'transparent'}
+                  color={isToday ? 'ginger' : 'gray'}
+                  radius="xl"
+                >
                   {d.getDate()}
                 </Badge>
               </Group>
@@ -166,10 +222,18 @@ function WeekView({ events, range, onOpen }: { events: CalendarEvent[]; range: {
                     onKeyDown={(k) => k.key === 'Enter' && onOpen(e)}
                     p={6}
                     radius="sm"
-                    style={{ background: 'var(--mantine-color-ginger-light)', borderLeft: '3px solid var(--mantine-color-ginger-6)', cursor: 'pointer' }}
+                    style={{
+                      background: 'var(--mantine-color-ginger-light)',
+                      borderLeft: '3px solid var(--mantine-color-ginger-6)',
+                      cursor: 'pointer',
+                    }}
                   >
-                    <Text size="xs" c="dimmed">{e.allDay ? 'All day' : formatTimeRange(e)}</Text>
-                    <Text size="sm" fw={500} lineClamp={2}>{e.title}</Text>
+                    <Text size="xs" c="dimmed">
+                      {e.allDay ? 'All day' : formatTimeRange(e)}
+                    </Text>
+                    <Text size="sm" fw={500} lineClamp={2}>
+                      {e.title}
+                    </Text>
                   </Paper>
                 ))}
               </Stack>
@@ -181,7 +245,15 @@ function WeekView({ events, range, onOpen }: { events: CalendarEvent[]; range: {
   );
 }
 
-function MonthView({ events, anchor, onOpen }: { events: CalendarEvent[]; anchor: Date; onOpen: (e: CalendarEvent) => void }) {
+function MonthView({
+  events,
+  anchor,
+  onOpen,
+}: {
+  events: CalendarEvent[];
+  anchor: Date;
+  onOpen: (e: CalendarEvent) => void;
+}) {
   const start = new Date(anchor.getFullYear(), anchor.getMonth(), 1);
   const gridStart = new Date(start);
   gridStart.setDate(start.getDate() - start.getDay());
@@ -195,9 +267,16 @@ function MonthView({ events, anchor, onOpen }: { events: CalendarEvent[]; anchor
   return (
     <ScrollArea h="100%">
       <Box style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)' }}>
-        {['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].map((d) => (
-          <Box key={d} p="xs" ta="center" style={{ borderBottom: '1px solid var(--mantine-color-default-border)' }}>
-            <Text size="xs" c="dimmed" tt="uppercase">{d}</Text>
+        {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((d) => (
+          <Box
+            key={d}
+            p="xs"
+            ta="center"
+            style={{ borderBottom: '1px solid var(--mantine-color-default-border)' }}
+          >
+            <Text size="xs" c="dimmed" tt="uppercase">
+              {d}
+            </Text>
           </Box>
         ))}
         {cells.map((d) => {
@@ -205,8 +284,22 @@ function MonthView({ events, anchor, onOpen }: { events: CalendarEvent[]; anchor
           const inMonth = d.getMonth() === anchor.getMonth();
           const isToday = sameDay(d, today);
           return (
-            <Box key={d.toISOString()} p={6} style={{ borderRight: '1px solid var(--mantine-color-default-border)', borderBottom: '1px solid var(--mantine-color-default-border)', minHeight: 92, opacity: inMonth ? 1 : 0.5 }}>
-              <Badge size="sm" variant={isToday ? 'filled' : 'transparent'} color={isToday ? 'ginger' : 'gray'} radius="xl">
+            <Box
+              key={d.toISOString()}
+              p={6}
+              style={{
+                borderRight: '1px solid var(--mantine-color-default-border)',
+                borderBottom: '1px solid var(--mantine-color-default-border)',
+                minHeight: 92,
+                opacity: inMonth ? 1 : 0.5,
+              }}
+            >
+              <Badge
+                size="sm"
+                variant={isToday ? 'filled' : 'transparent'}
+                color={isToday ? 'ginger' : 'gray'}
+                radius="xl"
+              >
                 {d.getDate()}
               </Badge>
               <Stack gap={2} mt={4}>
@@ -215,14 +308,22 @@ function MonthView({ events, anchor, onOpen }: { events: CalendarEvent[]; anchor
                     key={e.id}
                     size="xs"
                     px={6}
-                    style={{ background: 'var(--mantine-color-ginger-light)', borderRadius: 4, cursor: 'pointer' }}
+                    style={{
+                      background: 'var(--mantine-color-ginger-light)',
+                      borderRadius: 4,
+                      cursor: 'pointer',
+                    }}
                     lineClamp={1}
                     onClick={() => onOpen(e)}
                   >
                     {e.title}
                   </Text>
                 ))}
-                {dayEvents.length > 3 && <Text size="xs" c="dimmed">+{dayEvents.length - 3} more</Text>}
+                {dayEvents.length > 3 && (
+                  <Text size="xs" c="dimmed">
+                    +{dayEvents.length - 3} more
+                  </Text>
+                )}
               </Stack>
             </Box>
           );
@@ -234,20 +335,26 @@ function MonthView({ events, anchor, onOpen }: { events: CalendarEvent[]; anchor
 
 function rangeFor(view: ViewMode, anchor: Date): { from: number; to: number } {
   if (view === 'day') {
-    const start = new Date(anchor); start.setHours(0, 0, 0, 0);
-    const end = new Date(start); end.setDate(start.getDate() + 1);
+    const start = new Date(anchor);
+    start.setHours(0, 0, 0, 0);
+    const end = new Date(start);
+    end.setDate(start.getDate() + 1);
     return { from: start.getTime(), to: end.getTime() };
   }
   if (view === 'week') {
-    const start = new Date(anchor); start.setHours(0, 0, 0, 0);
+    const start = new Date(anchor);
+    start.setHours(0, 0, 0, 0);
     start.setDate(start.getDate() - start.getDay());
-    const end = new Date(start); end.setDate(start.getDate() + 7);
+    const end = new Date(start);
+    end.setDate(start.getDate() + 7);
     return { from: start.getTime(), to: end.getTime() };
   }
   if (view === 'workweek') {
-    const start = new Date(anchor); start.setHours(0, 0, 0, 0);
+    const start = new Date(anchor);
+    start.setHours(0, 0, 0, 0);
     start.setDate(start.getDate() - ((start.getDay() + 6) % 7));
-    const end = new Date(start); end.setDate(start.getDate() + 5);
+    const end = new Date(start);
+    end.setDate(start.getDate() + 5);
     return { from: start.getTime(), to: end.getTime() };
   }
   const start = new Date(anchor.getFullYear(), anchor.getMonth(), 1);
@@ -264,19 +371,31 @@ function shift(d: Date, view: ViewMode, dir: -1 | 1): Date {
 }
 
 function formatHeader(view: ViewMode, anchor: Date): string {
-  if (view === 'day') return anchor.toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' });
-  if (view === 'month') return anchor.toLocaleDateString(undefined, { month: 'long', year: 'numeric' });
+  if (view === 'day')
+    return anchor.toLocaleDateString(undefined, {
+      weekday: 'long',
+      month: 'long',
+      day: 'numeric',
+      year: 'numeric',
+    });
+  if (view === 'month')
+    return anchor.toLocaleDateString(undefined, { month: 'long', year: 'numeric' });
   const r = rangeFor(view, anchor);
   return `${new Date(r.from).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })} – ${new Date(r.to - 1).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}`;
 }
 
 function formatTimeRange(e: CalendarEvent): string {
-  const f = (ts: number) => new Date(ts).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
+  const f = (ts: number) =>
+    new Date(ts).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
   return `${f(e.start)}–${f(e.end)}`;
 }
 
 function sameDay(a: Date, b: Date): boolean {
-  return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
+  return (
+    a.getFullYear() === b.getFullYear() &&
+    a.getMonth() === b.getMonth() &&
+    a.getDate() === b.getDate()
+  );
 }
 
 function roundUpHour(d: Date): Date {

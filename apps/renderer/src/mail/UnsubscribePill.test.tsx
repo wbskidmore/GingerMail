@@ -115,6 +115,8 @@ describe('UnsubscribePill', () => {
     render(wrap(<UnsubscribePill message={msg} />));
     fireEvent.click(await screen.findByLabelText(/unsubscribe or mute/i));
     fireEvent.click(await screen.findByRole('button', { name: /mute sender/i }));
-    await waitFor(() => expect(muteMock).toHaveBeenCalledWith({ email: 'sender@news.example.com' }));
+    await waitFor(() =>
+      expect(muteMock).toHaveBeenCalledWith({ email: 'sender@news.example.com' }),
+    );
   });
 });

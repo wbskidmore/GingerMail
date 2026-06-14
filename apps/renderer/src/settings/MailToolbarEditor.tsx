@@ -1,14 +1,4 @@
-import {
-  ActionIcon,
-  Box,
-  Button,
-  Card,
-  Group,
-  Stack,
-  Text,
-  Title,
-  Tooltip,
-} from '@mantine/core';
+import { ActionIcon, Box, Button, Card, Group, Stack, Text, Title, Tooltip } from '@mantine/core';
 import {
   IconArrowDown,
   IconArrowUp,
@@ -65,12 +55,16 @@ export function MailToolbarEditor({ value, onChange }: MailToolbarEditorProps) {
         <Box>
           <Title order={5}>Mail toolbar</Title>
           <Text size="xs" c="dimmed">
-            Reorder or hide the action icons that appear above an open message.
-            Keyboard shortcuts keep working even for hidden actions.
+            Reorder or hide the action icons that appear above an open message. Keyboard shortcuts
+            keep working even for hidden actions.
           </Text>
         </Box>
         <Tooltip label="Restore defaults">
-          <ActionIcon variant="subtle" onClick={() => onChange(DEFAULT_MAIL_TOOLBAR)} aria-label="Restore defaults">
+          <ActionIcon
+            variant="subtle"
+            onClick={() => onChange(DEFAULT_MAIL_TOOLBAR)}
+            aria-label="Restore defaults"
+          >
             <IconRefresh size={16} />
           </ActionIcon>
         </Tooltip>
@@ -86,12 +80,22 @@ export function MailToolbarEditor({ value, onChange }: MailToolbarEditorProps) {
           actions={(id) => (
             <>
               <Tooltip label="Move to More menu">
-                <ActionIcon size="sm" variant="subtle" onClick={() => move(id, 'overflow')} aria-label="Move to More menu">
+                <ActionIcon
+                  size="sm"
+                  variant="subtle"
+                  onClick={() => move(id, 'overflow')}
+                  aria-label="Move to More menu"
+                >
                   <IconDots size={14} />
                 </ActionIcon>
               </Tooltip>
               <Tooltip label="Hide">
-                <ActionIcon size="sm" variant="subtle" onClick={() => move(id, 'hidden')} aria-label="Hide">
+                <ActionIcon
+                  size="sm"
+                  variant="subtle"
+                  onClick={() => move(id, 'hidden')}
+                  aria-label="Hide"
+                >
                   <IconEyeOff size={14} />
                 </ActionIcon>
               </Tooltip>
@@ -108,12 +112,22 @@ export function MailToolbarEditor({ value, onChange }: MailToolbarEditorProps) {
           actions={(id) => (
             <>
               <Tooltip label="Promote to toolbar">
-                <ActionIcon size="sm" variant="subtle" onClick={() => move(id, 'visible')} aria-label="Promote to toolbar">
+                <ActionIcon
+                  size="sm"
+                  variant="subtle"
+                  onClick={() => move(id, 'visible')}
+                  aria-label="Promote to toolbar"
+                >
                   <IconEye size={14} />
                 </ActionIcon>
               </Tooltip>
               <Tooltip label="Hide">
-                <ActionIcon size="sm" variant="subtle" onClick={() => move(id, 'hidden')} aria-label="Hide">
+                <ActionIcon
+                  size="sm"
+                  variant="subtle"
+                  onClick={() => move(id, 'hidden')}
+                  aria-label="Hide"
+                >
                   <IconEyeOff size={14} />
                 </ActionIcon>
               </Tooltip>
@@ -128,12 +142,22 @@ export function MailToolbarEditor({ value, onChange }: MailToolbarEditorProps) {
           actions={(id) => (
             <>
               <Tooltip label="Add to toolbar">
-                <ActionIcon size="sm" variant="subtle" onClick={() => move(id, 'visible')} aria-label="Add to toolbar">
+                <ActionIcon
+                  size="sm"
+                  variant="subtle"
+                  onClick={() => move(id, 'visible')}
+                  aria-label="Add to toolbar"
+                >
                   <IconEye size={14} />
                 </ActionIcon>
               </Tooltip>
               <Tooltip label="Add to More menu">
-                <ActionIcon size="sm" variant="subtle" onClick={() => move(id, 'overflow')} aria-label="Add to More menu">
+                <ActionIcon
+                  size="sm"
+                  variant="subtle"
+                  onClick={() => move(id, 'overflow')}
+                  aria-label="Add to More menu"
+                >
                   <IconDots size={14} />
                 </ActionIcon>
               </Tooltip>
@@ -172,35 +196,69 @@ function Column({
       <Stack gap={4} mb="xs">
         <Group gap={6}>
           {icon}
-          <Text size="sm" fw={600}>{title}</Text>
+          <Text size="sm" fw={600}>
+            {title}
+          </Text>
         </Group>
-        <Text size="xs" c="dimmed">{subtitle}</Text>
+        <Text size="xs" c="dimmed">
+          {subtitle}
+        </Text>
       </Stack>
       <Stack gap={4}>
-        {items.length === 0 && <Text size="xs" c="dimmed">Empty</Text>}
+        {items.length === 0 && (
+          <Text size="xs" c="dimmed">
+            Empty
+          </Text>
+        )}
         {items.map((id, i) => {
           const a = MAIL_ACTION_BY_ID[id];
           if (!a) return null;
           return (
-            <Group key={id} gap={4} wrap="nowrap" justify="space-between"
-              style={{ padding: '4px 6px', borderRadius: 6, background: 'var(--mantine-color-default-hover)' }}
+            <Group
+              key={id}
+              gap={4}
+              wrap="nowrap"
+              justify="space-between"
+              style={{
+                padding: '4px 6px',
+                borderRadius: 6,
+                background: 'var(--mantine-color-default-hover)',
+              }}
             >
               <Group gap={6} wrap="nowrap" style={{ minWidth: 0 }}>
                 {a.icon}
-                <Text size="sm" truncate>{a.label}</Text>
-                {a.hotkey && <Text size="xs" c="dimmed">{a.hotkey}</Text>}
+                <Text size="sm" truncate>
+                  {a.label}
+                </Text>
+                {a.hotkey && (
+                  <Text size="xs" c="dimmed">
+                    {a.hotkey}
+                  </Text>
+                )}
               </Group>
               <Group gap={2} wrap="nowrap">
                 {onMoveUp && (
                   <Tooltip label="Up">
-                    <ActionIcon size="sm" variant="subtle" disabled={i === 0} onClick={() => onMoveUp(id)} aria-label="Move up">
+                    <ActionIcon
+                      size="sm"
+                      variant="subtle"
+                      disabled={i === 0}
+                      onClick={() => onMoveUp(id)}
+                      aria-label="Move up"
+                    >
                       <IconArrowUp size={14} />
                     </ActionIcon>
                   </Tooltip>
                 )}
                 {onMoveDown && (
                   <Tooltip label="Down">
-                    <ActionIcon size="sm" variant="subtle" disabled={i === items.length - 1} onClick={() => onMoveDown(id)} aria-label="Move down">
+                    <ActionIcon
+                      size="sm"
+                      variant="subtle"
+                      disabled={i === items.length - 1}
+                      onClick={() => onMoveDown(id)}
+                      aria-label="Move down"
+                    >
                       <IconArrowDown size={14} />
                     </ActionIcon>
                   </Tooltip>

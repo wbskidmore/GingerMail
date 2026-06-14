@@ -96,14 +96,22 @@ export class OllamaSidecar {
     log.info('[ollama-sidecar] stopping');
     return new Promise<void>((resolve) => {
       const killTimer = setTimeout(() => {
-        try { child.kill('SIGKILL'); } catch { /* already dead */ }
+        try {
+          child.kill('SIGKILL');
+        } catch {
+          /* already dead */
+        }
         resolve();
       }, 4000);
       child.once('exit', () => {
         clearTimeout(killTimer);
         resolve();
       });
-      try { child.kill('SIGTERM'); } catch { /* already dead */ }
+      try {
+        child.kill('SIGTERM');
+      } catch {
+        /* already dead */
+      }
     });
   }
 

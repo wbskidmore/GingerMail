@@ -28,18 +28,30 @@ export interface Page<T> {
 
 export interface MailProvider {
   listFolders(): Promise<Folder[]>;
-  listMessageHeaders(folderId: string, cursor?: string, limit?: number): Promise<Page<MessageHeader>>;
+  listMessageHeaders(
+    folderId: string,
+    cursor?: string,
+    limit?: number,
+  ): Promise<Page<MessageHeader>>;
   getMessage(folderId: string, uid: string): Promise<Message>;
   send(draft: Draft): Promise<void>;
   saveDraft(draft: Draft): Promise<Draft>;
-  setFlag(input: { folderId: string; uid: string; flag: 'read' | 'unread' | 'star' | 'unstar' }): Promise<void>;
+  setFlag(input: {
+    folderId: string;
+    uid: string;
+    flag: 'read' | 'unread' | 'star' | 'unstar';
+  }): Promise<void>;
   /**
    * Move a single message between folders on the server. Returns the new uid
    * the destination folder assigned (most providers re-uid moved messages).
    * Implementations should be best-effort: throwing here causes the renderer
    * to display the error rather than silently losing the message.
    */
-  moveMessage?(input: { fromFolderId: string; toFolderId: string; uid: string }): Promise<{ uid: string }>;
+  moveMessage?(input: {
+    fromFolderId: string;
+    toFolderId: string;
+    uid: string;
+  }): Promise<{ uid: string }>;
   /**
    * Report this message as spam/junk where the provider has a dedicated
    * "report spam" API (Gmail, Microsoft Graph). Implementations that don't

@@ -8,9 +8,13 @@ describe('shortcuts registry', () => {
     // No two tabs share a digit.
     expect(new Set(digits).size).toBe(digits.length);
     // The five tabs are all covered.
-    expect(tabShortcuts.map((s) => s.tab).sort()).toEqual(
-      ['calendar', 'mail', 'settings', 'slack', 'tasks'],
-    );
+    expect(tabShortcuts.map((s) => s.tab).sort()).toEqual([
+      'calendar',
+      'mail',
+      'settings',
+      'slack',
+      'tasks',
+    ]);
   });
 
   it('has unique ids and hotkeys', () => {

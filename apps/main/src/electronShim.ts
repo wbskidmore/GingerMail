@@ -67,4 +67,3 @@ export function getGoogleApis(): typeof GoogleApisModule {
 export function getMsalNode(): typeof MsalNodeModule {
   return required('__gmGetMsalNode', g.__gmGetMsalNode)();
 }
-

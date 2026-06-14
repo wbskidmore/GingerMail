@@ -58,10 +58,20 @@ export async function performUnsubscribe(input: {
         if (res.status >= 300 && res.status < 400) {
           const loc = res.headers.get('location') ?? '';
           if (!isSafeHttpsTarget(loc)) {
-            return { ok: false, method: 'http', error: `Server tried to redirect to an unsafe URL (${loc.slice(0, 80)})` };
+            return {
+              ok: false,
+              method: 'http',
+              error: `Server tried to redirect to an unsafe URL (${loc.slice(0, 80)})`,
+            };
           }
-          const follow = await fetch(loc, { method: 'POST', headers: { 'content-type': 'application/x-www-form-urlencoded' }, body: 'List-Unsubscribe=One-Click', redirect: 'manual', signal: controller.signal });
-          return { ok: follow.ok || follow.status >= 200 && follow.status < 400, method: 'http' };
+          const follow = await fetch(loc, {
+            method: 'POST',
+            headers: { 'content-type': 'application/x-www-form-urlencoded' },
+            body: 'List-Unsubscribe=One-Click',
+            redirect: 'manual',
+            signal: controller.signal,
+          });
+          return { ok: follow.ok || (follow.status >= 200 && follow.status < 400), method: 'http' };
         }
         return { ok: res.ok, method: 'http', error: res.ok ? undefined : `HTTP ${res.status}` };
       } finally {

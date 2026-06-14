@@ -140,14 +140,7 @@ export function mailHtmlSanitiserConfig(_opts: MailHtmlOptions = {}): {
       'source',
       'track',
     ],
-    FORBID_ATTR: [
-      'srcset',
-      'srcdoc',
-      'formaction',
-      'background',
-      'ping',
-      'sandbox',
-    ],
+    FORBID_ATTR: ['srcset', 'srcdoc', 'formaction', 'background', 'ping', 'sandbox'],
     ALLOW_DATA_ATTR: false,
     ALLOW_UNKNOWN_PROTOCOLS: false,
     // Restrict URI schemes. We always allow http/https for links and inline
@@ -156,7 +149,8 @@ export function mailHtmlSanitiserConfig(_opts: MailHtmlOptions = {}): {
     // opted in via `allowRemoteImages` — that distinction has to happen at
     // the element level, which DOMPurify's flat `ALLOWED_URI_REGEXP` can't
     // express on its own.
-    ALLOWED_URI_REGEXP: /^(?:(?:https?:|mailto:|tel:|cid:|data:image\/(?:png|jpeg|gif|webp);base64,))/i,
+    ALLOWED_URI_REGEXP:
+      /^(?:(?:https?:|mailto:|tel:|cid:|data:image\/(?:png|jpeg|gif|webp);base64,))/i,
     KEEP_CONTENT: true,
   };
 }

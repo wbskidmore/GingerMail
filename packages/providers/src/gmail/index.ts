@@ -55,19 +55,31 @@ export const GOOGLE_SCOPES = [
   'https://www.googleapis.com/auth/userinfo.profile',
 ];
 
-export function buildGoogleAuth(clientId: string, clientSecret: string, redirectUri: string, tokens?: GmailTokens): OAuth2Client {
+export function buildGoogleAuth(
+  clientId: string,
+  clientSecret: string,
+  redirectUri: string,
+  tokens?: GmailTokens,
+): OAuth2Client {
   const client = new google.auth.OAuth2({ clientId, clientSecret, redirectUri });
   if (tokens) client.setCredentials(tokens);
   return client;
 }
 
 export function buildGoogleAuthUrl(client: OAuth2Client): string {
-  return client.generateAuthUrl({ access_type: 'offline', scope: GOOGLE_SCOPES, prompt: 'consent' });
+  return client.generateAuthUrl({
+    access_type: 'offline',
+    scope: GOOGLE_SCOPES,
+    prompt: 'consent',
+  });
 }
 
 export class GmailMailProvider implements MailProvider {
   private gmail: gmail_v1.Gmail;
-  constructor(private readonly account: Account, private readonly auth: OAuth2Client) {
+  constructor(
+    private readonly account: Account,
+    private readonly auth: OAuth2Client,
+  ) {
     this.gmail = google.gmail({ version: 'v1', auth });
   }
 
@@ -84,7 +96,11 @@ export class GmailMailProvider implements MailProvider {
     }));
   }
 
-  async listMessageHeaders(folderId: string, cursor?: string, limit = 50): Promise<Page<MessageHeader>> {
+  async listMessageHeaders(
+    folderId: string,
+    cursor?: string,
+    limit = 50,
+  ): Promise<Page<MessageHeader>> {
     const labelId = folderId.split(':')[1] ?? 'INBOX';
     const list = await this.gmail.users.messages.list({
       userId: 'me',
@@ -95,7 +111,12 @@ export class GmailMailProvider implements MailProvider {
     const items: MessageHeader[] = [];
     for (const m of list.data.messages ?? []) {
       if (!m.id) continue;
-      const full = await this.gmail.users.messages.get({ userId: 'me', id: m.id, format: 'metadata', metadataHeaders: ['From', 'To', 'Cc', 'Subject', 'Date'] });
+      const full = await this.gmail.users.messages.get({
+        userId: 'me',
+        id: m.id,
+        format: 'metadata',
+        metadataHeaders: ['From', 'To', 'Cc', 'Subject', 'Date'],
+      });
       items.push(this.metadataToHeader(folderId, full.data));
     }
     return { items, nextCursor: list.data.nextPageToken ?? undefined };
@@ -130,11 +151,18 @@ export class GmailMailProvider implements MailProvider {
 
   async saveDraft(draft: Draft): Promise<Draft> {
     const raw = buildRfc822(draft, this.account);
-    const res = await this.gmail.users.drafts.create({ userId: 'me', requestBody: { message: { raw } } });
+    const res = await this.gmail.users.drafts.create({
+      userId: 'me',
+      requestBody: { message: { raw } },
+    });
     return { ...draft, id: res.data.id ?? draft.id };
   }
 
-  async setFlag(input: { folderId: string; uid: string; flag: 'read' | 'unread' | 'star' | 'unstar' }): Promise<void> {
+  async setFlag(input: {
+    folderId: string;
+    uid: string;
+    flag: 'read' | 'unread' | 'star' | 'unstar';
+  }): Promise<void> {
     const addMap = { read: [], unread: ['UNREAD'], star: ['STARRED'], unstar: [] };
     const removeMap = { read: ['UNREAD'], unread: [], star: [], unstar: ['STARRED'] };
     await this.gmail.users.messages.modify({
@@ -150,7 +178,11 @@ export class GmailMailProvider implements MailProvider {
    * Special case: Archive on Gmail = remove INBOX with no destination add,
    * which is what `Trash` calls and what the registry binds to E.
    */
-  async moveMessage(input: { fromFolderId: string; toFolderId: string; uid: string }): Promise<{ uid: string }> {
+  async moveMessage(input: {
+    fromFolderId: string;
+    toFolderId: string;
+    uid: string;
+  }): Promise<{ uid: string }> {
     const fromLabel = input.fromFolderId.split(':')[1];
     const toLabel = input.toFolderId.split(':')[1] ?? '';
     const removeLabelIds = fromLabel && fromLabel !== toLabel ? [fromLabel] : [];
@@ -189,7 +221,11 @@ export class GmailMailProvider implements MailProvider {
     const items: MessageHeader[] = [];
     for (const m of res.data.messages ?? []) {
       if (!m.id) continue;
-      const full = await this.gmail.users.messages.get({ userId: 'me', id: m.id, format: 'metadata' });
+      const full = await this.gmail.users.messages.get({
+        userId: 'me',
+        id: m.id,
+        format: 'metadata',
+      });
       items.push(this.metadataToHeader(`${this.account.id}:SEARCH`, full.data));
     }
     return items;
@@ -230,7 +266,10 @@ export class GmailMailProvider implements MailProvider {
 
 export class GoogleCalendarProvider implements CalendarProvider {
   private cal: calendar_v3.Calendar;
-  constructor(private readonly account: Account, auth: OAuth2Client) {
+  constructor(
+    private readonly account: Account,
+    auth: OAuth2Client,
+  ) {
     this.cal = google.calendar({ version: 'v3', auth });
   }
 
@@ -246,7 +285,11 @@ export class GoogleCalendarProvider implements CalendarProvider {
     }));
   }
 
-  async listEvents(input: { from: number; to: number; calendarIds?: string[] }): Promise<CalendarEvent[]> {
+  async listEvents(input: {
+    from: number;
+    to: number;
+    calendarIds?: string[];
+  }): Promise<CalendarEvent[]> {
     const cals = input.calendarIds ?? (await this.listCalendars()).map((c) => c.id);
     const events: CalendarEvent[] = [];
     for (const calId of cals) {
@@ -275,8 +318,12 @@ export class GoogleCalendarProvider implements CalendarProvider {
         summary: event.title,
         description: event.description,
         location: event.location,
-        start: event.allDay ? { date: new Date(event.start).toISOString().slice(0, 10) } : { dateTime: new Date(event.start).toISOString() },
-        end: event.allDay ? { date: new Date(event.end).toISOString().slice(0, 10) } : { dateTime: new Date(event.end).toISOString() },
+        start: event.allDay
+          ? { date: new Date(event.start).toISOString().slice(0, 10) }
+          : { dateTime: new Date(event.start).toISOString() },
+        end: event.allDay
+          ? { date: new Date(event.end).toISOString().slice(0, 10) }
+          : { dateTime: new Date(event.end).toISOString() },
       },
     });
     const created = toCalendarEvent(this.account.id, event.calendarId, res.data);
@@ -294,8 +341,12 @@ export class GoogleCalendarProvider implements CalendarProvider {
         summary: event.title,
         description: event.description,
         location: event.location,
-        start: event.allDay ? { date: new Date(event.start).toISOString().slice(0, 10) } : { dateTime: new Date(event.start).toISOString() },
-        end: event.allDay ? { date: new Date(event.end).toISOString().slice(0, 10) } : { dateTime: new Date(event.end).toISOString() },
+        start: event.allDay
+          ? { date: new Date(event.start).toISOString().slice(0, 10) }
+          : { dateTime: new Date(event.start).toISOString() },
+        end: event.allDay
+          ? { date: new Date(event.end).toISOString().slice(0, 10) }
+          : { dateTime: new Date(event.end).toISOString() },
       },
     });
     const updated = toCalendarEvent(this.account.id, event.calendarId, res.data);
@@ -312,7 +363,10 @@ export class GoogleCalendarProvider implements CalendarProvider {
 
 export class GoogleTasksProvider implements TaskProvider {
   private tasks: tasks_v1.Tasks;
-  constructor(private readonly account: Account, auth: OAuth2Client) {
+  constructor(
+    private readonly account: Account,
+    auth: OAuth2Client,
+  ) {
     this.tasks = google.tasks({ version: 'v1', auth });
   }
 
@@ -331,7 +385,11 @@ export class GoogleTasksProvider implements TaskProvider {
     let position = 0;
     for (const l of lists) {
       const realId = l.id.split(':').slice(1).join(':');
-      const res = await this.tasks.tasks.list({ tasklist: realId, showCompleted: true, showHidden: true });
+      const res = await this.tasks.tasks.list({
+        tasklist: realId,
+        showCompleted: true,
+        showHidden: true,
+      });
       for (const t of res.data.items ?? []) {
         position += 1;
         tasks.push({
@@ -467,7 +525,8 @@ function buildRfc822(draft: Draft, account: Account): string {
   if (draft.cc?.length) headers.push(`Cc: ${draft.cc.map(formatAddress).join(', ')}`);
   headers.push(`Subject: ${draft.subject}`);
   if (draft.inReplyTo) headers.push(`In-Reply-To: <${draft.inReplyTo}>`);
-  if (draft.references?.length) headers.push(`References: ${draft.references.map((r) => `<${r}>`).join(' ')}`);
+  if (draft.references?.length)
+    headers.push(`References: ${draft.references.map((r) => `<${r}>`).join(' ')}`);
   headers.push('MIME-Version: 1.0');
   headers.push('Content-Type: text/html; charset=utf-8');
   const body = draft.bodyHtml ?? `<pre>${escapeHtml(draft.bodyText ?? '')}</pre>`;
@@ -480,13 +539,25 @@ function formatAddress(a: Address): string {
 }
 
 function escapeHtml(s: string): string {
-  return s.replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c] ?? c));
+  return s.replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' })[c] ?? c);
 }
 
-function toCalendarEvent(accountId: string, calendarId: string, e: calendar_v3.Schema$Event | undefined): CalendarEvent | undefined {
+function toCalendarEvent(
+  accountId: string,
+  calendarId: string,
+  e: calendar_v3.Schema$Event | undefined,
+): CalendarEvent | undefined {
   if (!e || !e.id) return undefined;
-  const startMs = e.start?.dateTime ? Date.parse(e.start.dateTime) : e.start?.date ? Date.parse(e.start.date) : NaN;
-  const endMs = e.end?.dateTime ? Date.parse(e.end.dateTime) : e.end?.date ? Date.parse(e.end.date) : NaN;
+  const startMs = e.start?.dateTime
+    ? Date.parse(e.start.dateTime)
+    : e.start?.date
+      ? Date.parse(e.start.date)
+      : NaN;
+  const endMs = e.end?.dateTime
+    ? Date.parse(e.end.dateTime)
+    : e.end?.date
+      ? Date.parse(e.end.date)
+      : NaN;
   if (Number.isNaN(startMs) || Number.isNaN(endMs)) return undefined;
   return {
     id: `${accountId}:${calendarId.split(':').slice(1).join(':')}:${e.id}`,
@@ -499,7 +570,11 @@ function toCalendarEvent(accountId: string, calendarId: string, e: calendar_v3.S
     end: endMs,
     allDay: !!e.start?.date,
     status: (e.status as 'confirmed' | 'tentative' | 'cancelled') ?? 'confirmed',
-    organizer: e.organizer?.email ? { name: e.organizer.displayName ?? undefined, email: e.organizer.email } : undefined,
-    attendees: (e.attendees ?? []).filter((a) => a.email).map((a) => ({ name: a.displayName ?? undefined, email: a.email! })),
+    organizer: e.organizer?.email
+      ? { name: e.organizer.displayName ?? undefined, email: e.organizer.email }
+      : undefined,
+    attendees: (e.attendees ?? [])
+      .filter((a) => a.email)
+      .map((a) => ({ name: a.displayName ?? undefined, email: a.email! })),
   };
 }

@@ -20,14 +20,24 @@ interface QuickActionsProps {
  * right edge of each ThreadRow. Fixed set of actions in v1 (not yet
  * configurable via Settings) so muscle memory matches Apple Mail.
  */
-export function ThreadRowQuickActions({ thread, resolveHeader, api, ui, visible }: QuickActionsProps) {
+export function ThreadRowQuickActions({
+  thread,
+  resolveHeader,
+  api,
+  ui,
+  visible,
+}: QuickActionsProps) {
   // Hidden but present so screen readers still see the actions; visual
   // toggle uses opacity so the buttons reserve their layout slot.
   return (
     <Group
       gap={2}
       wrap="nowrap"
-      style={{ opacity: visible ? 1 : 0, transition: 'opacity 80ms ease-out', pointerEvents: visible ? 'auto' : 'none' }}
+      style={{
+        opacity: visible ? 1 : 0,
+        transition: 'opacity 80ms ease-out',
+        pointerEvents: visible ? 'auto' : 'none',
+      }}
       onClick={(e) => e.stopPropagation()}
     >
       <QuickAction
@@ -40,7 +50,10 @@ export function ThreadRowQuickActions({ thread, resolveHeader, api, ui, visible 
             const r = await api.mail.archive({ id: h.id });
             ui.notify('Archived', thread.subject || '(no subject)', {
               undo: r.previousFolderId
-                ? () => api.mail.move({ id: r.newId, folderId: r.previousFolderId }).then(() => undefined)
+                ? () =>
+                    api.mail
+                      .move({ id: r.newId, folderId: r.previousFolderId })
+                      .then(() => undefined)
                 : undefined,
             });
             ui.reloadAfterMove();
@@ -66,7 +79,10 @@ export function ThreadRowQuickActions({ thread, resolveHeader, api, ui, visible 
             const r = await api.mail.trash({ id: h.id });
             ui.notify('Moved to trash', thread.subject || '(no subject)', {
               undo: r.previousFolderId
-                ? () => api.mail.move({ id: r.newId, folderId: r.previousFolderId }).then(() => undefined)
+                ? () =>
+                    api.mail
+                      .move({ id: r.newId, folderId: r.previousFolderId })
+                      .then(() => undefined)
                 : undefined,
             });
             ui.reloadAfterMove();
@@ -142,7 +158,13 @@ interface ContextMenuProps {
  * registry (no Visible/Overflow split) so users can reach Move, Spam, Print
  * etc. without leaving the keyboard or hunting through the toolbar.
  */
-export function ThreadRowContextMenu({ children, resolveHeader, loadFullMessage, api, ui }: ContextMenuProps) {
+export function ThreadRowContextMenu({
+  children,
+  resolveHeader,
+  loadFullMessage,
+  api,
+  ui,
+}: ContextMenuProps) {
   const [opened, setOpened] = useState(false);
   const [x, setX] = useState(0);
   const [y, setY] = useState(0);
@@ -175,7 +197,13 @@ export function ThreadRowContextMenu({ children, resolveHeader, loadFullMessage,
               key={a.id}
               leftSection={a.icon}
               color={a.destructive ? 'red' : undefined}
-              rightSection={a.hotkey ? <Text size="xs" c="dimmed">{a.hotkey}</Text> : null}
+              rightSection={
+                a.hotkey ? (
+                  <Text size="xs" c="dimmed">
+                    {a.hotkey}
+                  </Text>
+                ) : null
+              }
               onClick={async () => {
                 setOpened(false);
                 const h = await resolveHeader();

@@ -76,10 +76,10 @@ export class SlackProvider implements ChatProvider {
     };
     // Best-effort email enrichment; ignored when the token lacks users:read.
     try {
-      const info = await this.call<{ ok: true; user: SlackUser & { profile?: { email?: string } } }>(
-        'users.info',
-        { user: res.user_id },
-      );
+      const info = await this.call<{
+        ok: true;
+        user: SlackUser & { profile?: { email?: string } };
+      }>('users.info', { user: res.user_id });
       const email = info.user.profile?.email;
       if (email) this.identity = { ...this.identity, email };
     } catch {
@@ -91,36 +91,52 @@ export class SlackProvider implements ChatProvider {
   async listConversations(): Promise<ChatConversation[]> {
     const identity = await this.authTest();
     const users = await this.ensureUsers();
-    const res = await this.call<{ ok: true; channels: SlackConversation[] }>('users.conversations', {
-      types: 'public_channel,private_channel,mpim,im',
-      exclude_archived: 'true',
-      limit: '200',
-    });
+    const res = await this.call<{ ok: true; channels: SlackConversation[] }>(
+      'users.conversations',
+      {
+        types: 'public_channel,private_channel,mpim,im',
+        exclude_archived: 'true',
+        limit: '200',
+      },
+    );
     return res.channels.map((c) => this.toConversation(c, users, identity));
   }
 
   async listMessages(conversationId: string, limit = 50): Promise<ChatMessage[]> {
     const identity = await this.authTest();
     const users = await this.ensureUsers();
-    const res = await this.call<{ ok: true; messages: SlackHistoryMessage[] }>('conversations.history', {
-      channel: conversationId,
-      limit: String(Math.min(Math.max(limit, 1), 200)),
-    });
-    return res.messages
-      .filter((m) => m.type === 'message')
-      .map((m) => this.toMessage(conversationId, m, users, identity))
-      // Slack returns newest-first; flip to chronological for the UI.
-      .reverse();
+    const res = await this.call<{ ok: true; messages: SlackHistoryMessage[] }>(
+      'conversations.history',
+      {
+        channel: conversationId,
+        limit: String(Math.min(Math.max(limit, 1), 200)),
+      },
+    );
+    return (
+      res.messages
+        .filter((m) => m.type === 'message')
+        .map((m) => this.toMessage(conversationId, m, users, identity))
+        // Slack returns newest-first; flip to chronological for the UI.
+        .reverse()
+    );
   }
 
   async sendMessage(conversationId: string, text: string): Promise<ChatMessage> {
     const identity = await this.authTest();
     const users = await this.ensureUsers();
-    const res = await this.call<{ ok: true; ts: string; message: SlackHistoryMessage }>('chat.postMessage', {
-      channel: conversationId,
+    const res = await this.call<{ ok: true; ts: string; message: SlackHistoryMessage }>(
+      'chat.postMessage',
+      {
+        channel: conversationId,
+        text,
+      },
+    );
+    const raw: SlackHistoryMessage = res.message ?? {
+      type: 'message',
+      ts: res.ts,
+      user: identity.userId,
       text,
-    });
-    const raw: SlackHistoryMessage = res.message ?? { type: 'message', ts: res.ts, user: identity.userId, text };
+    };
     return this.toMessage(conversationId, raw, users, identity);
   }
 
@@ -128,14 +144,19 @@ export class SlackProvider implements ChatProvider {
     // `conversations.mark` requires a ts; when omitted, mark to the latest.
     let markTs = ts;
     if (!markTs) {
-      const res = await this.call<{ ok: true; messages: SlackHistoryMessage[] }>('conversations.history', {
-        channel: conversationId,
-        limit: '1',
-      });
+      const res = await this.call<{ ok: true; messages: SlackHistoryMessage[] }>(
+        'conversations.history',
+        {
+          channel: conversationId,
+          limit: '1',
+        },
+      );
       markTs = res.messages[0]?.ts;
     }
     if (!markTs) return;
-    await this.call('conversations.mark', { channel: conversationId, ts: markTs }).catch(() => undefined);
+    await this.call('conversations.mark', { channel: conversationId, ts: markTs }).catch(
+      () => undefined,
+    );
   }
 
   async listUsers(): Promise<ChatUser[]> {
@@ -149,10 +170,13 @@ export class SlackProvider implements ChatProvider {
     if (this.userCache) return this.userCache;
     const map = new Map<string, ChatUser>();
     try {
-      const res = await this.call<{ ok: true; members: SlackUser[] }>('users.list', { limit: '1000' });
+      const res = await this.call<{ ok: true; members: SlackUser[] }>('users.list', {
+        limit: '1000',
+      });
       for (const u of res.members) {
         if (u.deleted) continue;
-        const displayName = u.profile?.display_name || u.profile?.real_name || u.real_name || u.name || u.id;
+        const displayName =
+          u.profile?.display_name || u.profile?.real_name || u.real_name || u.name || u.id;
         map.set(u.id, {
           id: `${this.account.id}:${u.id}`,
           accountId: this.account.id,
@@ -185,7 +209,10 @@ export class SlackProvider implements ChatProvider {
     if (c.is_im && c.user) {
       name = users.get(c.user)?.displayName ?? c.user;
     } else if (c.is_mpim && c.name) {
-      name = c.name.replace(/^mpdm-/, '').replace(/-1$/, '').replace(/--/g, ', ');
+      name = c.name
+        .replace(/^mpdm-/, '')
+        .replace(/-1$/, '')
+        .replace(/--/g, ', ');
     }
     void identity;
     return {
@@ -209,8 +236,8 @@ export class SlackProvider implements ChatProvider {
     identity: ChatIdentity,
   ): ChatMessage {
     const authorName = m.user
-      ? users.get(m.user)?.displayName ?? m.user
-      : m.username ?? (m.bot_id ? 'bot' : 'system');
+      ? (users.get(m.user)?.displayName ?? m.user)
+      : (m.username ?? (m.bot_id ? 'bot' : 'system'));
     const { text, links } = flattenMrkdwn(m.text ?? '', users);
     const mentionsMe = (m.text ?? '').includes(`<@${identity.userId}>`);
     return {
@@ -299,8 +326,5 @@ export function flattenMrkdwn(
 }
 
 function decodeEntities(s: string): string {
-  return s
-    .replace(/&amp;/g, '&')
-    .replace(/&lt;/g, '<')
-    .replace(/&gt;/g, '>');
+  return s.replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>');
 }

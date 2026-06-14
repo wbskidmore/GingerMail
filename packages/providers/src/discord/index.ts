@@ -79,7 +79,9 @@ export class DiscordProvider implements ChatProvider {
     const guilds = await this.call<DiscordGuild[]>('GET', '/users/@me/guilds');
     const out: ChatConversation[] = [];
     for (const g of guilds) {
-      const channels = await this.call<DiscordChannel[]>('GET', `/guilds/${g.id}/channels`).catch(() => [] as DiscordChannel[]);
+      const channels = await this.call<DiscordChannel[]>('GET', `/guilds/${g.id}/channels`).catch(
+        () => [] as DiscordChannel[],
+      );
       for (const ch of channels) {
         if (ch.type !== GUILD_TEXT && ch.type !== GUILD_ANNOUNCEMENT) continue;
         out.push(toConversation(this.account.id, g, ch));
@@ -95,10 +97,12 @@ export class DiscordProvider implements ChatProvider {
       'GET',
       `/channels/${conversationId}/messages?limit=${capped}`,
     );
-    return messages
-      .map((m) => toMessage(this.account.id, conversationId, m, identity.userId))
-      // Discord returns newest-first; flip to chronological for the UI.
-      .reverse();
+    return (
+      messages
+        .map((m) => toMessage(this.account.id, conversationId, m, identity.userId))
+        // Discord returns newest-first; flip to chronological for the UI.
+        .reverse()
+    );
   }
 
   async sendMessage(conversationId: string, text: string): Promise<ChatMessage> {

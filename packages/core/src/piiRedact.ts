@@ -30,18 +30,33 @@ const RULES = [
   // US SSN
   { name: 'ssns', re: /\b\d{3}-\d{2}-\d{4}\b/g, replace: '[REDACTED_SSN]' },
   // International phone: + then 8-15 digits, OR US 10-digit shapes
-  { name: 'phones', re: /\+\d{1,3}[\s.-]?\d{1,4}[\s.-]?\d{2,4}[\s.-]?\d{2,4}/g, replace: '[REDACTED_PHONE]' },
+  {
+    name: 'phones',
+    re: /\+\d{1,3}[\s.-]?\d{1,4}[\s.-]?\d{2,4}[\s.-]?\d{2,4}/g,
+    replace: '[REDACTED_PHONE]',
+  },
   { name: 'phones', re: /\b\(?\d{3}\)?[\s.-]\d{3}[\s.-]\d{4}\b/g, replace: '[REDACTED_PHONE]' },
   // 6-8 digit OTP that's standalone (avoids matching year+month dates)
-  { name: 'otps', re: /\b\d{6,8}\b(?=\s*(?:is your|code|verification|OTP|one-?time))/gi, replace: '[REDACTED_OTP]' },
-  { name: 'otps', re: /(?<=(?:OTP|code|verification)[^\d]{0,20})\b\d{6,8}\b/gi, replace: '[REDACTED_OTP]' },
+  {
+    name: 'otps',
+    re: /\b\d{6,8}\b(?=\s*(?:is your|code|verification|OTP|one-?time))/gi,
+    replace: '[REDACTED_OTP]',
+  },
+  {
+    name: 'otps',
+    re: /(?<=(?:OTP|code|verification)[^\d]{0,20})\b\d{6,8}\b/gi,
+    replace: '[REDACTED_OTP]',
+  },
   // IBAN
   { name: 'iban', re: /\b[A-Z]{2}\d{2}[A-Z0-9]{11,30}\b/g, replace: '[REDACTED_IBAN]' },
 ];
 
 const EMAIL_RE = /[A-Z0-9._%+\-]+@[A-Z0-9.\-]+\.[A-Z]{2,}/gi;
 
-export function redactPii(text: string, opts: { keepEmails?: boolean } = {}): { text: string; stats: PiiRedactStats } {
+export function redactPii(
+  text: string,
+  opts: { keepEmails?: boolean } = {},
+): { text: string; stats: PiiRedactStats } {
   const stats: PiiRedactStats = { cards: 0, ssns: 0, phones: 0, otps: 0, emails: 0, iban: 0 };
   let out = text;
   for (const rule of RULES) {

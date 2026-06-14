@@ -27,7 +27,12 @@ export interface SnoozeMenuProps {
  * reachable only with mouse / tab, not arrow keys. That's the WCAG 2.1
  * keyboard-trap regression the accessibility review flagged.
  */
-export function SnoozeMenu({ target, onSelect, onCustom, title = 'Snooze until' }: SnoozeMenuProps) {
+export function SnoozeMenu({
+  target,
+  onSelect,
+  onCustom,
+  title = 'Snooze until',
+}: SnoozeMenuProps) {
   const now = new Date();
   return (
     <Menu width={300} withArrow shadow="md" trapFocus closeOnEscape>
@@ -51,7 +56,11 @@ export function SnoozeMenu({ target, onSelect, onCustom, title = 'Snooze until' 
               key={p.id}
               onClick={() => onSelect(p.id, at.getTime())}
               aria-label={`${p.label} (${stamp})`}
-              rightSection={<Text size="xs" c="dimmed">{stamp}</Text>}
+              rightSection={
+                <Text size="xs" c="dimmed">
+                  {stamp}
+                </Text>
+              }
             >
               {p.label}
             </Menu.Item>

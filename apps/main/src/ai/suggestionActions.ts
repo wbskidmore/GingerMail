@@ -111,7 +111,11 @@ function createEvent(ctx: AppContext, s: Suggestion): ApplyResult {
     ctx.scheduler.schedule({
       kind: 'event-reminder',
       fireAt,
-      payload: { title: event.title, when: new Date(event.start).toLocaleString(), eventId: event.id },
+      payload: {
+        title: event.title,
+        when: new Date(event.start).toLocaleString(),
+        eventId: event.id,
+      },
     });
   }
   return { ok: true, entityId: event.id };
@@ -124,7 +128,11 @@ function createReminder(ctx: AppContext, s: Suggestion): ApplyResult {
   const job = ctx.scheduler.schedule({
     kind: 'reminder',
     fireAt,
-    payload: { title: s.title, notes: s.payload.notes ?? '', when: new Date(fireAt).toLocaleString() },
+    payload: {
+      title: s.title,
+      notes: s.payload.notes ?? '',
+      when: new Date(fireAt).toLocaleString(),
+    },
   });
   return { ok: true, entityId: job.id };
 }

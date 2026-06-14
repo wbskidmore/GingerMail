@@ -151,7 +151,11 @@ export interface IpcApi {
   // Calendar
   calendar: {
     listCalendars: () => Promise<Calendar[]>;
-    listEvents: (input: { from: number; to: number; calendarIds?: string[] }) => Promise<CalendarEvent[]>;
+    listEvents: (input: {
+      from: number;
+      to: number;
+      calendarIds?: string[];
+    }) => Promise<CalendarEvent[]>;
     createEvent: (event: Omit<CalendarEvent, 'id'>) => Promise<CalendarEvent>;
     updateEvent: (event: CalendarEvent) => Promise<CalendarEvent>;
     deleteEvent: (id: string) => Promise<void>;
@@ -228,7 +232,12 @@ export interface IpcApi {
     /** Recompute suggestions (heuristic + optional AI assist). */
     listSuggestions: () => Promise<UnsubscribeSuggestion[]>;
     /** Execute the unsubscribe (one-click HTTPS POST or mailto compose). */
-    perform: (input: { email: string; http?: string; mailto?: string; oneClick: boolean }) => Promise<{ ok: boolean; method: 'http' | 'mailto' | 'none'; error?: string }>;
+    perform: (input: {
+      email: string;
+      http?: string;
+      mailto?: string;
+      oneClick: boolean;
+    }) => Promise<{ ok: boolean; method: 'http' | 'mailto' | 'none'; error?: string }>;
     /** Mute (auto-trash) future mail from a sender locally. */
     mute: (input: { email: string }) => Promise<void>;
     unmute: (input: { email: string }) => Promise<void>;

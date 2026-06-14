@@ -3,7 +3,17 @@ import type { ChatUser } from '@gingermail/core';
 import { flattenMrkdwn } from './index.js';
 
 const users = new Map<string, ChatUser>([
-  ['U123', { id: 'a:U123', accountId: 'a', userId: 'U123', displayName: 'Ada Lovelace', initials: 'AL', isBot: false }],
+  [
+    'U123',
+    {
+      id: 'a:U123',
+      accountId: 'a',
+      userId: 'U123',
+      displayName: 'Ada Lovelace',
+      initials: 'AL',
+      isBot: false,
+    },
+  ],
 ]);
 
 describe('flattenMrkdwn', () => {

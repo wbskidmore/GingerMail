@@ -15,11 +15,7 @@ import {
   IconTrash,
 } from '@tabler/icons-react';
 import type { ReactNode } from 'react';
-import type {
-  Draft,
-  MailActionId,
-  Message,
-} from '@gingermail/core';
+import type { Draft, MailActionId, Message } from '@gingermail/core';
 import type { Api } from '../ipcBridge.js';
 
 /**
@@ -33,8 +29,16 @@ export interface MailActionContext {
   /** Renderer-side callbacks for UI-only side effects (opening Composer, etc.). */
   ui: {
     openCompose(draft: Draft, replyTo: Message): void;
-    confirmDestructive(input: { title: string; body: string; confirmLabel: string }): Promise<boolean>;
-    notify(title: string, message: string, opts?: { color?: 'red' | 'green' | 'orange' | 'ginger'; undo?: () => Promise<void> | void }): void;
+    confirmDestructive(input: {
+      title: string;
+      body: string;
+      confirmLabel: string;
+    }): Promise<boolean>;
+    notify(
+      title: string,
+      message: string,
+      opts?: { color?: 'red' | 'green' | 'orange' | 'ginger'; undo?: () => Promise<void> | void },
+    ): void;
     /** Re-fetch threads/messages after a server-side change. */
     reloadAfterMove(): void;
   };
@@ -108,7 +112,8 @@ export const MAIL_ACTIONS: MailAction[] = [
         const r = await api.mail.archive({ id: message.id });
         ui.notify('Archived', message.subject || '(no subject)', {
           undo: r.previousFolderId
-            ? () => api.mail.move({ id: r.newId, folderId: r.previousFolderId }).then(() => undefined)
+            ? () =>
+                api.mail.move({ id: r.newId, folderId: r.previousFolderId }).then(() => undefined)
             : undefined,
         });
         ui.reloadAfterMove();
@@ -134,7 +139,8 @@ export const MAIL_ACTIONS: MailAction[] = [
         const r = await api.mail.trash({ id: message.id });
         ui.notify('Moved to trash', message.subject || '(no subject)', {
           undo: r.previousFolderId
-            ? () => api.mail.move({ id: r.newId, folderId: r.previousFolderId }).then(() => undefined)
+            ? () =>
+                api.mail.move({ id: r.newId, folderId: r.previousFolderId }).then(() => undefined)
             : undefined,
         });
         ui.reloadAfterMove();
@@ -154,7 +160,9 @@ export const MAIL_ACTIONS: MailAction[] = [
     // calling api.mail.move() directly, so the registry's run() is a no-op
     // notice rather than a silent failure.
     run: async ({ ui }) => {
-      ui.notify('Move to folder', 'Use the Move \u22ee menu in the toolbar to pick a folder.', { color: 'orange' });
+      ui.notify('Move to folder', 'Use the Move \u22ee menu in the toolbar to pick a folder.', {
+        color: 'orange',
+      });
     },
   },
   {
@@ -199,7 +207,10 @@ export const MAIL_ACTIONS: MailAction[] = [
     destructive: true,
     isAvailable: ({ message }) => {
       // Hide on messages already in the spam folder.
-      return !(message.folderId.toLowerCase().includes('spam') || message.folderId.toLowerCase().includes('junk'));
+      return !(
+        message.folderId.toLowerCase().includes('spam') ||
+        message.folderId.toLowerCase().includes('junk')
+      );
     },
     run: async ({ message, api, ui }) => {
       const ok = await ui.confirmDestructive({
@@ -212,7 +223,8 @@ export const MAIL_ACTIONS: MailAction[] = [
         const r = await api.mail.markSpam({ id: message.id });
         ui.notify('Reported spam', message.subject || '(no subject)', {
           undo: r.previousFolderId
-            ? () => api.mail.move({ id: r.newId, folderId: r.previousFolderId }).then(() => undefined)
+            ? () =>
+                api.mail.move({ id: r.newId, folderId: r.previousFolderId }).then(() => undefined)
             : undefined,
         });
         ui.reloadAfterMove();
@@ -273,9 +285,11 @@ export const ALL_ACTION_IDS: MailActionId[] = MAIL_ACTIONS.map((a) => a.id);
  *  - overflow: ids in More menu (in user-defined order)
  *  - hidden  : everything else (cataloged so Settings can rehydrate it)
  */
-export function partitionActions(
-  settings: { visible: MailActionId[]; overflow: MailActionId[] },
-): { visible: MailActionId[]; overflow: MailActionId[]; hidden: MailActionId[] } {
+export function partitionActions(settings: { visible: MailActionId[]; overflow: MailActionId[] }): {
+  visible: MailActionId[];
+  overflow: MailActionId[];
+  hidden: MailActionId[];
+} {
   const seen = new Set<MailActionId>([...settings.visible, ...settings.overflow]);
   const hidden = ALL_ACTION_IDS.filter((id) => !seen.has(id));
   return {

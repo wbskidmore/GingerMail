@@ -27,6 +27,9 @@
     "dist:win:no-ollama": "pnpm build && electron-builder --win",
     "dist:linux:no-ollama": "pnpm build && electron-builder --linux",
     "dist:all:no-ollama": "pnpm build && electron-builder --mac --win --linux",
+    "dist:mac:dev": "CSC_IDENTITY_AUTO_DISCOVERY=false pnpm build && electron-builder --mac --config.mac.notarize=false",
+    "dist:win:dev": "pnpm build && electron-builder --win",
+    "dist:linux:dev": "pnpm build && electron-builder --linux",
     "prepackage": "node scripts/fetch-ollama.mjs --all",
     "rebuild-native": "electron-rebuild -f -w better-sqlite3 --module-dir packages/storage",
     "build:icons": "node scripts/build-icons.mjs",
@@ -34,7 +37,17 @@
     "postinstall": "electron-builder install-app-deps",
     "sbom": "cyclonedx-npm --output-file sbom.cdx.json --output-format JSON",
     "sbom:xml": "cyclonedx-npm --output-file sbom.cdx.xml --output-format XML",
-    "audit:prod": "pnpm audit --prod --audit-level high"
+    "audit:prod": "pnpm audit --prod --audit-level high",
+    "prepare": "husky"
+  },
+  "lint-staged": {
+    "*.{ts,tsx}": [
+      "eslint --fix --max-warnings=0",
+      "prettier --write"
+    ],
+    "*.{js,cjs,mjs,json,md,yml,yaml,css}": [
+      "prettier --write"
+    ]
   },
   "dependencies": {
     "@azure/msal-node": "^2.13.1",
@@ -57,6 +70,8 @@
     "zod": "^3.23.8"
   },
   "devDependencies": {
+    "@commitlint/cli": "^19.5.0",
+    "@commitlint/config-conventional": "^19.5.0",
     "@cyclonedx/cyclonedx-npm": "^4.2.1",
     "@electron/rebuild": "^3.7.1",
     "@playwright/test": "^1.48.1",
@@ -73,7 +88,9 @@
     "eslint": "^9.11.0",
     "eslint-plugin-react": "^7.37.0",
     "eslint-plugin-react-hooks": "^5.1.0",
+    "husky": "^9.1.6",
     "jsdom": "^25.0.1",
+    "lint-staged": "^15.2.10",
     "png-to-ico": "^3.0.1",
     "prettier": "^3.3.3",
     "typescript": "^5.6.2",

@@ -25,7 +25,10 @@ import {
 import type { Suggestion, SuggestionCategory } from '@gingermail/core';
 import { getApi } from '../ipcBridge.js';
 
-const CATEGORY_META: Record<SuggestionCategory, { label: string; icon: typeof IconMail; color: string }> = {
+const CATEGORY_META: Record<
+  SuggestionCategory,
+  { label: string; icon: typeof IconMail; color: string }
+> = {
   email: { label: 'Email', icon: IconMail, color: 'blue' },
   reminder: { label: 'Reminder', icon: IconBell, color: 'orange' },
   event: { label: 'Event', icon: IconCalendarEvent, color: 'grape' },
@@ -88,9 +91,18 @@ export function SuggestionsButton() {
         // Email is never sent automatically — persist it as a draft instead.
         try {
           await getApi().mail.saveDraft(res.draft);
-          notifications.show({ title: 'Draft saved', message: s.title, color: 'green', autoClose: 2200 });
+          notifications.show({
+            title: 'Draft saved',
+            message: s.title,
+            color: 'green',
+            autoClose: 2200,
+          });
         } catch {
-          notifications.show({ title: 'Draft prepared', message: 'Open Mail to finish and send it.', color: 'blue' });
+          notifications.show({
+            title: 'Draft prepared',
+            message: 'Open Mail to finish and send it.',
+            color: 'blue',
+          });
         }
       } else {
         notifications.show({ title: 'Added', message: s.title, color: 'green', autoClose: 2000 });
@@ -126,7 +138,13 @@ export function SuggestionsButton() {
   return (
     <>
       <Tooltip label="AI suggestions">
-        <Indicator color="ginger" size={16} label={pending.length > 9 ? '9+' : pending.length} disabled={pending.length === 0} offset={4}>
+        <Indicator
+          color="ginger"
+          size={16}
+          label={pending.length > 9 ? '9+' : pending.length}
+          disabled={pending.length === 0}
+          offset={4}
+        >
           <ActionIcon
             data-no-drag
             variant="subtle"
@@ -144,37 +162,68 @@ export function SuggestionsButton() {
         onClose={() => setOpened(false)}
         position="right"
         size="md"
-        title={<Group gap="xs"><IconSparkles size={16} /><Text fw={700}>AI suggestions</Text></Group>}
+        title={
+          <Group gap="xs">
+            <IconSparkles size={16} />
+            <Text fw={700}>AI suggestions</Text>
+          </Group>
+        }
         scrollAreaComponent={ScrollArea.Autosize}
       >
         <Stack gap="md">
           {pending.length === 0 && autoAdded.length === 0 && (
             <Text size="sm" c="dimmed">
-              Nothing here yet. When detection agents are on, actionable items the AI finds in your chat and mail
-              show up here for review. Configure them in Settings → AI.
+              Nothing here yet. When detection agents are on, actionable items the AI finds in your
+              chat and mail show up here for review. Configure them in Settings → AI.
             </Text>
           )}
 
           {pending.length > 0 && (
             <Stack gap="xs">
-              <Text size="xs" fw={700} c="dimmed" tt="uppercase">Needs review</Text>
+              <Text size="xs" fw={700} c="dimmed" tt="uppercase">
+                Needs review
+              </Text>
               {pending.map((s) => (
                 <Card key={s.id} withBorder radius="md" p="sm">
                   <Stack gap={6}>
                     <Group justify="space-between" wrap="nowrap">
                       <CategoryBadge category={s.category} />
-                      {s.sourceLabel && <Text size="xs" c="dimmed" truncate>{s.sourceLabel}</Text>}
+                      {s.sourceLabel && (
+                        <Text size="xs" c="dimmed" truncate>
+                          {s.sourceLabel}
+                        </Text>
+                      )}
                     </Group>
-                    <Text size="sm" fw={500}>{s.title}</Text>
-                    {whenText(s) && <Text size="xs" c="dimmed">{whenText(s)}</Text>}
+                    <Text size="sm" fw={500}>
+                      {s.title}
+                    </Text>
+                    {whenText(s) && (
+                      <Text size="xs" c="dimmed">
+                        {whenText(s)}
+                      </Text>
+                    )}
                     {s.category === 'email' && s.payload.to && (
-                      <Text size="xs" c="dimmed">To: {s.payload.to}</Text>
+                      <Text size="xs" c="dimmed">
+                        To: {s.payload.to}
+                      </Text>
                     )}
                     <Group gap="xs" justify="flex-end">
-                      <Button size="xs" variant="subtle" color="gray" loading={busy === s.id} onClick={() => void dismiss(s)}>
+                      <Button
+                        size="xs"
+                        variant="subtle"
+                        color="gray"
+                        loading={busy === s.id}
+                        onClick={() => void dismiss(s)}
+                      >
                         Dismiss
                       </Button>
-                      <Button size="xs" variant="subtle" color="red" loading={busy === s.id} onClick={() => void reject(s)}>
+                      <Button
+                        size="xs"
+                        variant="subtle"
+                        color="red"
+                        loading={busy === s.id}
+                        onClick={() => void reject(s)}
+                      >
                         Reject
                       </Button>
                       <Button size="xs" loading={busy === s.id} onClick={() => void accept(s)}>
@@ -190,17 +239,30 @@ export function SuggestionsButton() {
           {autoAdded.length > 0 && (
             <Stack gap="xs">
               <Divider />
-              <Text size="xs" fw={700} c="dimmed" tt="uppercase">Auto-added</Text>
+              <Text size="xs" fw={700} c="dimmed" tt="uppercase">
+                Auto-added
+              </Text>
               {autoAdded.map((s) => (
                 <Card key={s.id} withBorder radius="md" p="sm">
                   <Group justify="space-between" wrap="nowrap">
                     <Group gap="xs" wrap="nowrap" style={{ minWidth: 0 }}>
                       <ThemeIcon variant="light" size="sm" color={CATEGORY_META[s.category].color}>
-                        {(() => { const Icon = CATEGORY_META[s.category].icon; return <Icon size={12} />; })()}
+                        {(() => {
+                          const Icon = CATEGORY_META[s.category].icon;
+                          return <Icon size={12} />;
+                        })()}
                       </ThemeIcon>
-                      <Text size="sm" truncate>{s.title}</Text>
+                      <Text size="sm" truncate>
+                        {s.title}
+                      </Text>
                     </Group>
-                    <Button size="xs" variant="subtle" color="gray" loading={busy === s.id} onClick={() => void dismiss(s)}>
+                    <Button
+                      size="xs"
+                      variant="subtle"
+                      color="gray"
+                      loading={busy === s.id}
+                      onClick={() => void dismiss(s)}
+                    >
                       Dismiss
                     </Button>
                   </Group>
