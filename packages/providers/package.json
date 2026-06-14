@@ -21,7 +21,7 @@
     "@azure/msal-node": "^2.13.1",
     "@microsoft/microsoft-graph-client": "^3.0.7",
     "discord.js": "^14.16.3",
-    "googleapis": "^144.0.0",
+    "googleapis": "^173.0.0",
     "ical.js": "^2.1.0",
     "imapflow": "^1.0.165",
     "nodemailer": "^8.0.9",
