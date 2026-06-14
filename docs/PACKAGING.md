@@ -13,6 +13,12 @@ GingerMail packages as a DMG on macOS (arm64), an NSIS installer on Windows
 > macOS cert is provisioned, macOS shows a Gatekeeper warning and Windows shows
 > a SmartScreen prompt (OV certs warn until reputation accrues; EV / Azure
 > Trusted Signing clears SmartScreen immediately).
+>
+> **No certificates yet?** Use the **`dev` channel** (see
+> [Dev vs Prod builds](#dev-vs-prod-builds-channel-toggle)). It produces fully
+> functional UNSIGNED installers and never fails for missing credentials, so you
+> can build and distribute today and flip to signed `prod` builds the moment the
+> identities exist.
 
 ## Cross-platform release builds (recommended)
 
@@ -32,12 +38,42 @@ the installers (`.dmg`, `.exe`, `.AppImage` + `*.sig` + `SHA256SUMS` +
 Release for you to review and publish. You can also run it from the Actions tab
 via `workflow_dispatch` to get build artifacts without cutting a release.
 
+## Dev vs Prod builds (channel toggle)
+
+A single per-run toggle decides whether a build is signed. You don't need any
+certificates for the `dev` channel.
+
+| Trigger | Channel | Result |
+| --- | --- | --- |
+| **Manual run** (Actions tab -> *Release* -> *Run workflow*), `channel = dev` (default) | dev | **Unsigned** installers for all three OSes. macOS notarization is forced off, keychain auto-discovery is disabled, so **no leg can fail for missing credentials**. Artifacts are downloadable from the run. Tick *publish_release* to also cut a draft **pre-release** named `… (dev / unsigned)`. |
+| **Manual run**, `channel = prod` | prod | Signed + notarized **when the signing secrets exist**; gracefully falls back to unsigned otherwise. |
+| **Push a tag** `vX.Y.Z` | prod | Always the signed/notarized path, and always publishes a draft Release. |
+
+How it works (no YAML edits needed to switch):
+
+- The `mode` job resolves `channel`/`signed` once and every leg reads it.
+- `dev` legs run `electron-builder … --config.mac.notarize=false` with
+  `CSC_IDENTITY_AUTO_DISCOVERY=false`, overriding the `notarize: true` in
+  `electron-builder.yml` only for that run.
+- `prod` legs run the normal signing path and pick up the secrets below.
+
+**Build an unsigned installer locally** (no certs, no notarization):
+
+```bash
+pnpm dist:mac:dev     # macOS DMG, unsigned (notarize off)
+pnpm dist:win:dev     # Windows NSIS, unsigned
+pnpm dist:linux:dev   # Linux AppImage, unsigned
+```
+
+These mirror the CI `dev` channel and are guaranteed not to hunt for a keychain
+identity. Use the `dist:*` / `dist:*:no-ollama` scripts once you have certs.
+
 ### Required GitHub Actions secrets
 
-Add these under **repo Settings -> Secrets and variables -> Actions**. Each
-channel signs only when its secrets exist; otherwise it produces an unsigned
-artifact (+ checksums) without failing the build (the macOS leg is the
-exception: with notarization enabled it requires the Apple credentials below).
+Add these under **repo Settings -> Secrets and variables -> Actions**. They only
+matter on the **`prod` channel** (tag push or `channel = prod`). Each channel
+signs only when its secrets exist; otherwise it produces an unsigned artifact
+(+ checksums) without failing the build.
 
 | Secret | Channel | Purpose |
 | --- | --- | --- |

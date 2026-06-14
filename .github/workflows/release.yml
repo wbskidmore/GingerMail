@@ -3,16 +3,33 @@ name: Release
 # Builds installers for macOS, Windows, and Linux natively (one runner per OS)
 # and attaches them to a GitHub Release.
 #
-# Trigger by pushing a version tag, e.g.:
-#   git tag v1.0.1 && git push origin v1.0.1
-# or run manually from the Actions tab (workflow_dispatch) to produce build
-# artifacts without cutting a Release.
+# Two ways to run:
+#   * Push a version tag  -> always a PROD (signed + notarized) build that
+#     publishes a draft Release:   git tag v1.0.1 && git push origin v1.0.1
+#   * Run manually (Actions tab, "Run workflow") -> choose the channel:
+#       - dev  (default): UNSIGNED build. Needs NO certificates, so it works
+#         today before the Apple/Windows signing identities exist. macOS
+#         notarization is forced off so the leg cannot fail hunting for creds.
+#       - prod: signed + notarized exactly like a tag push (no-ops to unsigned
+#         until the signing secrets are provisioned).
+#     Tick "publish_release" to also cut a draft (pre)Release from the run;
+#     otherwise the installers are available as workflow artifacts only.
 
 on:
   push:
     tags:
       - "v*"
   workflow_dispatch:
+    inputs:
+      channel:
+        description: "Build channel (dev = unsigned, prod = signed + notarized)"
+        type: choice
+        options: [dev, prod]
+        default: dev
+      publish_release:
+        description: "Create a draft GitHub Release from this run"
+        type: boolean
+        default: false
 
 permissions:
   contents: write
@@ -22,8 +39,51 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  # Resolves the effective build mode once so every downstream job agrees:
+  #   * tag push          -> channel=prod, publish=true
+  #   * manual dispatch   -> use the chosen inputs (default dev / no publish)
+  # `signed` gates code signing + notarization; `tag` names the Release.
+  mode:
+    name: Resolve build mode
+    runs-on: ubuntu-latest
+    outputs:
+      channel: ${{ steps.resolve.outputs.channel }}
+      signed: ${{ steps.resolve.outputs.signed }}
+      publish: ${{ steps.resolve.outputs.publish }}
+      tag: ${{ steps.resolve.outputs.tag }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Resolve channel / signing / publish
+        id: resolve
+        shell: bash
+        run: |
+          set -euo pipefail
+          version=$(node -p "require('./package.json').version")
+          if [[ "${GITHUB_REF}" == refs/tags/v* ]]; then
+            channel=prod
+            publish=true
+            tag="${GITHUB_REF_NAME}"
+          else
+            channel="${{ github.event.inputs.channel }}"
+            publish="${{ github.event.inputs.publish_release }}"
+            tag="v${version}-dev.${{ github.run_number }}"
+          fi
+          channel="${channel:-dev}"
+          publish="${publish:-false}"
+          if [[ "$channel" == "prod" ]]; then signed=true; else signed=false; fi
+          {
+            echo "channel=$channel"
+            echo "signed=$signed"
+            echo "publish=$publish"
+            echo "tag=$tag"
+          } >> "$GITHUB_OUTPUT"
+          echo "Resolved -> channel=$channel signed=$signed publish=$publish tag=$tag"
+
   build:
-    name: Build ${{ matrix.platform }}
+    name: Build ${{ matrix.platform }} (${{ needs.mode.outputs.channel }})
+    needs: mode
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
@@ -50,6 +110,25 @@ jobs:
           node-version: 20
           cache: pnpm
 
+      # Cache the Electron runtime download (pnpm postinstall) and the
+      # electron-builder cache (its own bundled Electron + tools). This is the
+      # single biggest release-time win: without it every run re-downloads
+      # ~100MB of Electron per platform. Keyed on the lockfile so a dependency
+      # bump (incl. an Electron version change) busts the cache automatically.
+      - name: Cache Electron binaries
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cache/electron
+            ~/.cache/electron-builder
+            ~/Library/Caches/electron
+            ~/Library/Caches/electron-builder
+            ~/AppData/Local/electron/Cache
+            ~/AppData/Local/electron-builder/Cache
+          key: electron-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
+          restore-keys: |
+            electron-${{ runner.os }}-
+
       # install runs the postinstall `electron-builder install-app-deps`, which
       # rebuilds native modules (better-sqlite3-multiple-ciphers) for THIS
       # runner's OS/arch.
@@ -62,25 +141,41 @@ jobs:
       # We skip `prepackage` (the Ollama fetch) on purpose: no verified binary
       # SHAs are pinned yet, and the app falls back to a user-installed Ollama.
       #
-      # Signing is secret-driven so this stays graceful when a credential is
-      # absent (the leg then produces an UNSIGNED artifact instead of failing):
+      # SIGNED builds (channel=prod / tag push) sign + notarize when the
+      # secrets are present and otherwise produce an unsigned artifact (the
+      # creds simply no-op until provisioned):
       #   * macOS  - CSC_LINK/CSC_KEY_PASSWORD (Developer ID Application .p12,
       #     base64) sign the .app; APPLE_ID/APPLE_APP_SPECIFIC_PASSWORD/
-      #     APPLE_TEAM_ID notarize it (notarize is enabled in electron-builder.yml).
-      #     CSC_IDENTITY_AUTO_DISCOVERY is only `true` on macOS when a cert is
-      #     present, so an unsigned local/dispatch build does not error hunting
-      #     for a keychain identity.
+      #     APPLE_TEAM_ID notarize it (notarize:true in electron-builder.yml).
       #   * Windows - WIN_CSC_LINK/WIN_CSC_KEY_PASSWORD (code-signing .pfx,
       #     base64). Mapped onto the CSC_* env that electron-builder reads.
+      #
+      # DEV builds (channel=dev) are deliberately UNSIGNED: we disable keychain
+      # auto-discovery and override `mac.notarize=false` so a credential-less
+      # macOS leg cannot fail at the notarization step. This is the path that
+      # works today, before any signing identity exists.
       - name: Package installer
         env:
+          SIGNED: ${{ needs.mode.outputs.signed }}
           CSC_LINK: ${{ matrix.platform == 'win' && secrets.WIN_CSC_LINK || secrets.CSC_LINK }}
           CSC_KEY_PASSWORD: ${{ matrix.platform == 'win' && secrets.WIN_CSC_KEY_PASSWORD || secrets.CSC_KEY_PASSWORD }}
-          CSC_IDENTITY_AUTO_DISCOVERY: ${{ matrix.platform == 'mac' && secrets.CSC_LINK != '' }}
           APPLE_ID: ${{ secrets.APPLE_ID }}
           APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
-        run: pnpm exec electron-builder --${{ matrix.platform }} --publish never
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ "${SIGNED}" = "true" ]; then
+            # Only let macOS auto-discover an identity when a cert is actually
+            # provided, so a signed build without creds stays graceful.
+            if [ "${{ matrix.platform }}" = "mac" ] && [ -z "${CSC_LINK:-}" ]; then
+              export CSC_IDENTITY_AUTO_DISCOVERY=false
+            fi
+            pnpm exec electron-builder --${{ matrix.platform }} --publish never
+          else
+            export CSC_IDENTITY_AUTO_DISCOVERY=false
+            pnpm exec electron-builder --${{ matrix.platform }} --config.mac.notarize=false --publish never
+          fi
 
       # Linux has no OS trust store like Gatekeeper/Authenticode, so we attach a
       # detached GPG signature (when GPG_PRIVATE_KEY is provided) plus a
@@ -90,10 +185,11 @@ jobs:
         env:
           GPG_PRIVATE_KEY: ${{ secrets.GPG_PRIVATE_KEY }}
           GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
+          SIGNED: ${{ needs.mode.outputs.signed }}
         run: |
           set -euo pipefail
           cd "$(dirname "$(ls release/*/*.AppImage | head -n1)")"
-          if [ -n "${GPG_PRIVATE_KEY:-}" ]; then
+          if [ "${SIGNED}" = "true" ] && [ -n "${GPG_PRIVATE_KEY:-}" ]; then
             echo "$GPG_PRIVATE_KEY" | gpg --batch --import
             KEYID=$(gpg --list-secret-keys --with-colons | awk -F: '/^sec:/ {print $5; exit}')
             for f in *.AppImage; do
@@ -101,7 +197,7 @@ jobs:
                 --local-user "$KEYID" --detach-sign "$f"
             done
           else
-            echo "No GPG_PRIVATE_KEY secret; emitting checksums only (UNSIGNED)."
+            echo "Unsigned channel or no GPG_PRIVATE_KEY secret; emitting checksums only (UNSIGNED)."
           fi
           sha256sum *.AppImage > SHA256SUMS
 
@@ -214,9 +310,10 @@ jobs:
 
   release:
     name: Publish GitHub Release
-    needs: [build, docker]
+    needs: [mode, build, docker]
     runs-on: ubuntu-latest
-    if: startsWith(github.ref, 'refs/tags/')
+    # Publish on a tag push, or on a manual run where publish_release was ticked.
+    if: ${{ startsWith(github.ref, 'refs/tags/') || needs.mode.outputs.publish == 'true' }}
     steps:
       - name: Download all build artifacts
         uses: actions/download-artifact@v8
@@ -226,6 +323,13 @@ jobs:
       - name: Create / update GitHub Release
         uses: softprops/action-gh-release@v3
         with:
+          # On a tag push this is the pushed tag; on a manual dev publish it is
+          # a synthesized `v<version>-dev.<run>` pre-release tag.
+          tag_name: ${{ needs.mode.outputs.tag }}
+          # Dev builds are unsigned -> always a draft pre-release, clearly named,
+          # so an unsigned artifact is never mistaken for a shippable release.
           draft: true
+          prerelease: ${{ needs.mode.outputs.channel != 'prod' }}
+          name: ${{ needs.mode.outputs.channel == 'prod' && needs.mode.outputs.tag || format('{0} (dev / unsigned)', needs.mode.outputs.tag) }}
           generate_release_notes: true
           files: dist-artifacts/**/*
