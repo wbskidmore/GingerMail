@@ -50,7 +50,7 @@
     ]
   },
   "dependencies": {
-    "@azure/msal-node": "^2.13.1",
+    "@azure/msal-node": "^5.2.4",
     "@gingermail/ai": "workspace:*",
     "@gingermail/core": "workspace:*",
     "@gingermail/main": "workspace:*",
