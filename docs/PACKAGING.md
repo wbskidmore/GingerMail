@@ -160,6 +160,28 @@ SHAs are pinned yet — see `scripts/fetch-ollama.mjs` and POA&M PM-009); the ap
 falls back to a user-installed Ollama on `:11434`. Output lands in
 `release/<version>/`.
 
+### Enabling the bundled Ollama (SHA pinning)
+
+To ship local AI in the box (so users don't install Ollama themselves), the
+per-platform binary must be pinned by SHA-256 first — `scripts/fetch-ollama.mjs`
+refuses to write an unverified binary (compliance POA&M PM-009). One-time setup:
+
+1. Pick the version. It's pinned as `OLLAMA_VERSION` in `scripts/fetch-ollama.mjs`.
+2. Download the upstream checksums for that version:
+   `https://github.com/ollama/ollama/releases/download/<version>/sha256sum.txt`.
+3. Copy the real sums into `SHA_BY_TARGET` (replacing the `PLACEHOLDER_*`
+   values), or pass them at build time via env without editing the file:
+   `OLLAMA_SHA256_DARWIN_ARM64`, `OLLAMA_SHA256_DARWIN_X64`,
+   `OLLAMA_SHA256_WIN32_X64`, `OLLAMA_SHA256_LINUX_X64`.
+4. Verify the fetch: `pnpm fetch:ollama` (current platform) or
+   `node scripts/fetch-ollama.mjs --all`. A mismatch deletes the file and exits
+   non-zero — that's tampering protection, not a bug.
+5. Build with the Ollama-bundling scripts (`pnpm dist:mac` etc., which run
+   `prepackage`) instead of the `:no-ollama` / `:dev` variants.
+
+Until that's done, keep using the `:no-ollama` builds — the app still does local
+AI against a user-installed Ollama.
+
 ## Docker distribution (browser-accessible)
 
 GingerMail also ships a Docker image that runs the Linux build on a minimal
@@ -277,4 +299,7 @@ Drop the source icons into `build/`:
 - `icon.ico` (multi-resolution, Windows)
 - `icon.png` (1024x1024, Linux + DMG background fallback)
 
-`electron-builder` auto-detects them. The repo currently ships placeholder text files - replace them with the real assets before the first signed build.
+`electron-builder` auto-detects them. The repo ships real 1024x1024 assets
+(`build/icon.png`, `build/icon.icns`, `build/icon.ico`); regenerate the `.icns`
+/ `.ico` / iconset from a new `build/icon.png` with `pnpm build:icons` (requires
+macOS for `sips`/`iconutil`).
