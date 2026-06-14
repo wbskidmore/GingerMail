@@ -12,6 +12,8 @@ release/
 # Environment & secrets
 .env
 .env.*
+# ...but keep the committed template.
+!.env.example
 
 # Logs
 *.log
