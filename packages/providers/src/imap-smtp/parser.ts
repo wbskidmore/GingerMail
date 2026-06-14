@@ -112,7 +112,11 @@ function parseContentType(ct: string): { mime: string; boundary?: string; charse
       .replace(/^"|"$/g, '')
       .trim();
   }
-  return { mime: (main ?? 'text/plain').toLowerCase(), boundary: params['boundary'], charset: params['charset'] };
+  return {
+    mime: (main ?? 'text/plain').toLowerCase(),
+    boundary: params['boundary'],
+    charset: params['charset'],
+  };
 }
 
 function parseCharset(ct: string): string {

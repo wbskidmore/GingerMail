@@ -24,37 +24,44 @@ export function NavSearch() {
     const q = debounced.trim();
     if (q.length < 2) return;
     let cancelled = false;
-    void getApi().ai.nlSearch(q).then((r) => {
-      if (cancelled) return;
-      const count = r.messages.length;
-      const matches = `${count} match${count === 1 ? '' : 'es'}`;
-      notifications.show({
-        title: r.usedAi
-          ? `Search complete \u00b7 ${r.model ?? 'AI'}`
-          : 'Search complete',
-        message: r.usedAi && r.explanation
-          ? `${matches} \u2014 ${r.explanation}`
-          : `${matches} for "${q}"`,
-        autoClose: 3000,
-        color: r.usedAi ? 'ginger' : undefined,
+    void getApi()
+      .ai.nlSearch(q)
+      .then((r) => {
+        if (cancelled) return;
+        const count = r.messages.length;
+        const matches = `${count} match${count === 1 ? '' : 'es'}`;
+        notifications.show({
+          title: r.usedAi ? `Search complete \u00b7 ${r.model ?? 'AI'}` : 'Search complete',
+          message:
+            r.usedAi && r.explanation
+              ? `${matches} \u2014 ${r.explanation}`
+              : `${matches} for "${q}"`,
+          autoClose: 3000,
+          color: r.usedAi ? 'ginger' : undefined,
+        });
+      })
+      .catch((err) => {
+        if (cancelled) return;
+        notifications.show({
+          title: 'Search failed',
+          message: err instanceof Error ? err.message : String(err),
+          color: 'red',
+          autoClose: 3500,
+        });
       });
-    }).catch((err) => {
-      if (cancelled) return;
-      notifications.show({
-        title: 'Search failed',
-        message: err instanceof Error ? err.message : String(err),
-        color: 'red',
-        autoClose: 3500,
-      });
-    });
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, [debounced]);
 
   useHotkeys([
-    ['mod+F', () => {
-      inputRef.current?.focus();
-      inputRef.current?.select();
-    }],
+    [
+      'mod+F',
+      () => {
+        inputRef.current?.focus();
+        inputRef.current?.select();
+      },
+    ],
   ]);
 
   return (

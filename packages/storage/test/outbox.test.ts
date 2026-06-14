@@ -74,7 +74,13 @@ describe('pending_sends outbox', () => {
     db.markSendAttemptStarted('s', 100);
     db.markSendSucceeded('s', 200);
     // Re-enqueue should now report 'sent'.
-    const again = db.enqueuePendingSend({ id: 's2', clientId: 'c', accountId: 'a', draftJson: '{}', now: 300 });
+    const again = db.enqueuePendingSend({
+      id: 's2',
+      clientId: 'c',
+      accountId: 'a',
+      draftJson: '{}',
+      now: 300,
+    });
     expect(again.created).toBe(false);
     expect(again.status).toBe('sent');
   });
@@ -87,14 +93,32 @@ describe('pending_sends outbox', () => {
       db.markSendAttemptStarted('s', i * 1000);
       db.markSendFailed('s', `boom ${i}`, i * 1000, 60_000);
     }
-    const re = db.enqueuePendingSend({ id: 's2', clientId: 'c', accountId: 'a', draftJson: '{}', now: 99_000 });
+    const re = db.enqueuePendingSend({
+      id: 's2',
+      clientId: 'c',
+      accountId: 'a',
+      draftJson: '{}',
+      now: 99_000,
+    });
     expect(re.status).toBe('failed');
   });
 
   it('listDuePendingSends returns only rows whose next_attempt_at <= now', () => {
     if (skip()) return;
-    db.enqueuePendingSend({ id: 'a', clientId: 'ca', accountId: 'acc', draftJson: '{}', now: 1000 });
-    db.enqueuePendingSend({ id: 'b', clientId: 'cb', accountId: 'acc', draftJson: '{}', now: 1000 });
+    db.enqueuePendingSend({
+      id: 'a',
+      clientId: 'ca',
+      accountId: 'acc',
+      draftJson: '{}',
+      now: 1000,
+    });
+    db.enqueuePendingSend({
+      id: 'b',
+      clientId: 'cb',
+      accountId: 'acc',
+      draftJson: '{}',
+      now: 1000,
+    });
     db.markSendAttemptStarted('b', 1000);
     db.markSendFailed('b', 'tmp', 1000, 60_000); // next_attempt_at = 1000 + 60000
 

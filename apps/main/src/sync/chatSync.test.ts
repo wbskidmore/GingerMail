@@ -24,7 +24,9 @@ describe('buildChatNotification', () => {
   });
 
   it('suppresses everything when notifications are globally off', () => {
-    expect(buildChatNotification({ ...base, mentions: 2, notificationsEnabled: false }).show).toBe(false);
+    expect(buildChatNotification({ ...base, mentions: 2, notificationsEnabled: false }).show).toBe(
+      false,
+    );
   });
 
   it('does not notify when there is nothing new', () => {
@@ -32,8 +34,12 @@ describe('buildChatNotification', () => {
   });
 
   it('respects the per-type opt-outs', () => {
-    expect(buildChatNotification({ ...base, dms: 2, notifyOnDirectMessage: false }).show).toBe(false);
-    expect(buildChatNotification({ ...base, mentions: 2, notifyOnMention: false }).show).toBe(false);
+    expect(buildChatNotification({ ...base, dms: 2, notifyOnDirectMessage: false }).show).toBe(
+      false,
+    );
+    expect(buildChatNotification({ ...base, mentions: 2, notifyOnMention: false }).show).toBe(
+      false,
+    );
   });
 
   it('batches DMs and mentions into a single body', () => {

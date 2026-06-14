@@ -69,24 +69,38 @@ describe('IPC schemas match handler wire shapes', () => {
     expect(schemas.MailSetFlagSchema.safeParse({ id: 'a:b:1', flag: 'star' }).success).toBe(true);
     // Regression guard: the old schema used flagged/unflagged, which never
     // matched the renderer.
-    expect(schemas.MailSetFlagSchema.safeParse({ id: 'a:b:1', flag: 'flagged' }).success).toBe(false);
-    expect(schemas.MailSetFlagSchema.safeParse({ messageId: 'a:b:1', flag: 'read' }).success).toBe(false);
+    expect(schemas.MailSetFlagSchema.safeParse({ id: 'a:b:1', flag: 'flagged' }).success).toBe(
+      false,
+    );
+    expect(schemas.MailSetFlagSchema.safeParse({ messageId: 'a:b:1', flag: 'read' }).success).toBe(
+      false,
+    );
   });
 
   it('mailSnooze accepts {id, until}', () => {
-    expect(schemas.MailSnoozeSchema.safeParse({ id: 'a:b:1', until: 1_700_000_000_000 }).success).toBe(true);
+    expect(
+      schemas.MailSnoozeSchema.safeParse({ id: 'a:b:1', until: 1_700_000_000_000 }).success,
+    ).toBe(true);
     expect(schemas.MailSnoozeSchema.safeParse({ id: 'a:b:1' }).success).toBe(false);
   });
 
   it('mailMove accepts {id, folderId}', () => {
-    expect(schemas.MailMoveSchema.safeParse({ id: 'a:b:1', folderId: 'a:archive' }).success).toBe(true);
-    expect(schemas.MailMoveSchema.safeParse({ id: 'a:b:1', toFolderId: 'a:archive' }).success).toBe(false);
+    expect(schemas.MailMoveSchema.safeParse({ id: 'a:b:1', folderId: 'a:archive' }).success).toBe(
+      true,
+    );
+    expect(schemas.MailMoveSchema.safeParse({ id: 'a:b:1', toFolderId: 'a:archive' }).success).toBe(
+      false,
+    );
   });
 
   it('mailSend accepts a core Draft shape', () => {
     expect(
-      schemas.MailSendSchema.safeParse({ accountId: 'acct', to: [{ email: 'x@y.com' }], subject: 'hi', bodyText: 'yo' })
-        .success,
+      schemas.MailSendSchema.safeParse({
+        accountId: 'acct',
+        to: [{ email: 'x@y.com' }],
+        subject: 'hi',
+        bodyText: 'yo',
+      }).success,
     ).toBe(true);
     // forward draft with empty recipients is valid
     expect(schemas.MailSendSchema.safeParse({ accountId: 'acct', to: [] }).success).toBe(true);
@@ -99,7 +113,9 @@ describe('IPC schemas match handler wire shapes', () => {
   });
 
   it('settingsUpdate bounds top-level keys (rejects unknown keys)', () => {
-    expect(schemas.SettingsUpdateSchema.safeParse({ appearance: { themeMode: 'system' } }).success).toBe(true);
+    expect(
+      schemas.SettingsUpdateSchema.safeParse({ appearance: { themeMode: 'system' } }).success,
+    ).toBe(true);
     expect(schemas.SettingsUpdateSchema.safeParse({ notARealSetting: true }).success).toBe(false);
   });
 

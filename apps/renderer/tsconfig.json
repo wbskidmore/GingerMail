@@ -11,8 +11,5 @@
     "types": ["vite/client"]
   },
   "include": ["src/**/*"],
-  "references": [
-    { "path": "../../packages/core" },
-    { "path": "../../packages/ui-kit" }
-  ]
+  "references": [{ "path": "../../packages/core" }, { "path": "../../packages/ui-kit" }]
 }

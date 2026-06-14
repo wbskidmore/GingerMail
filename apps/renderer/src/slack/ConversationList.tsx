@@ -1,5 +1,12 @@
 import { Avatar, Badge, Group, Stack, Text, ThemeIcon, UnstyledButton } from '@mantine/core';
-import { IconAt, IconBrandDiscord, IconBrandSlack, IconHash, IconUser, IconUsers } from '@tabler/icons-react';
+import {
+  IconAt,
+  IconBrandDiscord,
+  IconBrandSlack,
+  IconHash,
+  IconUser,
+  IconUsers,
+} from '@tabler/icons-react';
 import type { Account, ChatConversation } from '@gingermail/core';
 
 function kindIcon(kind: ChatConversation['kind']) {
@@ -58,8 +65,16 @@ export function ConversationList({
           <Stack key={g.accountId} gap={2}>
             {showHeaders && (
               <Group gap={6} px={10} pt={6} pb={2} wrap="nowrap">
-                <ThemeIcon variant="transparent" size="xs" color={account?.kind === 'discord' ? 'indigo' : 'grape'}>
-                  {account?.kind === 'discord' ? <IconBrandDiscord size={13} /> : <IconBrandSlack size={13} />}
+                <ThemeIcon
+                  variant="transparent"
+                  size="xs"
+                  color={account?.kind === 'discord' ? 'indigo' : 'grape'}
+                >
+                  {account?.kind === 'discord' ? (
+                    <IconBrandDiscord size={13} />
+                  ) : (
+                    <IconBrandSlack size={13} />
+                  )}
                 </ThemeIcon>
                 <Text size="xs" fw={700} c="dimmed" truncate>
                   {account?.displayName ?? g.accountId}
@@ -95,7 +110,13 @@ export function ConversationList({
                     </Group>
                     <Group gap={4} wrap="nowrap">
                       {c.hasMention && (
-                        <Badge size="xs" circle variant="filled" color="ginger" aria-label="Mentions you">
+                        <Badge
+                          size="xs"
+                          circle
+                          variant="filled"
+                          color="ginger"
+                          aria-label="Mentions you"
+                        >
                           <IconAt size={10} />
                         </Badge>
                       )}
@@ -117,7 +138,11 @@ export function ConversationList({
 }
 
 function initials(name: string): string {
-  const parts = name.replace(/[^A-Za-z0-9 ]/g, ' ').trim().split(/\s+/).filter(Boolean);
+  const parts = name
+    .replace(/[^A-Za-z0-9 ]/g, ' ')
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean);
   if (parts.length === 0) return '?';
   if (parts.length === 1) return parts[0]!.slice(0, 2).toUpperCase();
   return (parts[0]![0]! + parts[parts.length - 1]![0]!).toUpperCase();

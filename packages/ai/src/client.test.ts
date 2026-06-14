@@ -72,10 +72,10 @@ describe('CloudAiClient Gemini dispatch', () => {
 
   it('posts to the Gemini generateContent endpoint with the API key in the x-goog-api-key header', async () => {
     fetchMock.mockResolvedValue(
-      new Response(
-        JSON.stringify({ candidates: [{ content: { parts: [{ text: 'pong' }] } }] }),
-        { status: 200, headers: { 'content-type': 'application/json' } },
-      ),
+      new Response(JSON.stringify({ candidates: [{ content: { parts: [{ text: 'pong' }] } }] }), {
+        status: 200,
+        headers: { 'content-type': 'application/json' },
+      }),
     );
     const client = new CloudAiClient(
       'https://generativelanguage.googleapis.com/v1beta',
@@ -101,7 +101,9 @@ describe('CloudAiClient Gemini dispatch', () => {
 
   it('hoists system messages into systemInstruction and merges consecutive same-role turns', async () => {
     fetchMock.mockResolvedValue(
-      new Response(JSON.stringify({ candidates: [{ content: { parts: [{ text: 'ok' }] } }] }), { status: 200 }),
+      new Response(JSON.stringify({ candidates: [{ content: { parts: [{ text: 'ok' }] } }] }), {
+        status: 200,
+      }),
     );
     const client = new CloudAiClient(
       'https://generativelanguage.googleapis.com/v1beta',
@@ -148,8 +150,8 @@ describe('CloudAiClient Gemini dispatch', () => {
       'gemini-1.5-flash',
       'google',
     );
-    await expect(
-      client.chat({ messages: [{ role: 'user', content: 'x' }] }),
-    ).rejects.toThrow(/SAFETY/);
+    await expect(client.chat({ messages: [{ role: 'user', content: 'x' }] })).rejects.toThrow(
+      /SAFETY/,
+    );
   });
 });

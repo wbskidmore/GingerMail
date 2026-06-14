@@ -62,7 +62,14 @@ rmSync(tmpDir, { recursive: true, force: true });
 
 const sizes = [16, 32, 64, 128, 256, 512, 1024];
 for (const size of sizes) {
-  sips('-z', String(size), String(size), src, '--out', path.join(iconsetDir, `icon_${size}x${size}.png`));
+  sips(
+    '-z',
+    String(size),
+    String(size),
+    src,
+    '--out',
+    path.join(iconsetDir, `icon_${size}x${size}.png`),
+  );
 }
 
 const renames = [
@@ -83,11 +90,16 @@ rmSync(path.join(iconsetDir, 'icon_1024x1024.png'), { force: true });
 const srgb = '/System/Library/ColorSync/Profiles/sRGB Profile.icc';
 if (existsSync(srgb)) {
   for (const file of [
-    'icon_16x16.png', 'icon_16x16@2x.png',
-    'icon_32x32.png', 'icon_32x32@2x.png',
-    'icon_128x128.png', 'icon_128x128@2x.png',
-    'icon_256x256.png', 'icon_256x256@2x.png',
-    'icon_512x512.png', 'icon_512x512@2x.png',
+    'icon_16x16.png',
+    'icon_16x16@2x.png',
+    'icon_32x32.png',
+    'icon_32x32@2x.png',
+    'icon_128x128.png',
+    'icon_128x128@2x.png',
+    'icon_256x256.png',
+    'icon_256x256@2x.png',
+    'icon_512x512.png',
+    'icon_512x512@2x.png',
   ]) {
     const p = path.join(iconsetDir, file);
     sips('--matchTo', srgb, '-s', 'format', 'png', p, '--out', p);
@@ -95,7 +107,9 @@ if (existsSync(srgb)) {
 }
 
 const icnsOut = path.join(buildDir, 'icon.icns');
-const icns = spawnSync('iconutil', ['-c', 'icns', '-o', icnsOut, iconsetDir], { stdio: ['ignore', 'pipe', 'pipe'] });
+const icns = spawnSync('iconutil', ['-c', 'icns', '-o', icnsOut, iconsetDir], {
+  stdio: ['ignore', 'pipe', 'pipe'],
+});
 if (icns.status !== 0) {
   console.error(`[build-icons] iconutil failed:\n${icns.stderr.toString()}`);
   process.exit(1);
@@ -117,4 +131,6 @@ const rendererPublic = path.join(repoRoot, 'apps', 'renderer', 'public');
 mkdirSync(rendererPublic, { recursive: true });
 copyFileSync(defaultSrc, path.join(rendererPublic, 'icon.png'));
 
-console.log('[build-icons] wrote build/icon.png, build/icon.icns, build/icon.ico, apps/renderer/public/icon.png');
+console.log(
+  '[build-icons] wrote build/icon.png, build/icon.icns, build/icon.ico, apps/renderer/public/icon.png',
+);

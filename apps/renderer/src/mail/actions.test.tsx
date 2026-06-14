@@ -34,7 +34,9 @@ describe('Mail action registry', () => {
     // hidden should be empty. Keeping the assertion explicit catches the
     // moment someone adds a new action without bumping defaults.
     expect(part.hidden.length).toBe(
-      ALL_ACTION_IDS.length - DEFAULT_MAIL_TOOLBAR.visible.length - DEFAULT_MAIL_TOOLBAR.overflow.length,
+      ALL_ACTION_IDS.length -
+        DEFAULT_MAIL_TOOLBAR.visible.length -
+        DEFAULT_MAIL_TOOLBAR.overflow.length,
     );
   });
 

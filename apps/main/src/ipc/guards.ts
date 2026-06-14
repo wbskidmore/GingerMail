@@ -103,13 +103,19 @@ export function configureIpcGuards(deps: SafeHandleDeps): void {
 export function safeHandle<S extends ZodTypeAny | null, R>(
   channel: string,
   schema: S,
-  fn: (input: S extends ZodTypeAny ? z.infer<S> : undefined, event: IpcMainInvokeEvent) => Promise<R> | R,
+  fn: (
+    input: S extends ZodTypeAny ? z.infer<S> : undefined,
+    event: IpcMainInvokeEvent,
+  ) => Promise<R> | R,
 ): void {
   ipcMain.removeHandler(channel);
   ipcMain.handle(channel, async (event: IpcMainInvokeEvent, raw: unknown) => {
     if (!isMainWindowSender(event)) {
       depsRef.log?.warn(`[ipc] rejected: non-main-window sender on ${channel}`);
-      return { ok: false, error: { code: 'SENDER_DENIED', message: 'Unauthorized IPC sender' } } satisfies IpcErrorEnvelope;
+      return {
+        ok: false,
+        error: { code: 'SENDER_DENIED', message: 'Unauthorized IPC sender' },
+      } satisfies IpcErrorEnvelope;
     }
     let input: unknown = raw;
     if (schema) {
@@ -120,7 +126,10 @@ export function safeHandle<S extends ZodTypeAny | null, R>(
         );
         return {
           ok: false,
-          error: { code: 'VALIDATION_FAILED', message: parsed.error.issues[0]?.message ?? 'Invalid input' },
+          error: {
+            code: 'VALIDATION_FAILED',
+            message: parsed.error.issues[0]?.message ?? 'Invalid input',
+          },
         } satisfies IpcErrorEnvelope;
       }
       input = parsed.data;
@@ -128,7 +137,9 @@ export function safeHandle<S extends ZodTypeAny | null, R>(
     try {
       return await fn(input as never, event);
     } catch (err) {
-      depsRef.log?.warn(`[ipc] handler threw channel=${channel} err=${err instanceof Error ? err.message : String(err)}`);
+      depsRef.log?.warn(
+        `[ipc] handler threw channel=${channel} err=${err instanceof Error ? err.message : String(err)}`,
+      );
       throw err;
     }
   });

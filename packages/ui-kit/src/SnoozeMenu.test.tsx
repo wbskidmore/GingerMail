@@ -12,10 +12,7 @@ describe('SnoozeMenu', () => {
     const user = userEvent.setup();
     render(
       <MantineProvider theme={gingermailTheme}>
-        <SnoozeMenu
-          target={<Button>Open snooze</Button>}
-          onSelect={onSelect}
-        />
+        <SnoozeMenu target={<Button>Open snooze</Button>} onSelect={onSelect} />
       </MantineProvider>,
     );
     await user.click(screen.getByRole('button', { name: /open snooze/i }));

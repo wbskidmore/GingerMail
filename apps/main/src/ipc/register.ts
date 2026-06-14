@@ -1,6 +1,28 @@
-import { app, BrowserWindow, dialog, ipcMain, Notification, systemPreferences } from '../electronShim.js';
+import {
+  app,
+  BrowserWindow,
+  dialog,
+  ipcMain,
+  Notification,
+  systemPreferences,
+} from '../electronShim.js';
 import fs from 'node:fs/promises';
-import { IPC_CHANNELS, createFocusState, type AddAccountInput, type AppSettings, type Account, type Address, type Draft, type Folder, type ListMessagesInput, type ListThreadsInput, type Message, type MoveResult, type Task, type CalendarEvent } from '@gingermail/core';
+import {
+  IPC_CHANNELS,
+  createFocusState,
+  type AddAccountInput,
+  type AppSettings,
+  type Account,
+  type Address,
+  type Draft,
+  type Folder,
+  type ListMessagesInput,
+  type ListThreadsInput,
+  type Message,
+  type MoveResult,
+  type Task,
+  type CalendarEvent,
+} from '@gingermail/core';
 import type { IpcMainInvokeEvent } from 'electron';
 import type { AppContext } from '../context.js';
 import { handleAi } from './aiHandlers.js';
@@ -124,7 +146,11 @@ export function registerIpc(ctx: AppContext): void {
   });
 
   handle(IPC_CHANNELS.mailListThreads, async (_e, input: ListThreadsInput) => {
-    return ctx.db.listThreads({ accountId: input.accountId, limit: input.limit, offset: input.offset });
+    return ctx.db.listThreads({
+      accountId: input.accountId,
+      limit: input.limit,
+      offset: input.offset,
+    });
   });
 
   handle(IPC_CHANNELS.mailListMessages, async (_e, input: ListMessagesInput) => {
@@ -230,7 +256,11 @@ export function registerIpc(ctx: AppContext): void {
       }
     }
     ctx.db.upsertMessages(all);
-    return all.map((m) => ({ ...m, body: undefined, attachments: undefined })) as unknown as Message[];
+    return all.map((m) => ({
+      ...m,
+      body: undefined,
+      attachments: undefined,
+    })) as unknown as Message[];
   });
 
   handle(IPC_CHANNELS.mailRefreshAll, async () => {
@@ -256,7 +286,9 @@ export function registerIpc(ctx: AppContext): void {
     if (!accountId || !folderShort || !uid) throw new Error('Invalid message id');
     const folderId = `${accountId}:${folderShort}`;
     const provider = await ctx.getMailProvider(accountId);
-    await provider?.setFlag({ folderId, uid, flag: input.read ? 'read' : 'unread' }).catch(() => undefined);
+    await provider
+      ?.setFlag({ folderId, uid, flag: input.read ? 'read' : 'unread' })
+      .catch(() => undefined);
     ctx.db.setMessageFlags(input.id, { unread: !input.read });
   });
 
@@ -296,10 +328,13 @@ export function registerIpc(ctx: AppContext): void {
 
   // ----- Calendar -----
   handle(IPC_CHANNELS.calListCalendars, () => ctx.db.listCalendars());
-  handle(IPC_CHANNELS.calListEvents, async (_e, input: { from: number; to: number; calendarIds?: string[] }) => {
-    await syncAllCalendars(ctx, input.from, input.to).catch(() => undefined);
-    return ctx.db.listEvents(input);
-  });
+  handle(
+    IPC_CHANNELS.calListEvents,
+    async (_e, input: { from: number; to: number; calendarIds?: string[] }) => {
+      await syncAllCalendars(ctx, input.from, input.to).catch(() => undefined);
+      return ctx.db.listEvents(input);
+    },
+  );
   handle(IPC_CHANNELS.calCreate, async (_e, event: Omit<CalendarEvent, 'id'>) => {
     const provider = await ctx.getCalendarProvider(event.accountId);
     if (provider) {
@@ -480,9 +515,16 @@ export function registerIpc(ctx: AppContext): void {
       // the apiKey here before constructing the client; otherwise cloud
       // users would silently fall back to heuristic-only because
       // `buildAiClient` short-circuits on a missing key.
-      const aiSettings = settings.ai.mode === 'cloud' && settings.ai.cloud
-        ? { ...settings.ai, cloud: { ...settings.ai.cloud, apiKey: ctx.vault.readAppSecret('aiCloudApiKey') ?? '' } }
-        : settings.ai;
+      const aiSettings =
+        settings.ai.mode === 'cloud' && settings.ai.cloud
+          ? {
+              ...settings.ai,
+              cloud: {
+                ...settings.ai.cloud,
+                apiKey: ctx.vault.readAppSecret('aiCloudApiKey') ?? '',
+              },
+            }
+          : settings.ai;
       const client = buildAiClient(aiSettings);
       if (!client) return heur;
       const candidates = heur.map((s) => {
@@ -513,15 +555,29 @@ export function registerIpc(ctx: AppContext): void {
 
   safeHandle(IPC_CHANNELS.unsubPerform, UnsubPerformSchema, async (input) => {
     const { performUnsubscribe } = await import('../unsubscribe/perform.js');
-    const result = await performUnsubscribe({ http: input.http, mailto: input.mailto, oneClick: input.oneClick });
+    const result = await performUnsubscribe({
+      http: input.http,
+      mailto: input.mailto,
+      oneClick: input.oneClick,
+    });
     if (result.ok && result.method === 'http') {
-      ctx.db.upsertSenderAction({ email: input.email, action: 'unsubscribed', decidedAt: Date.now(), source: 'one-click' });
+      ctx.db.upsertSenderAction({
+        email: input.email,
+        action: 'unsubscribed',
+        decidedAt: Date.now(),
+        source: 'one-click',
+      });
     }
     return result;
   });
 
   safeHandle(IPC_CHANNELS.unsubMute, UnsubMuteSchema, async (input) => {
-    ctx.db.upsertSenderAction({ email: input.email, action: 'muted', decidedAt: Date.now(), source: 'user' });
+    ctx.db.upsertSenderAction({
+      email: input.email,
+      action: 'muted',
+      decidedAt: Date.now(),
+      source: 'user',
+    });
   });
 
   safeHandle(IPC_CHANNELS.unsubUnmute, UnsubUnmuteSchema, async (input) => {
@@ -529,7 +585,12 @@ export function registerIpc(ctx: AppContext): void {
   });
 
   safeHandle(IPC_CHANNELS.unsubDismiss, UnsubDismissSchema, async (input) => {
-    ctx.db.upsertSenderAction({ email: input.email, action: 'dismissed', decidedAt: Date.now(), source: 'user' });
+    ctx.db.upsertSenderAction({
+      email: input.email,
+      action: 'dismissed',
+      decidedAt: Date.now(),
+      source: 'user',
+    });
   });
 
   handle(IPC_CHANNELS.unsubListMuted, async () => ctx.db.listMutedSenders());
@@ -667,8 +728,10 @@ function persistOAuth(ctx: AppContext, account: Account, tokens: Record<string, 
   const config: Record<string, unknown> = {};
   const secrets: Record<string, string> = {};
   if (typeof tokens['access_token'] === 'string') secrets['access_token'] = tokens['access_token'];
-  if (typeof tokens['refresh_token'] === 'string') secrets['refresh_token'] = tokens['refresh_token'];
-  if (typeof tokens['home_account_id'] === 'string') secrets['home_account_id'] = tokens['home_account_id'];
+  if (typeof tokens['refresh_token'] === 'string')
+    secrets['refresh_token'] = tokens['refresh_token'];
+  if (typeof tokens['home_account_id'] === 'string')
+    secrets['home_account_id'] = tokens['home_account_id'];
   ctx.db.upsertAccount(account, JSON.stringify(config));
   ctx.vault.write(account.id, secrets);
 }
@@ -707,7 +770,11 @@ function scheduleTaskDue(ctx: AppContext, task: Task): void {
  * changes the id) plus the previous folder id so the renderer can offer an
  * Undo button that restores the message.
  */
-async function moveMessage(ctx: AppContext, id: string, targetFolderId: string): Promise<MoveResult> {
+async function moveMessage(
+  ctx: AppContext,
+  id: string,
+  targetFolderId: string,
+): Promise<MoveResult> {
   const [accountId, folderShort, uid] = id.split(':');
   if (!accountId || !folderShort || !uid) throw new Error('Invalid message id');
   const fromFolderId = `${accountId}:${folderShort}`;
@@ -725,7 +792,11 @@ async function moveMessage(ctx: AppContext, id: string, targetFolderId: string):
   return { ok: true, newId, previousFolderId: fromFolderId };
 }
 
-async function moveToRoleFolder(ctx: AppContext, id: string, role: 'archive' | 'trash' | 'spam'): Promise<MoveResult> {
+async function moveToRoleFolder(
+  ctx: AppContext,
+  id: string,
+  role: 'archive' | 'trash' | 'spam',
+): Promise<MoveResult> {
   const accountId = id.split(':')[0];
   if (!accountId) throw new Error('Invalid message id');
   const folders: Folder[] = await ctx.db.listFolders(accountId);
@@ -752,7 +823,9 @@ function buildReplyDraft(ctx: AppContext, m: Message, all: boolean): Draft {
   const toList: Address[] = [m.from];
   const ccList: Address[] = all
     ? dedupAddresses(
-        [...(m.to ?? []), ...(m.cc ?? [])].filter((a) => a.email && a.email.toLowerCase() !== account?.emailAddress.toLowerCase()),
+        [...(m.to ?? []), ...(m.cc ?? [])].filter(
+          (a) => a.email && a.email.toLowerCase() !== account?.emailAddress.toLowerCase(),
+        ),
       )
     : [];
   const references = [...(m.references ?? []), m.inReplyTo].filter(Boolean) as string[];
@@ -781,7 +854,10 @@ function buildForwardDraft(m: Message): Draft {
     bodyText: quoted.text,
     // Forwarded attachments stay referenced server-side; the renderer can
     // surface them so the user can choose to drop them before sending.
-    attachments: (m.attachments ?? []).map((a) => ({ filename: a.filename ?? 'attachment', path: '' })),
+    attachments: (m.attachments ?? []).map((a) => ({
+      filename: a.filename ?? 'attachment',
+      path: '',
+    })),
   };
 }
 
@@ -790,7 +866,10 @@ function quoteBody(m: Message, forward = false): { html: string; text: string } 
   const header = forward
     ? `From: ${formatAddress(m.from)}\nDate: ${sentAt}\nSubject: ${m.subject}\nTo: ${(m.to ?? []).map(formatAddress).join(', ')}\n\n`
     : `On ${sentAt}, ${formatAddress(m.from)} wrote:\n\n`;
-  const text = `${header}${(m.body?.text ?? m.snippet ?? '').split('\n').map((l) => `> ${l}`).join('\n')}\n`;
+  const text = `${header}${(m.body?.text ?? m.snippet ?? '')
+    .split('\n')
+    .map((l) => `> ${l}`)
+    .join('\n')}\n`;
   const html = `<br><br><blockquote style="margin:0 0 0 .8ex;border-left:1px #ccc solid;padding-left:1ex"><div>${escapeHtml(header).replace(/\n/g, '<br>')}</div>${m.body?.html ?? `<pre>${escapeHtml(m.body?.text ?? m.snippet ?? '')}</pre>`}</blockquote>`;
   return { text, html };
 }
@@ -800,7 +879,7 @@ function formatAddress(a: Address): string {
 }
 
 function escapeHtml(s: string): string {
-  return s.replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c] ?? c));
+  return s.replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' })[c] ?? c);
 }
 
 function dedupAddresses<T extends { email: string }>(items: T[]): T[] {

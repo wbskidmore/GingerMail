@@ -94,9 +94,9 @@ export class GingerMailDb {
   private backupBeforeMigration(dbPath: string): void {
     try {
       const fs = createRequire(import.meta.url)('node:fs') as typeof FsModule;
-      const row = this.db
-        .prepare(`SELECT value FROM schema_meta WHERE key = 'version'`)
-        .get() as { value: string } | undefined;
+      const row = this.db.prepare(`SELECT value FROM schema_meta WHERE key = 'version'`).get() as
+        | { value: string }
+        | undefined;
       const current = row ? parseInt(row.value, 10) : 0;
       if (current >= CURRENT_SCHEMA_VERSION) return;
       const stamp = new Date().toISOString().replace(/[:.]/g, '-');
@@ -122,9 +122,9 @@ export class GingerMailDb {
     // previous schema version rather than half-migrated. sqlite's DDL is
     // transactional in WAL mode, including ALTER TABLE.
     const runMigrationTx = this.db.transaction(() => {
-      const row = this.db
-        .prepare(`SELECT value FROM schema_meta WHERE key = 'version'`)
-        .get() as { value: string } | undefined;
+      const row = this.db.prepare(`SELECT value FROM schema_meta WHERE key = 'version'`).get() as
+        | { value: string }
+        | undefined;
       let current = row ? parseInt(row.value, 10) : 0;
 
       // -- v0 -> v1: original schema. SCHEMA_SQL above is the canonical v1.
@@ -140,7 +140,9 @@ export class GingerMailDb {
       // ADD COLUMNs on existing databases.
       if (current === 1) {
         const addCol = (sql: string): void => {
-          try { this.db.exec(sql); } catch (e) {
+          try {
+            this.db.exec(sql);
+          } catch (e) {
             // "duplicate column name" means we've already added it (e.g. on
             // a partial migration retry); anything else is real and should
             // bubble — that aborts the transaction so we don't commit a
@@ -164,13 +166,17 @@ export class GingerMailDb {
       // from muted senders. Existing rows default to 0 (not muted).
       if (current === 3) {
         const addCol = (sql: string): void => {
-          try { this.db.exec(sql); } catch (e) {
+          try {
+            this.db.exec(sql);
+          } catch (e) {
             if (!String(e).includes('duplicate column')) throw e;
           }
         };
         addCol(`ALTER TABLE messages ADD COLUMN muted INTEGER NOT NULL DEFAULT 0`);
         // Partial index for cheap "muted only" lookups; safe to re-create.
-        this.db.exec(`CREATE INDEX IF NOT EXISTS messages_muted_idx ON messages(muted) WHERE muted = 1`);
+        this.db.exec(
+          `CREATE INDEX IF NOT EXISTS messages_muted_idx ON messages(muted) WHERE muted = 1`,
+        );
         current = 4;
       }
 
@@ -213,21 +219,33 @@ export class GingerMailDb {
   }): { id: string; status: 'queued' | 'sending' | 'sent' | 'failed'; created: boolean } {
     const existing = this.db
       .prepare(`SELECT id, status FROM pending_sends WHERE client_id = ?`)
-      .get(input.clientId) as { id: string; status: 'queued' | 'sending' | 'sent' | 'failed' } | undefined;
+      .get(input.clientId) as
+      | { id: string; status: 'queued' | 'sending' | 'sent' | 'failed' }
+      | undefined;
     if (existing) return { id: existing.id, status: existing.status, created: false };
     this.db
       .prepare(
         `INSERT INTO pending_sends (id, client_id, account_id, draft_json, status, attempts, max_attempts, next_attempt_at, created_at, updated_at)
          VALUES (?, ?, ?, ?, 'queued', 0, 5, ?, ?, ?)`,
       )
-      .run(input.id, input.clientId, input.accountId, input.draftJson, input.now, input.now, input.now);
+      .run(
+        input.id,
+        input.clientId,
+        input.accountId,
+        input.draftJson,
+        input.now,
+        input.now,
+        input.now,
+      );
     return { id: input.id, status: 'queued', created: true };
   }
 
   /** Mark a send as in-flight; bumps attempts and updates `updated_at`. */
   markSendAttemptStarted(id: string, now: number): void {
     this.db
-      .prepare(`UPDATE pending_sends SET status='sending', attempts = attempts + 1, updated_at = ? WHERE id = ?`)
+      .prepare(
+        `UPDATE pending_sends SET status='sending', attempts = attempts + 1, updated_at = ? WHERE id = ?`,
+      )
       .run(now, id);
   }
 
@@ -251,7 +269,10 @@ export class GingerMailDb {
   }
 
   /** Returns sends that are due for another attempt right now. */
-  listDuePendingSends(now: number, limit = 25): Array<{
+  listDuePendingSends(
+    now: number,
+    limit = 25,
+  ): Array<{
     id: string;
     accountId: string;
     draftJson: string;
@@ -265,7 +286,12 @@ export class GingerMailDb {
           ORDER BY next_attempt_at ASC
           LIMIT ?`,
       )
-      .all(now, limit) as Array<{ id: string; accountId: string; draftJson: string; attempts: number }>;
+      .all(now, limit) as Array<{
+      id: string;
+      accountId: string;
+      draftJson: string;
+      attempts: number;
+    }>;
     return rows;
   }
 
@@ -277,7 +303,9 @@ export class GingerMailDb {
   recoverStaleSending(staleMs: number, now: number): number {
     const cutoff = now - staleMs;
     const r = this.db
-      .prepare(`UPDATE pending_sends SET status='queued', next_attempt_at=? WHERE status='sending' AND updated_at < ?`)
+      .prepare(
+        `UPDATE pending_sends SET status='queued', next_attempt_at=? WHERE status='sending' AND updated_at < ?`,
+      )
       .run(now, cutoff);
     return r.changes;
   }
@@ -423,7 +451,7 @@ export class GingerMailDb {
           // A muted sender's mail is silently marked read so it doesn't
           // bump unread counters even if the user's filter rule on the
           // server hasn't moved it yet.
-          isMuted ? 0 : (m.unread ? 1 : 0),
+          isMuted ? 0 : m.unread ? 1 : 0,
           m.flagged ? 1 : 0,
           m.hasAttachments ? 1 : 0,
           JSON.stringify(m.labels ?? []),
@@ -470,14 +498,26 @@ export class GingerMailDb {
       // Un-hide any previously muted rows so the user sees their mail
       // reappear immediately (no need to wait for the next sync).
       const flipped = this.db
-        .prepare(`UPDATE messages SET muted = 0 WHERE muted = 1 AND lower(json_extract(from_json, '$.email')) = ?`)
+        .prepare(
+          `UPDATE messages SET muted = 0 WHERE muted = 1 AND lower(json_extract(from_json, '$.email')) = ?`,
+        )
         .run(lower);
       // Re-insert the now-visible rows into FTS so they show up in search again.
       if (typeof flipped.changes === 'number' && flipped.changes > 0) {
         const rows = this.db
-          .prepare(`SELECT id, subject, snippet, from_json, body_text FROM messages WHERE muted = 0 AND lower(json_extract(from_json, '$.email')) = ?`)
-          .all(lower) as Array<{ id: string; subject: string; snippet: string; from_json: string; body_text: string | null }>;
-        const ftsDelete = this.db.prepare(`DELETE FROM messages_fts WHERE rowid = (SELECT rowid FROM messages WHERE id = ?)`);
+          .prepare(
+            `SELECT id, subject, snippet, from_json, body_text FROM messages WHERE muted = 0 AND lower(json_extract(from_json, '$.email')) = ?`,
+          )
+          .all(lower) as Array<{
+          id: string;
+          subject: string;
+          snippet: string;
+          from_json: string;
+          body_text: string | null;
+        }>;
+        const ftsDelete = this.db.prepare(
+          `DELETE FROM messages_fts WHERE rowid = (SELECT rowid FROM messages WHERE id = ?)`,
+        );
         const ftsInsert = this.db.prepare(
           `INSERT INTO messages_fts (rowid, subject, snippet, from_text, body_text)
            VALUES ((SELECT rowid FROM messages WHERE id = ?), ?, ?, ?, ?)`,
@@ -504,7 +544,9 @@ export class GingerMailDb {
 
   listMutedSenders(): MutedSender[] {
     const rows = this.db
-      .prepare(`SELECT email, decided_at FROM sender_actions WHERE action = 'muted' ORDER BY decided_at DESC`)
+      .prepare(
+        `SELECT email, decided_at FROM sender_actions WHERE action = 'muted' ORDER BY decided_at DESC`,
+      )
       .all() as Array<{ email: string; decided_at: number }>;
     return rows.map((r) => ({ email: r.email, mutedAt: r.decided_at }));
   }
@@ -549,13 +591,19 @@ export class GingerMailDb {
   }
 
   listChatConversations(accountId?: string): ChatConversation[] {
-    const rows = (accountId
-      ? this.db
-          .prepare(`SELECT * FROM slack_conversations WHERE account_id = ? ORDER BY has_mention DESC, last_message_at DESC`)
-          .all(accountId)
-      : this.db
-          .prepare(`SELECT * FROM slack_conversations ORDER BY has_mention DESC, last_message_at DESC`)
-          .all()) as Array<{
+    const rows = (
+      accountId
+        ? this.db
+            .prepare(
+              `SELECT * FROM slack_conversations WHERE account_id = ? ORDER BY has_mention DESC, last_message_at DESC`,
+            )
+            .all(accountId)
+        : this.db
+            .prepare(
+              `SELECT * FROM slack_conversations ORDER BY has_mention DESC, last_message_at DESC`,
+            )
+            .all()
+    ) as Array<{
       id: string;
       account_id: string;
       conversation_id: string;
@@ -591,16 +639,27 @@ export class GingerMailDb {
   }
 
   /** Recompute and persist unread_count / has_mention for a conversation. */
-  setChatUnread(input: { accountId: string; conversationId: string; unreadCount: number; hasMention: boolean }): void {
+  setChatUnread(input: {
+    accountId: string;
+    conversationId: string;
+    unreadCount: number;
+    hasMention: boolean;
+  }): void {
     this.db
       .prepare(`UPDATE slack_conversations SET unread_count = ?, has_mention = ? WHERE id = ?`)
-      .run(input.unreadCount, input.hasMention ? 1 : 0, `${input.accountId}:${input.conversationId}`);
+      .run(
+        input.unreadCount,
+        input.hasMention ? 1 : 0,
+        `${input.accountId}:${input.conversationId}`,
+      );
   }
 
   /** Set the local read marker and zero the unread counters. */
   markChatConversationRead(accountId: string, conversationId: string, ts: string): void {
     this.db
-      .prepare(`UPDATE slack_conversations SET last_read_ts = ?, unread_count = 0, has_mention = 0 WHERE id = ?`)
+      .prepare(
+        `UPDATE slack_conversations SET last_read_ts = ?, unread_count = 0, has_mention = 0 WHERE id = ?`,
+      )
       .run(ts, `${accountId}:${conversationId}`);
   }
 
@@ -723,7 +782,9 @@ export class GingerMailDb {
     const rows = (
       status
         ? this.db
-            .prepare(`SELECT * FROM suggestions WHERE status = ? ORDER BY created_at DESC LIMIT 500`)
+            .prepare(
+              `SELECT * FROM suggestions WHERE status = ? ORDER BY created_at DESC LIMIT 500`,
+            )
             .all(status)
         : this.db.prepare(`SELECT * FROM suggestions ORDER BY created_at DESC LIMIT 500`).all()
     ) as Array<{
@@ -765,7 +826,9 @@ export class GingerMailDb {
 
   setSuggestionStatus(id: string, status: SuggestionStatus, createdEntityId?: string): void {
     this.db
-      .prepare(`UPDATE suggestions SET status = ?, created_entity_id = COALESCE(?, created_entity_id) WHERE id = ?`)
+      .prepare(
+        `UPDATE suggestions SET status = ?, created_entity_id = COALESCE(?, created_entity_id) WHERE id = ?`,
+      )
       .run(status, createdEntityId ?? null, id);
   }
 
@@ -806,8 +869,18 @@ export class GingerMailDb {
       .prepare(
         `SELECT email, action, decided_at, source FROM sender_actions WHERE action IN (${placeholders}) ORDER BY decided_at DESC`,
       )
-      .all(...actions) as Array<{ email: string; action: SenderAction['action']; decided_at: number; source: string }>;
-    return rows.map((r) => ({ email: r.email, action: r.action, decidedAt: r.decided_at, source: r.source }));
+      .all(...actions) as Array<{
+      email: string;
+      action: SenderAction['action'];
+      decided_at: number;
+      source: string;
+    }>;
+    return rows.map((r) => ({
+      email: r.email,
+      action: r.action,
+      decidedAt: r.decided_at,
+      source: r.source,
+    }));
   }
 
   /**
@@ -815,7 +888,16 @@ export class GingerMailDb {
    * window. Used by the unsubscribe heuristic. Excludes senders we've
    * already taken action on, since suggesting them again is useless noise.
    */
-  countTrashedBySender(opts: { sinceMs: number; minTotal?: number }): Array<{ email: string; total: number; trashed: number; lastSeen: number; exampleMessageId: string; listUnsubscribeHttp?: string; listUnsubscribeMailto?: string; listUnsubscribePost: boolean }> {
+  countTrashedBySender(opts: { sinceMs: number; minTotal?: number }): Array<{
+    email: string;
+    total: number;
+    trashed: number;
+    lastSeen: number;
+    exampleMessageId: string;
+    listUnsubscribeHttp?: string;
+    listUnsubscribeMailto?: string;
+    listUnsubscribePost: boolean;
+  }> {
     const rows = this.db
       .prepare(
         `WITH src AS (
@@ -849,15 +931,15 @@ export class GingerMailDb {
          LIMIT 50`,
       )
       .all(opts.sinceMs, opts.minTotal ?? 3) as Array<{
-        email: string;
-        total: number;
-        trashed: number;
-        lastSeen: number;
-        exampleMessageId: string;
-        list_unsubscribe_http: string | null;
-        list_unsubscribe_mailto: string | null;
-        list_unsubscribe_post: number;
-      }>;
+      email: string;
+      total: number;
+      trashed: number;
+      lastSeen: number;
+      exampleMessageId: string;
+      list_unsubscribe_http: string | null;
+      list_unsubscribe_mailto: string | null;
+      list_unsubscribe_post: number;
+    }>;
     return rows.map((r) => ({
       email: r.email,
       total: r.total,
@@ -885,7 +967,10 @@ export class GingerMailDb {
     tx(id);
   }
 
-  setMessageFlags(id: string, patch: Partial<Pick<MessageHeader, 'unread' | 'flagged' | 'snoozedUntil' | 'energyTag'>>): void {
+  setMessageFlags(
+    id: string,
+    patch: Partial<Pick<MessageHeader, 'unread' | 'flagged' | 'snoozedUntil' | 'energyTag'>>,
+  ): void {
     const sets: string[] = [];
     const values: unknown[] = [];
     if (patch.unread !== undefined) {
@@ -910,12 +995,21 @@ export class GingerMailDb {
   }
 
   getMessage(id: string): Message | undefined {
-    const r = this.db.prepare(`SELECT * FROM messages WHERE id = ?`).get(id) as MessageRow | undefined;
+    const r = this.db.prepare(`SELECT * FROM messages WHERE id = ?`).get(id) as
+      | MessageRow
+      | undefined;
     if (!r) return undefined;
     return rowToMessage(r);
   }
 
-  listMessages(input: { folderId?: string; threadId?: string; accountId?: string; limit?: number; offset?: number; includeMuted?: boolean }): MessageHeader[] {
+  listMessages(input: {
+    folderId?: string;
+    threadId?: string;
+    accountId?: string;
+    limit?: number;
+    offset?: number;
+    includeMuted?: boolean;
+  }): MessageHeader[] {
     const where: string[] = [];
     const values: unknown[] = [];
     if (input.folderId) {
@@ -1043,8 +1137,16 @@ export class GingerMailDb {
     tx(threads);
   }
 
-  listThreads(input: { accountId?: string; limit?: number; offset?: number; includeMuted?: boolean }): MessageThread[] {
-    const where: string[] = ['EXISTS (SELECT 1 FROM messages m WHERE m.thread_id = threads.id' + (input.includeMuted ? ')' : ' AND m.muted = 0)')];
+  listThreads(input: {
+    accountId?: string;
+    limit?: number;
+    offset?: number;
+    includeMuted?: boolean;
+  }): MessageThread[] {
+    const where: string[] = [
+      'EXISTS (SELECT 1 FROM messages m WHERE m.thread_id = threads.id' +
+        (input.includeMuted ? ')' : ' AND m.muted = 0)'),
+    ];
     const values: unknown[] = [];
     if (input.accountId) {
       where.push('account_id = ?');
@@ -1069,9 +1171,7 @@ export class GingerMailDb {
       const mq = input.includeMuted
         ? `SELECT id FROM messages WHERE thread_id = ? ORDER BY date DESC`
         : `SELECT id FROM messages WHERE thread_id = ? AND muted = 0 ORDER BY date DESC`;
-      const messageIds = (this.db
-        .prepare(mq)
-        .all(r.id) as Array<{ id: string }>).map((x) => x.id);
+      const messageIds = (this.db.prepare(mq).all(r.id) as Array<{ id: string }>).map((x) => x.id);
       return {
         id: r.id,
         accountId: r.account_id,
@@ -1093,7 +1193,8 @@ export class GingerMailDb {
       `INSERT OR REPLACE INTO calendars (id, account_id, name, color, readonly, primary_flag) VALUES (?, ?, ?, ?, ?, ?)`,
     );
     const tx = this.db.transaction((items: Calendar[]) => {
-      for (const c of items) stmt.run(c.id, c.accountId, c.name, c.color, c.readonly ? 1 : 0, c.primary ? 1 : 0);
+      for (const c of items)
+        stmt.run(c.id, c.accountId, c.name, c.color, c.readonly ? 1 : 0, c.primary ? 1 : 0);
     });
     tx(cals);
   }
@@ -1206,7 +1307,9 @@ export class GingerMailDb {
   // ---- Tasks ----
 
   upsertTaskLists(lists: TaskList[]): void {
-    const stmt = this.db.prepare(`INSERT OR REPLACE INTO task_lists (id, account_id, name, color) VALUES (?, ?, ?, ?)`);
+    const stmt = this.db.prepare(
+      `INSERT OR REPLACE INTO task_lists (id, account_id, name, color) VALUES (?, ?, ?, ?)`,
+    );
     const tx = this.db.transaction((items: TaskList[]) => {
       for (const l of items) stmt.run(l.id, l.accountId, l.name, l.color ?? null);
     });
@@ -1260,7 +1363,11 @@ export class GingerMailDb {
   listTasks(listId?: string): Task[] {
     const rows = (
       listId
-        ? this.db.prepare(`SELECT * FROM tasks WHERE list_id = ? ORDER BY position ASC, due ASC NULLS LAST`).all(listId)
+        ? this.db
+            .prepare(
+              `SELECT * FROM tasks WHERE list_id = ? ORDER BY position ASC, due ASC NULLS LAST`,
+            )
+            .all(listId)
         : this.db.prepare(`SELECT * FROM tasks ORDER BY position ASC, due ASC NULLS LAST`).all()
     ) as Array<{
       id: string;
@@ -1308,12 +1415,21 @@ export class GingerMailDb {
         `INSERT OR REPLACE INTO scheduled_jobs (id, kind, fire_at, payload_json, created_at, fired_at)
          VALUES (?, ?, ?, ?, ?, ?)`,
       )
-      .run(job.id, job.kind, job.fireAt, JSON.stringify(job.payload), job.createdAt, job.firedAt ?? null);
+      .run(
+        job.id,
+        job.kind,
+        job.fireAt,
+        JSON.stringify(job.payload),
+        job.createdAt,
+        job.firedAt ?? null,
+      );
   }
 
   listDueJobs(now: number): ScheduledJob[] {
     const rows = this.db
-      .prepare(`SELECT * FROM scheduled_jobs WHERE fired_at IS NULL AND fire_at <= ? ORDER BY fire_at`)
+      .prepare(
+        `SELECT * FROM scheduled_jobs WHERE fired_at IS NULL AND fire_at <= ? ORDER BY fire_at`,
+      )
       .all(now) as Array<{
       id: string;
       kind: string;
@@ -1424,7 +1540,9 @@ function rowToMessage(r: MessageRow): Message {
     attachments: r.attachments_json ? safeJson<Message['attachments']>(r.attachments_json, []) : [],
     inReplyTo: r.in_reply_to ?? undefined,
     references: r.references_json ? safeJson<string[]>(r.references_json, []) : undefined,
-    rawHeaders: r.raw_headers_json ? safeJson<Record<string, string>>(r.raw_headers_json, {}) : undefined,
+    rawHeaders: r.raw_headers_json
+      ? safeJson<Record<string, string>>(r.raw_headers_json, {})
+      : undefined,
     listUnsubscribeHttp: r.list_unsubscribe_http ?? undefined,
     listUnsubscribeMailto: r.list_unsubscribe_mailto ?? undefined,
     listUnsubscribePost: r.list_unsubscribe_post === 1,

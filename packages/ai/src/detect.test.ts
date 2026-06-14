@@ -19,12 +19,25 @@ describe('detectActionables', () => {
     const client = stubClient(
       JSON.stringify({
         items: [
-          { category: 'task', title: 'Send the report', confidence: 0.9, due: '2026-06-01T09:00:00Z' },
-          { category: 'event', title: 'Standup', confidence: 1.5, when: '2026-06-02T15:00:00Z', location: 'Zoom' },
+          {
+            category: 'task',
+            title: 'Send the report',
+            confidence: 0.9,
+            due: '2026-06-01T09:00:00Z',
+          },
+          {
+            category: 'event',
+            title: 'Standup',
+            confidence: 1.5,
+            when: '2026-06-02T15:00:00Z',
+            location: 'Zoom',
+          },
         ],
       }),
     );
-    const out = await detectActionables(client, { text: 'please send the report and join standup' });
+    const out = await detectActionables(client, {
+      text: 'please send the report and join standup',
+    });
     expect(out).toHaveLength(2);
     expect(out[0]).toMatchObject({ category: 'task', title: 'Send the report', confidence: 0.9 });
     expect(out[0]!.payload.due).toBe('2026-06-01T09:00:00Z');

@@ -55,14 +55,18 @@ describe('performUnsubscribe', () => {
   });
 
   it('refuses to POST to non-https targets even when oneClick is set', async () => {
-    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response('', { status: 200 }));
+    const fetchSpy = vi
+      .spyOn(globalThis, 'fetch')
+      .mockResolvedValue(new Response('', { status: 200 }));
     const r = await performUnsubscribe({ http: 'http://insecure.example.com/u', oneClick: true });
     expect(fetchSpy).not.toHaveBeenCalled();
     expect(r.method).toBe('none');
   });
 
   it('POSTs the canonical body and reports success on 200', async () => {
-    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response('', { status: 200 }));
+    const fetchSpy = vi
+      .spyOn(globalThis, 'fetch')
+      .mockResolvedValue(new Response('', { status: 200 }));
     const r = await performUnsubscribe({ http: 'https://safe.example.com/u', oneClick: true });
     expect(fetchSpy).toHaveBeenCalledOnce();
     const [url, init] = fetchSpy.mock.calls[0]!;
@@ -74,9 +78,11 @@ describe('performUnsubscribe', () => {
   });
 
   it('refuses to follow redirects to insecure URLs', async () => {
-    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue(
-      new Response('', { status: 302, headers: { Location: 'http://insecure.example.com/u' } }),
-    );
+    const fetchSpy = vi
+      .spyOn(globalThis, 'fetch')
+      .mockResolvedValue(
+        new Response('', { status: 302, headers: { Location: 'http://insecure.example.com/u' } }),
+      );
     const r = await performUnsubscribe({ http: 'https://safe.example.com/u', oneClick: true });
     expect(fetchSpy).toHaveBeenCalledOnce();
     expect(r.ok).toBe(false);

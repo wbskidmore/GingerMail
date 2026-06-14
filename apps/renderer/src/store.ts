@@ -109,19 +109,21 @@ function applySettingsToRoot(settings: AppSettings): void {
   // explicit 'on' / 'off' overrides the OS for this app only.
   const a11y = settings.accessibility;
   if (a11y) {
-    const reduce = a11y.reduceMotion === 'on'
-      ? true
-      : a11y.reduceMotion === 'off'
-        ? false
-        : window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const reduce =
+      a11y.reduceMotion === 'on'
+        ? true
+        : a11y.reduceMotion === 'off'
+          ? false
+          : window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     if (reduce) root.dataset['reduceMotion'] = 'true';
     else delete root.dataset['reduceMotion'];
 
-    const hc = a11y.highContrast === 'on'
-      ? true
-      : a11y.highContrast === 'off'
-        ? false
-        : window.matchMedia('(prefers-contrast: more)').matches;
+    const hc =
+      a11y.highContrast === 'on'
+        ? true
+        : a11y.highContrast === 'off'
+          ? false
+          : window.matchMedia('(prefers-contrast: more)').matches;
     if (hc) root.dataset['highContrast'] = 'true';
     else delete root.dataset['highContrast'];
   }

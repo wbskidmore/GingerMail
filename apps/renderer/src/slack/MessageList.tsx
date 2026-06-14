@@ -41,14 +41,28 @@ export function MessageList({
                   {m.authorName}
                 </Text>
                 <Text size="xs" c="dimmed">
-                  {new Date(m.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                  {new Date(m.createdAt).toLocaleTimeString([], {
+                    hour: '2-digit',
+                    minute: '2-digit',
+                  })}
                 </Text>
               </Group>
               <Text size="sm" style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
-                {m.text || <Text span c="dimmed" size="sm">(no text)</Text>}
+                {m.text || (
+                  <Text span c="dimmed" size="sm">
+                    (no text)
+                  </Text>
+                )}
               </Text>
               {m.links?.map((url) => (
-                <Anchor key={url} href={url} target="_blank" rel="noreferrer" size="xs" display="block">
+                <Anchor
+                  key={url}
+                  href={url}
+                  target="_blank"
+                  rel="noreferrer"
+                  size="xs"
+                  display="block"
+                >
                   {url}
                 </Anchor>
               ))}

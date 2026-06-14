@@ -30,11 +30,15 @@ describe('parseListUnsubscribe', () => {
   });
 
   it('treats one-click marker as case-insensitive', () => {
-    expect(parseListUnsubscribe('<https://x.io/u>', 'list-unsubscribe=one-click').oneClick).toBe(true);
+    expect(parseListUnsubscribe('<https://x.io/u>', 'list-unsubscribe=one-click').oneClick).toBe(
+      true,
+    );
   });
 
   it('keeps only the first token of each scheme', () => {
-    const r = parseListUnsubscribe('<mailto:a@x.com>, <mailto:b@x.com>, <https://x.com/u>, <https://y.com/u>');
+    const r = parseListUnsubscribe(
+      '<mailto:a@x.com>, <mailto:b@x.com>, <https://x.com/u>, <https://y.com/u>',
+    );
     expect(r.mailto).toBe('mailto:a@x.com');
     expect(r.http).toBe('https://x.com/u');
   });

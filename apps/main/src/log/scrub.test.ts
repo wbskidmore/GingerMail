@@ -4,7 +4,9 @@ import { scrubSecrets, wrapLoggerWithScrub } from './scrub.js';
 describe('scrubSecrets', () => {
   it('redacts Authorization: Bearer headers', () => {
     expect(scrubSecrets('Authorization: Bearer sk-abcdef1234567890zzz')).toMatch(/Bearer \*\*\*/);
-    expect(scrubSecrets('authorization: bearer eyJhbGciOiJIUzI1NiJ9.payload.sig')).toMatch(/bearer \*\*\*/i);
+    expect(scrubSecrets('authorization: bearer eyJhbGciOiJIUzI1NiJ9.payload.sig')).toMatch(
+      /bearer \*\*\*/i,
+    );
   });
 
   it('redacts Authorization: Basic headers', () => {
@@ -18,7 +20,8 @@ describe('scrubSecrets', () => {
   });
 
   it('redacts access_token / refresh_token / password / client_secret in JSON', () => {
-    const json = '{"access_token":"ya29.abcd","refresh_token":"1//abcd","client_secret":"shhh","password":"hunter2"}';
+    const json =
+      '{"access_token":"ya29.abcd","refresh_token":"1//abcd","client_secret":"shhh","password":"hunter2"}';
     const out = scrubSecrets(json);
     expect(out).not.toContain('ya29.abcd');
     expect(out).not.toContain('1//abcd');
@@ -27,7 +30,9 @@ describe('scrubSecrets', () => {
   });
 
   it('redacts ?access_token= in URLs', () => {
-    expect(scrubSecrets('GET https://api.example.com/v1/me?access_token=abc123def&hl=en')).toContain('access_token=***');
+    expect(
+      scrubSecrets('GET https://api.example.com/v1/me?access_token=abc123def&hl=en'),
+    ).toContain('access_token=***');
   });
 
   it('redacts well-known prefixed tokens (OpenAI, Slack, Google)', () => {
@@ -58,7 +63,9 @@ describe('scrubSecrets', () => {
   });
 
   it('handles Error instances + arbitrary objects', () => {
-    expect(scrubSecrets(new Error('oh no Bearer sk-thisisarealistic1234567token'))).toContain('sk-***');
+    expect(scrubSecrets(new Error('oh no Bearer sk-thisisarealistic1234567token'))).toContain(
+      'sk-***',
+    );
     // Bearer + sk- both fire; whichever wins the value is redacted.
     const out = scrubSecrets({ headers: { authorization: 'Bearer sk-very-secret-1234abcd' } });
     expect(out).not.toContain('sk-very-secret');

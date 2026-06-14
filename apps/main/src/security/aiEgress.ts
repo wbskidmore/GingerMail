@@ -83,7 +83,9 @@ export function isUrlAllowedForAi(url: string, settings: AiSettings): EgressDeci
     return { allowed: false, reason: 'ai-mode-off' };
   }
   const ok = hosts.some((h) => parsed.hostname === h || parsed.hostname.endsWith(`.${h}`));
-  return ok ? { allowed: true } : { allowed: false, reason: `host-not-allowlisted:${parsed.hostname}` };
+  return ok
+    ? { allowed: true }
+    : { allowed: false, reason: `host-not-allowlisted:${parsed.hostname}` };
 }
 
 /**

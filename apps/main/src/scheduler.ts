@@ -84,7 +84,9 @@ export class Scheduler {
       const action = ['open', 'snooze-10', 'done'][idx] ?? 'open';
       this.opts.onFire?.({ ...job, payload: { ...job.payload, _action: action } });
     });
-    n.on('click', () => this.opts.onFire?.({ ...job, payload: { ...job.payload, _action: 'open' } }));
+    n.on('click', () =>
+      this.opts.onFire?.({ ...job, payload: { ...job.payload, _action: 'open' } }),
+    );
     n.show();
   }
 }
@@ -105,13 +107,29 @@ function describeJob(job: ScheduledJob): { title: string; body: string; urgency:
         urgency: 'normal',
       };
     case 'snooze-wake':
-      return { title: 'Snoozed item', body: payload['subject'] ?? 'Time to revisit', urgency: 'low' };
+      return {
+        title: 'Snoozed item',
+        body: payload['subject'] ?? 'Time to revisit',
+        urgency: 'low',
+      };
     case 'focus-break':
-      return { title: 'Time for a break', body: 'Stand up, drink some water, look away from the screen.', urgency: 'low' };
+      return {
+        title: 'Time for a break',
+        body: 'Stand up, drink some water, look away from the screen.',
+        urgency: 'low',
+      };
     case 'ai-digest':
-      return { title: 'GingerMail digest', body: payload['summary'] ?? 'A short summary is ready', urgency: 'low' };
+      return {
+        title: 'GingerMail digest',
+        body: payload['summary'] ?? 'A short summary is ready',
+        urgency: 'low',
+      };
     case 'reminder':
-      return { title: payload['title'] ?? 'Reminder', body: payload['notes'] ?? payload['when'] ?? 'You asked to be reminded', urgency: 'normal' };
+      return {
+        title: payload['title'] ?? 'Reminder',
+        body: payload['notes'] ?? payload['when'] ?? 'You asked to be reminded',
+        urgency: 'normal',
+      };
     default:
       return { title: 'GingerMail', body: 'A reminder fired', urgency: 'low' };
   }

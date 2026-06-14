@@ -89,22 +89,31 @@ export class ImapSmtpProvider implements MailProvider {
     });
   }
 
-  async listMessageHeaders(folderId: string, cursor?: string, limit = 100): Promise<Page<MessageHeader>> {
+  async listMessageHeaders(
+    folderId: string,
+    cursor?: string,
+    limit = 100,
+  ): Promise<Page<MessageHeader>> {
     await this.ensure();
     const path = folderIdToPath(folderId);
     const lock = await this.imap.getMailboxLock(path);
     try {
       const status = await this.imap.status(path, { messages: true, uidNext: true });
       const total = status.messages ?? 0;
-      const startSeq = cursor ? Math.max(1, parseInt(cursor, 10) - limit) : Math.max(1, total - limit + 1);
+      const startSeq = cursor
+        ? Math.max(1, parseInt(cursor, 10) - limit)
+        : Math.max(1, total - limit + 1);
       const endSeq = cursor ? parseInt(cursor, 10) - 1 : total;
       if (total === 0 || endSeq < 1) return { items: [] };
 
       const headers: MessageHeader[] = [];
-      for await (const msg of this.imap.fetch(
-        `${startSeq}:${endSeq}`,
-        { envelope: true, flags: true, internalDate: true, uid: true, bodyStructure: true },
-      )) {
+      for await (const msg of this.imap.fetch(`${startSeq}:${endSeq}`, {
+        envelope: true,
+        flags: true,
+        internalDate: true,
+        uid: true,
+        bodyStructure: true,
+      })) {
         headers.push(this.toHeader(folderId, asFetched(msg)));
       }
       headers.sort((a, b) => b.date - a.date);
@@ -122,14 +131,18 @@ export class ImapSmtpProvider implements MailProvider {
     const path = folderIdToPath(folderId);
     const lock = await this.imap.getMailboxLock(path);
     try {
-      const msg = await this.imap.fetchOne(uid, {
-        source: true,
-        envelope: true,
-        flags: true,
-        internalDate: true,
-        uid: true,
-        bodyStructure: true,
-      }, { uid: true });
+      const msg = await this.imap.fetchOne(
+        uid,
+        {
+          source: true,
+          envelope: true,
+          flags: true,
+          internalDate: true,
+          uid: true,
+          bodyStructure: true,
+        },
+        { uid: true },
+      );
       if (!msg) throw new Error(`Message uid=${uid} not found`);
       const header = this.toHeader(folderId, asFetched(msg));
       const { parseRfc822 } = await import('./parser.js');
@@ -176,7 +189,11 @@ export class ImapSmtpProvider implements MailProvider {
     return { ...draft, id: draft.id ?? `local-draft-${Date.now()}` };
   }
 
-  async setFlag(input: { folderId: string; uid: string; flag: 'read' | 'unread' | 'star' | 'unstar' }): Promise<void> {
+  async setFlag(input: {
+    folderId: string;
+    uid: string;
+    flag: 'read' | 'unread' | 'star' | 'unstar';
+  }): Promise<void> {
     await this.ensure();
     const path = folderIdToPath(input.folderId);
     const lock = await this.imap.getMailboxLock(path);
@@ -195,13 +212,17 @@ export class ImapSmtpProvider implements MailProvider {
     }
   }
 
-  async moveMessage(input: { fromFolderId: string; toFolderId: string; uid: string }): Promise<{ uid: string }> {
+  async moveMessage(input: {
+    fromFolderId: string;
+    toFolderId: string;
+    uid: string;
+  }): Promise<{ uid: string }> {
     await this.ensure();
     const fromPath = folderIdToPath(input.fromFolderId);
     const toPath = folderIdToPath(input.toFolderId);
     const lock = await this.imap.getMailboxLock(fromPath);
     try {
-      const res = await this.imap.messageMove(input.uid, toPath, { uid: true }) as
+      const res = (await this.imap.messageMove(input.uid, toPath, { uid: true })) as
         | { uidMap?: Map<number | string, number | string> }
         | undefined;
       // ImapFlow returns uidMap mapping source UIDs to destination UIDs when
@@ -275,7 +296,9 @@ export class ImapSmtpProvider implements MailProvider {
     const env = msg.envelope ?? {};
     const from: Address = pickAddress(env.from?.[0]) ?? { email: '' };
     const to: Address[] = (env.to ?? []).map(pickAddress).filter(Boolean) as Address[];
-    const cc: Address[] | undefined = env.cc?.length ? (env.cc.map(pickAddress).filter(Boolean) as Address[]) : undefined;
+    const cc: Address[] | undefined = env.cc?.length
+      ? (env.cc.map(pickAddress).filter(Boolean) as Address[])
+      : undefined;
     const flags = new Set<string>([...(msg.flags ?? [])]);
     const subject = (env.subject ?? '').toString();
     return {

@@ -18,16 +18,16 @@ name: Release
 on:
   push:
     tags:
-      - "v*"
+      - 'v*'
   workflow_dispatch:
     inputs:
       channel:
-        description: "Build channel (dev = unsigned, prod = signed + notarized)"
+        description: 'Build channel (dev = unsigned, prod = signed + notarized)'
         type: choice
         options: [dev, prod]
         default: dev
       publish_release:
-        description: "Create a draft GitHub Release from this run"
+        description: 'Create a draft GitHub Release from this run'
         type: boolean
         default: false
 

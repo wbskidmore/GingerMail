@@ -33,7 +33,10 @@ describe('safeHandle', () => {
     guards.safeHandle('test:protected', null, async () => 'ok');
     const fn = handlerStore.get('test:protected')!;
     const out = await fn(fakeEvent(99), undefined);
-    expect(out).toEqual({ ok: false, error: { code: 'SENDER_DENIED', message: 'Unauthorized IPC sender' } });
+    expect(out).toEqual({
+      ok: false,
+      error: { code: 'SENDER_DENIED', message: 'Unauthorized IPC sender' },
+    });
   });
 
   it('allows the main window through', async () => {

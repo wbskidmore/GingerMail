@@ -14,7 +14,11 @@ describe('snowflakeToMs', () => {
 
 describe('toConversation', () => {
   it('prefixes the channel with its guild name and # marker', () => {
-    const c = toConversation('discord:bot1', { id: 'G1', name: 'Acme' }, { id: 'C1', name: 'general', type: 0 });
+    const c = toConversation(
+      'discord:bot1',
+      { id: 'G1', name: 'Acme' },
+      { id: 'C1', name: 'general', type: 0 },
+    );
     expect(c).toMatchObject({
       id: 'discord:bot1:C1',
       accountId: 'discord:bot1',
@@ -50,12 +54,22 @@ describe('toMessage', () => {
   });
 
   it('flags mentionsMe when the bot id appears in mentions', () => {
-    const m = toMessage('discord:bot1', 'C1', { ...base, mentions: [{ id: 'BOT', username: 'gingermail' }] }, 'BOT');
+    const m = toMessage(
+      'discord:bot1',
+      'C1',
+      { ...base, mentions: [{ id: 'BOT', username: 'gingermail' }] },
+      'BOT',
+    );
     expect(m.mentionsMe).toBe(true);
   });
 
   it('falls back to username when global_name is absent', () => {
-    const m = toMessage('discord:bot1', 'C1', { ...base, author: { id: 'U2', username: 'bob' } }, 'BOT');
+    const m = toMessage(
+      'discord:bot1',
+      'C1',
+      { ...base, author: { id: 'U2', username: 'bob' } },
+      'BOT',
+    );
     expect(m.authorName).toBe('bob');
   });
 });

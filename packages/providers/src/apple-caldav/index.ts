@@ -34,7 +34,10 @@ export class AppleMailProvider extends ImapSmtpProvider {
 
 export class AppleCalendarProvider implements CalendarProvider {
   private client: DAVClient | undefined;
-  constructor(private readonly account: Account, private readonly creds: AppleCredentials) {}
+  constructor(
+    private readonly account: Account,
+    private readonly creds: AppleCredentials,
+  ) {}
 
   private async ensure(): Promise<DAVClient> {
     if (!this.client) {
@@ -62,7 +65,11 @@ export class AppleCalendarProvider implements CalendarProvider {
     }));
   }
 
-  async listEvents(input: { from: number; to: number; calendarIds?: string[] }): Promise<CalendarEvent[]> {
+  async listEvents(input: {
+    from: number;
+    to: number;
+    calendarIds?: string[];
+  }): Promise<CalendarEvent[]> {
     const client = await this.ensure();
     const cals = await client.fetchCalendars();
     const filtered = input.calendarIds
@@ -72,7 +79,10 @@ export class AppleCalendarProvider implements CalendarProvider {
     for (const c of filtered) {
       const objs = await client.fetchCalendarObjects({
         calendar: c,
-        timeRange: { start: new Date(input.from).toISOString(), end: new Date(input.to).toISOString() },
+        timeRange: {
+          start: new Date(input.from).toISOString(),
+          end: new Date(input.to).toISOString(),
+        },
       });
       for (const o of objs) {
         if (!o.data) continue;

@@ -28,9 +28,15 @@ interface ComposerProps {
 }
 
 export function Composer({ accounts, replyTo, initialDraft, onClose }: ComposerProps) {
-  const [accountId, setAccountId] = useState(initialDraft?.accountId ?? replyTo?.accountId ?? accounts[0]?.id ?? '');
+  const [accountId, setAccountId] = useState(
+    initialDraft?.accountId ?? replyTo?.accountId ?? accounts[0]?.id ?? '',
+  );
   const [to, setTo] = useState(
-    initialDraft ? initialDraft.to.map((a) => a.email).join(', ') : replyTo ? replyTo.from.email : '',
+    initialDraft
+      ? initialDraft.to.map((a) => a.email).join(', ')
+      : replyTo
+        ? replyTo.from.email
+        : '',
   );
   const [cc, setCc] = useState(
     initialDraft?.cc ? initialDraft.cc.map((a) => a.email).join(', ') : '',
@@ -52,7 +58,10 @@ export function Composer({ accounts, replyTo, initialDraft, onClose }: ComposerP
     if (!accountId || !to) return;
     const draft: Draft = {
       accountId,
-      to: to.split(',').map((s) => ({ email: s.trim() })).filter((a) => a.email),
+      to: to
+        .split(',')
+        .map((s) => ({ email: s.trim() }))
+        .filter((a) => a.email),
       cc: cc ? cc.split(',').map((s) => ({ email: s.trim() })) : undefined,
       subject,
       bodyText: body,
@@ -85,7 +94,11 @@ export function Composer({ accounts, replyTo, initialDraft, onClose }: ComposerP
 
   const aiDraft = async (): Promise<void> => {
     if (!replyTo) {
-      notifications.show({ title: 'AI draft', message: 'Open a thread first so the AI has context.', color: 'orange' });
+      notifications.show({
+        title: 'AI draft',
+        message: 'Open a thread first so the AI has context.',
+        color: 'orange',
+      });
       return;
     }
     setAiBusy(true);
@@ -125,9 +138,24 @@ export function Composer({ accounts, replyTo, initialDraft, onClose }: ComposerP
               searchable
               nothingFoundMessage="No accounts. Add one in Settings."
             />
-            <TextInput label="To" value={to} onChange={(e) => setTo(e.currentTarget.value)} placeholder="someone@example.com, another@example.com" required />
-            <TextInput label="Cc" value={cc} onChange={(e) => setCc(e.currentTarget.value)} placeholder="optional" />
-            <TextInput label="Subject" value={subject} onChange={(e) => setSubject(e.currentTarget.value)} />
+            <TextInput
+              label="To"
+              value={to}
+              onChange={(e) => setTo(e.currentTarget.value)}
+              placeholder="someone@example.com, another@example.com"
+              required
+            />
+            <TextInput
+              label="Cc"
+              value={cc}
+              onChange={(e) => setCc(e.currentTarget.value)}
+              placeholder="optional"
+            />
+            <TextInput
+              label="Subject"
+              value={subject}
+              onChange={(e) => setSubject(e.currentTarget.value)}
+            />
             <Textarea
               label="Message"
               value={body}
@@ -140,11 +168,23 @@ export function Composer({ accounts, replyTo, initialDraft, onClose }: ComposerP
           </Stack>
         </Tabs.Panel>
         <Tabs.Panel value="preview" pt="md">
-          <ScrollArea h={320} type="auto" p="md" style={{ background: 'var(--mantine-color-default)', borderRadius: 8 }}>
+          <ScrollArea
+            h={320}
+            type="auto"
+            p="md"
+            style={{ background: 'var(--mantine-color-default)', borderRadius: 8 }}
+          >
             <div style={{ fontFamily: 'system-ui', fontSize: 14, whiteSpace: 'pre-wrap' }}>
-              <strong>Subject:</strong> {subject || '(no subject)'}<br />
-              <strong>To:</strong> {to || '...'}<br />
-              {cc && <><strong>Cc:</strong> {cc}<br /></>}
+              <strong>Subject:</strong> {subject || '(no subject)'}
+              <br />
+              <strong>To:</strong> {to || '...'}
+              <br />
+              {cc && (
+                <>
+                  <strong>Cc:</strong> {cc}
+                  <br />
+                </>
+              )}
               <hr />
               {body || <em>Nothing written yet.</em>}
             </div>
@@ -154,10 +194,21 @@ export function Composer({ accounts, replyTo, initialDraft, onClose }: ComposerP
 
       <Group justify="space-between" mt="md">
         <Group gap="xs">
-          <Button variant="subtle" leftSection={<IconSparkles size={14} />} loading={aiBusy} onClick={aiDraft} disabled={!replyTo}>
+          <Button
+            variant="subtle"
+            leftSection={<IconSparkles size={14} />}
+            loading={aiBusy}
+            onClick={aiDraft}
+            disabled={!replyTo}
+          >
             AI draft
           </Button>
-          <Button variant="subtle" color="red" leftSection={<IconTrash size={14} />} onClick={onClose}>
+          <Button
+            variant="subtle"
+            color="red"
+            leftSection={<IconTrash size={14} />}
+            onClick={onClose}
+          >
             Discard
           </Button>
         </Group>
@@ -165,7 +216,12 @@ export function Composer({ accounts, replyTo, initialDraft, onClose }: ComposerP
           <Button variant="default" leftSection={<IconBolt size={14} />} onClick={saveDraft}>
             Save draft
           </Button>
-          <Button leftSection={<IconSend size={14} />} loading={sending} disabled={!to || !accountId} onClick={send}>
+          <Button
+            leftSection={<IconSend size={14} />}
+            loading={sending}
+            disabled={!to || !accountId}
+            onClick={send}
+          >
             Send
           </Button>
         </Group>
@@ -179,5 +235,5 @@ function prefixSubject(subject: string): string {
 }
 
 function escapeHtml(s: string): string {
-  return s.replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c] ?? c));
+  return s.replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' })[c] ?? c);
 }

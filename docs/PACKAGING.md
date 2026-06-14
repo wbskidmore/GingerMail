@@ -43,11 +43,11 @@ via `workflow_dispatch` to get build artifacts without cutting a release.
 A single per-run toggle decides whether a build is signed. You don't need any
 certificates for the `dev` channel.
 
-| Trigger | Channel | Result |
-| --- | --- | --- |
-| **Manual run** (Actions tab -> *Release* -> *Run workflow*), `channel = dev` (default) | dev | **Unsigned** installers for all three OSes. macOS notarization is forced off, keychain auto-discovery is disabled, so **no leg can fail for missing credentials**. Artifacts are downloadable from the run. Tick *publish_release* to also cut a draft **pre-release** named `… (dev / unsigned)`. |
-| **Manual run**, `channel = prod` | prod | Signed + notarized **when the signing secrets exist**; gracefully falls back to unsigned otherwise. |
-| **Push a tag** `vX.Y.Z` | prod | Always the signed/notarized path, and always publishes a draft Release. |
+| Trigger                                                                                | Channel | Result                                                                                                                                                                                                                                                                                             |
+| -------------------------------------------------------------------------------------- | ------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Manual run** (Actions tab -> _Release_ -> _Run workflow_), `channel = dev` (default) | dev     | **Unsigned** installers for all three OSes. macOS notarization is forced off, keychain auto-discovery is disabled, so **no leg can fail for missing credentials**. Artifacts are downloadable from the run. Tick _publish_release_ to also cut a draft **pre-release** named `… (dev / unsigned)`. |
+| **Manual run**, `channel = prod`                                                       | prod    | Signed + notarized **when the signing secrets exist**; gracefully falls back to unsigned otherwise.                                                                                                                                                                                                |
+| **Push a tag** `vX.Y.Z`                                                                | prod    | Always the signed/notarized path, and always publishes a draft Release.                                                                                                                                                                                                                            |
 
 How it works (no YAML edits needed to switch):
 
@@ -75,18 +75,18 @@ matter on the **`prod` channel** (tag push or `channel = prod`). Each channel
 signs only when its secrets exist; otherwise it produces an unsigned artifact
 (+ checksums) without failing the build.
 
-| Secret | Channel | Purpose |
-| --- | --- | --- |
-| `CSC_LINK` | macOS | Base64 of the Developer ID Application `.p12` |
-| `CSC_KEY_PASSWORD` | macOS | Password for that `.p12` |
-| `APPLE_ID` | macOS | Apple ID email used for notarization |
-| `APPLE_APP_SPECIFIC_PASSWORD` | macOS | App-specific password (appleid.apple.com) |
-| `APPLE_TEAM_ID` | macOS | 10-char Apple Developer Team ID |
-| `WIN_CSC_LINK` | Windows | Base64 of the code-signing `.pfx` |
-| `WIN_CSC_KEY_PASSWORD` | Windows | Password for that `.pfx` |
-| `GPG_PRIVATE_KEY` | Linux | ASCII-armored private key (signs the AppImage) |
-| `GPG_PASSPHRASE` | Linux | Passphrase for that GPG key |
-| _none_ | Docker | cosign keyless uses the Actions OIDC token; `GITHUB_TOKEN` already pushes to `ghcr.io` |
+| Secret                        | Channel | Purpose                                                                                |
+| ----------------------------- | ------- | -------------------------------------------------------------------------------------- |
+| `CSC_LINK`                    | macOS   | Base64 of the Developer ID Application `.p12`                                          |
+| `CSC_KEY_PASSWORD`            | macOS   | Password for that `.p12`                                                               |
+| `APPLE_ID`                    | macOS   | Apple ID email used for notarization                                                   |
+| `APPLE_APP_SPECIFIC_PASSWORD` | macOS   | App-specific password (appleid.apple.com)                                              |
+| `APPLE_TEAM_ID`               | macOS   | 10-char Apple Developer Team ID                                                        |
+| `WIN_CSC_LINK`                | Windows | Base64 of the code-signing `.pfx`                                                      |
+| `WIN_CSC_KEY_PASSWORD`        | Windows | Password for that `.pfx`                                                               |
+| `GPG_PRIVATE_KEY`             | Linux   | ASCII-armored private key (signs the AppImage)                                         |
+| `GPG_PASSPHRASE`              | Linux   | Passphrase for that GPG key                                                            |
+| _none_                        | Docker  | cosign keyless uses the Actions OIDC token; `GITHUB_TOKEN` already pushes to `ghcr.io` |
 
 Base64-encode a cert for the secret value with `base64 -i cert.p12 | pbcopy`
 (macOS) or `base64 -w0 cert.pfx` (Linux). Export an armored GPG key with
@@ -94,8 +94,8 @@ Base64-encode a cert for the secret value with `base64 -i cert.p12 | pbcopy`
 
 ### Obtaining the credentials
 
-- **Apple:** enroll in the Apple Developer Program, create a *Developer ID
-  Application* certificate (Xcode -> Settings -> Accounts, or
+- **Apple:** enroll in the Apple Developer Program, create a _Developer ID
+  Application_ certificate (Xcode -> Settings -> Accounts, or
   developer.apple.com), export it as a `.p12`, and generate an app-specific
   password at appleid.apple.com. Your Team ID is on the membership page.
 - **Windows:** buy an OV or EV code-signing certificate (DigiCert, Sectigo,
@@ -231,26 +231,28 @@ See the "Verifying signatures" section above for the `cosign verify` commands.
 
 ## Environment variables (build-time)
 
-| Variable | Purpose |
-| --- | --- |
-| `GM_GOOGLE_CLIENT_ID` | OAuth client for Gmail / Google Calendar / Google Tasks |
-| `GM_GOOGLE_CLIENT_SECRET` | OAuth secret (loopback redirect, "Desktop app" type) |
-| `GM_MICROSOFT_CLIENT_ID` | Azure AD app registration client id |
-| `GM_MICROSOFT_TENANT` | Azure tenant (defaults to `common`) |
-| `APPLE_ID` | Apple developer account email (notarization) |
-| `APPLE_APP_SPECIFIC_PASSWORD` | App-specific password for notarization |
-| `APPLE_TEAM_ID` | Apple developer team id |
-| `CSC_LINK` / `CSC_KEY_PASSWORD` | Windows code-signing cert (PKCS12) |
+| Variable                        | Purpose                                                 |
+| ------------------------------- | ------------------------------------------------------- |
+| `GM_GOOGLE_CLIENT_ID`           | OAuth client for Gmail / Google Calendar / Google Tasks |
+| `GM_GOOGLE_CLIENT_SECRET`       | OAuth secret (loopback redirect, "Desktop app" type)    |
+| `GM_MICROSOFT_CLIENT_ID`        | Azure AD app registration client id                     |
+| `GM_MICROSOFT_TENANT`           | Azure tenant (defaults to `common`)                     |
+| `APPLE_ID`                      | Apple developer account email (notarization)            |
+| `APPLE_APP_SPECIFIC_PASSWORD`   | App-specific password for notarization                  |
+| `APPLE_TEAM_ID`                 | Apple developer team id                                 |
+| `CSC_LINK` / `CSC_KEY_PASSWORD` | Windows code-signing cert (PKCS12)                      |
 
 ## OAuth app registrations
 
 ### Google
+
 1. Create a project in <https://console.cloud.google.com/>.
 2. Enable: Gmail API, Google Calendar API, Tasks API.
 3. OAuth consent screen -> External, add the requested scopes (`gmail.modify`, `gmail.send`, `calendar`, `tasks`, `userinfo.email`, `userinfo.profile`).
 4. Credentials -> Create OAuth client -> **Desktop app**. Copy the client ID and secret into the env vars above.
 
 ### Microsoft
+
 1. Register an app in <https://portal.azure.com/> -> Azure Active Directory -> App registrations.
 2. Supported account types: "Personal Microsoft accounts only" (consumer) or multi-tenant.
 3. Redirect URI: type `Public client/native (mobile & desktop)`, value `http://localhost`.

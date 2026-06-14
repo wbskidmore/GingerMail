@@ -153,7 +153,9 @@ async function fetchOne(platform, arch) {
       console.log(`[ollama] cache hit ${key} (sha ok)`);
       return;
     }
-    console.warn(`[ollama] cached binary checksum mismatch (${have} vs ${expectedSha}); re-downloading`);
+    console.warn(
+      `[ollama] cached binary checksum mismatch (${have} vs ${expectedSha}); re-downloading`,
+    );
     await rm(destFile, { force: true });
   }
 

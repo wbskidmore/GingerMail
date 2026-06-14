@@ -7,7 +7,7 @@ on:
     branches: [main]
   schedule:
     # Weekly scan to catch newly published query updates (SA-11 / CA-7).
-    - cron: "27 3 * * 1"
+    - cron: '27 3 * * 1'
 
 permissions:
   contents: read
@@ -33,4 +33,4 @@ jobs:
       - name: Perform CodeQL analysis
         uses: github/codeql-action/analyze@v3
         with:
-          category: "/language:javascript-typescript"
+          category: '/language:javascript-typescript'

@@ -1,12 +1,22 @@
 import { createRequire } from 'node:module';
-import type { Client as GraphClientType, AuthenticationProvider } from '@microsoft/microsoft-graph-client';
-import type { PublicClientApplication as PublicClientApplicationType, AuthenticationResult } from '@azure/msal-node';
+import type {
+  Client as GraphClientType,
+  AuthenticationProvider,
+} from '@microsoft/microsoft-graph-client';
+import type {
+  PublicClientApplication as PublicClientApplicationType,
+  AuthenticationResult,
+} from '@azure/msal-node';
 
 // Both modules are CJS; static `import` from this ESM file crashes the Electron 32
 // main process via Node 20.18's CJS/ESM interop bug. Load via createRequire.
 const localRequire = createRequire(import.meta.url);
-const { Client: GraphClient } = localRequire('@microsoft/microsoft-graph-client') as { Client: typeof GraphClientType };
-const { PublicClientApplication } = localRequire('@azure/msal-node') as { PublicClientApplication: typeof PublicClientApplicationType };
+const { Client: GraphClient } = localRequire('@microsoft/microsoft-graph-client') as {
+  Client: typeof GraphClientType;
+};
+const { PublicClientApplication } = localRequire('@azure/msal-node') as {
+  PublicClientApplication: typeof PublicClientApplicationType;
+};
 import type {
   Account,
   Calendar,
@@ -73,8 +83,13 @@ export function authProviderFromToken(token: string): AuthenticationProvider {
 
 export class MicrosoftMailProvider implements MailProvider {
   private client: GraphClientType;
-  constructor(private readonly account: Account, accessToken: string) {
-    this.client = GraphClient.initWithMiddleware({ authProvider: authProviderFromToken(accessToken) });
+  constructor(
+    private readonly account: Account,
+    accessToken: string,
+  ) {
+    this.client = GraphClient.initWithMiddleware({
+      authProvider: authProviderFromToken(accessToken),
+    });
   }
 
   async listFolders(): Promise<Folder[]> {
@@ -90,19 +105,26 @@ export class MicrosoftMailProvider implements MailProvider {
     }));
   }
 
-  async listMessageHeaders(folderId: string, cursor?: string, limit = 50): Promise<Page<MessageHeader>> {
+  async listMessageHeaders(
+    folderId: string,
+    cursor?: string,
+    limit = 50,
+  ): Promise<Page<MessageHeader>> {
     const realFolder = folderId.split(':').slice(1).join(':');
     const req = this.client
       .api(`/me/mailFolders/${realFolder}/messages`)
       .top(limit)
-      .select('id,subject,bodyPreview,from,toRecipients,ccRecipients,receivedDateTime,isRead,flag,hasAttachments,conversationId')
+      .select(
+        'id,subject,bodyPreview,from,toRecipients,ccRecipients,receivedDateTime,isRead,flag,hasAttachments,conversationId',
+      )
       .orderby('receivedDateTime desc');
     if (cursor) req.skip(parseInt(cursor, 10) || 0);
     const res = await req.get();
     const items = (res.value ?? []).map((m: GraphMessage) => this.toHeader(folderId, m));
     return {
       items,
-      nextCursor: items.length === limit ? String((parseInt(cursor ?? '0', 10) || 0) + limit) : undefined,
+      nextCursor:
+        items.length === limit ? String((parseInt(cursor ?? '0', 10) || 0) + limit) : undefined,
     };
   }
 
@@ -110,13 +132,20 @@ export class MicrosoftMailProvider implements MailProvider {
     // Microsoft Graph hides custom internet message headers behind `?$select=internetMessageHeaders`.
     const m: GraphMessage = await this.client
       .api(`/me/messages/${uid}`)
-      .select('id,subject,bodyPreview,from,toRecipients,ccRecipients,receivedDateTime,isRead,flag,hasAttachments,conversationId,body,internetMessageHeaders')
+      .select(
+        'id,subject,bodyPreview,from,toRecipients,ccRecipients,receivedDateTime,isRead,flag,hasAttachments,conversationId,body,internetMessageHeaders',
+      )
       .get();
     const header = this.toHeader(folderId, m);
-    const ih = (m as { internetMessageHeaders?: Array<{ name: string; value: string }> }).internetMessageHeaders ?? [];
+    const ih =
+      (m as { internetMessageHeaders?: Array<{ name: string; value: string }> })
+        .internetMessageHeaders ?? [];
     const headerMap = new Map<string, string>();
     for (const h of ih) headerMap.set(h.name.toLowerCase(), h.value);
-    const lu = parseListUnsubscribe(headerMap.get('list-unsubscribe'), headerMap.get('list-unsubscribe-post'));
+    const lu = parseListUnsubscribe(
+      headerMap.get('list-unsubscribe'),
+      headerMap.get('list-unsubscribe-post'),
+    );
     return {
       ...header,
       body: {
@@ -137,7 +166,9 @@ export class MicrosoftMailProvider implements MailProvider {
         body: { contentType: 'HTML', content: draft.bodyHtml ?? draft.bodyText ?? '' },
         toRecipients: draft.to.map((a) => ({ emailAddress: { name: a.name, address: a.email } })),
         ccRecipients: draft.cc?.map((a) => ({ emailAddress: { name: a.name, address: a.email } })),
-        bccRecipients: draft.bcc?.map((a) => ({ emailAddress: { name: a.name, address: a.email } })),
+        bccRecipients: draft.bcc?.map((a) => ({
+          emailAddress: { name: a.name, address: a.email },
+        })),
       },
       saveToSentItems: true,
     });
@@ -152,7 +183,11 @@ export class MicrosoftMailProvider implements MailProvider {
     return { ...draft, id: res.id };
   }
 
-  async setFlag(input: { folderId: string; uid: string; flag: 'read' | 'unread' | 'star' | 'unstar' }): Promise<void> {
+  async setFlag(input: {
+    folderId: string;
+    uid: string;
+    flag: 'read' | 'unread' | 'star' | 'unstar';
+  }): Promise<void> {
     const patch: Record<string, unknown> = {};
     if (input.flag === 'read') patch.isRead = true;
     if (input.flag === 'unread') patch.isRead = false;
@@ -161,11 +196,15 @@ export class MicrosoftMailProvider implements MailProvider {
     await this.client.api(`/me/messages/${input.uid}`).patch(patch);
   }
 
-  async moveMessage(input: { fromFolderId: string; toFolderId: string; uid: string }): Promise<{ uid: string }> {
+  async moveMessage(input: {
+    fromFolderId: string;
+    toFolderId: string;
+    uid: string;
+  }): Promise<{ uid: string }> {
     const destinationId = input.toFolderId.split(':').slice(1).join(':');
-    const res = await this.client
+    const res = (await this.client
       .api(`/me/messages/${input.uid}/move`)
-      .post({ destinationId }) as { id?: string };
+      .post({ destinationId })) as { id?: string };
     return { uid: res.id ?? input.uid };
   }
 
@@ -178,7 +217,9 @@ export class MicrosoftMailProvider implements MailProvider {
 
   async search(query: string): Promise<MessageHeader[]> {
     const res = await this.client.api(`/me/messages`).search(`"${query}"`).top(50).get();
-    return (res.value ?? []).map((m: GraphMessage) => this.toHeader(`${this.account.id}:SEARCH`, m));
+    return (res.value ?? []).map((m: GraphMessage) =>
+      this.toHeader(`${this.account.id}:SEARCH`, m),
+    );
   }
 
   async close(): Promise<void> {
@@ -195,8 +236,14 @@ export class MicrosoftMailProvider implements MailProvider {
       from: m.from?.emailAddress
         ? { name: m.from.emailAddress.name, email: m.from.emailAddress.address ?? '' }
         : { email: '' },
-      to: (m.toRecipients ?? []).map((r) => ({ name: r.emailAddress?.name, email: r.emailAddress?.address ?? '' })),
-      cc: (m.ccRecipients ?? []).map((r) => ({ name: r.emailAddress?.name, email: r.emailAddress?.address ?? '' })),
+      to: (m.toRecipients ?? []).map((r) => ({
+        name: r.emailAddress?.name,
+        email: r.emailAddress?.address ?? '',
+      })),
+      cc: (m.ccRecipients ?? []).map((r) => ({
+        name: r.emailAddress?.name,
+        email: r.emailAddress?.address ?? '',
+      })),
       subject: m.subject ?? '',
       snippet: (m.bodyPreview ?? '').slice(0, 200),
       date: m.receivedDateTime ? Date.parse(m.receivedDateTime) : Date.now(),
@@ -210,8 +257,13 @@ export class MicrosoftMailProvider implements MailProvider {
 
 export class MicrosoftCalendarProvider implements CalendarProvider {
   private client: GraphClientType;
-  constructor(private readonly account: Account, accessToken: string) {
-    this.client = GraphClient.initWithMiddleware({ authProvider: authProviderFromToken(accessToken) });
+  constructor(
+    private readonly account: Account,
+    accessToken: string,
+  ) {
+    this.client = GraphClient.initWithMiddleware({
+      authProvider: authProviderFromToken(accessToken),
+    });
   }
 
   async listCalendars(): Promise<Calendar[]> {
@@ -226,14 +278,21 @@ export class MicrosoftCalendarProvider implements CalendarProvider {
     }));
   }
 
-  async listEvents(input: { from: number; to: number; calendarIds?: string[] }): Promise<CalendarEvent[]> {
+  async listEvents(input: {
+    from: number;
+    to: number;
+    calendarIds?: string[];
+  }): Promise<CalendarEvent[]> {
     const cals = input.calendarIds ?? (await this.listCalendars()).map((c) => c.id);
     const out: CalendarEvent[] = [];
     for (const calId of cals) {
       const realId = calId.split(':').slice(1).join(':');
       const res = await this.client
         .api(`/me/calendars/${realId}/calendarView`)
-        .query({ startDateTime: new Date(input.from).toISOString(), endDateTime: new Date(input.to).toISOString() })
+        .query({
+          startDateTime: new Date(input.from).toISOString(),
+          endDateTime: new Date(input.to).toISOString(),
+        })
         .top(1000)
         .get();
       for (const e of res.value ?? []) {
@@ -276,8 +335,13 @@ export class MicrosoftCalendarProvider implements CalendarProvider {
 
 export class MicrosoftTasksProvider implements TaskProvider {
   private client: GraphClientType;
-  constructor(private readonly account: Account, accessToken: string) {
-    this.client = GraphClient.initWithMiddleware({ authProvider: authProviderFromToken(accessToken) });
+  constructor(
+    private readonly account: Account,
+    accessToken: string,
+  ) {
+    this.client = GraphClient.initWithMiddleware({
+      authProvider: authProviderFromToken(accessToken),
+    });
   }
 
   async listLists(): Promise<TaskList[]> {
@@ -307,7 +371,9 @@ export class MicrosoftTasksProvider implements TaskProvider {
           status: t.status === 'completed' ? 'completed' : 'open',
           starred: t.importance === 'high',
           due: t.dueDateTime?.dateTime ? Date.parse(t.dueDateTime.dateTime) : undefined,
-          completedAt: t.completedDateTime?.dateTime ? Date.parse(t.completedDateTime.dateTime) : undefined,
+          completedAt: t.completedDateTime?.dateTime
+            ? Date.parse(t.completedDateTime.dateTime)
+            : undefined,
           position,
         });
       }
@@ -320,7 +386,9 @@ export class MicrosoftTasksProvider implements TaskProvider {
     const res = await this.client.api(`/me/todo/lists/${realList}/tasks`).post({
       title: task.title,
       body: { content: task.notes ?? '', contentType: 'text' },
-      dueDateTime: task.due ? { dateTime: new Date(task.due).toISOString(), timeZone: 'UTC' } : undefined,
+      dueDateTime: task.due
+        ? { dateTime: new Date(task.due).toISOString(), timeZone: 'UTC' }
+        : undefined,
       importance: task.starred ? 'high' : 'normal',
     });
     return { ...task, id: `${this.account.id}:${realList}:${res.id}`, position: 0 };
@@ -332,7 +400,9 @@ export class MicrosoftTasksProvider implements TaskProvider {
     await this.client.api(`/me/todo/lists/${realList}/tasks/${realId}`).patch({
       title: task.title,
       body: { content: task.notes ?? '', contentType: 'text' },
-      dueDateTime: task.due ? { dateTime: new Date(task.due).toISOString(), timeZone: 'UTC' } : undefined,
+      dueDateTime: task.due
+        ? { dateTime: new Date(task.due).toISOString(), timeZone: 'UTC' }
+        : undefined,
       status: task.status === 'completed' ? 'completed' : 'notStarted',
       importance: task.starred ? 'high' : 'normal',
     });
@@ -359,7 +429,11 @@ function mapGraphFolderRole(name?: string): Folder['role'] {
   return 'custom';
 }
 
-function toGraphEvent(accountId: string, calendarId: string, e: GraphEvent | undefined): CalendarEvent | undefined {
+function toGraphEvent(
+  accountId: string,
+  calendarId: string,
+  e: GraphEvent | undefined,
+): CalendarEvent | undefined {
   if (!e || !e.id) return undefined;
   const start = e.start?.dateTime ? Date.parse(e.start.dateTime + 'Z') : NaN;
   const end = e.end?.dateTime ? Date.parse(e.end.dateTime + 'Z') : NaN;

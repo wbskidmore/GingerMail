@@ -31,8 +31,12 @@ export function FocusOverlay({ state, onStop }: FocusOverlayProps) {
         <Group gap="md" wrap="nowrap">
           <IconFocus2 size={22} />
           <Stack gap={2}>
-            <Title order={6} m={0}>Focus mode</Title>
-            <Text size="xs" c="dimmed">Notifications paused. One thing at a time.</Text>
+            <Title order={6} m={0}>
+              Focus mode
+            </Title>
+            <Text size="xs" c="dimmed">
+              Notifications paused. One thing at a time.
+            </Text>
           </Stack>
           <Text
             fw={600}

@@ -15,7 +15,7 @@ Everything mail-shaped stays on your machine:
 
 - Mail headers, bodies, attachments — cached in an encrypted SQLite
   database under your OS user-data directory (`~/Library/Application
-  Support/GingerMail/gingermail.sqlite` on macOS,
+Support/GingerMail/gingermail.sqlite` on macOS,
   `%APPDATA%/GingerMail/gingermail.sqlite` on Windows).
 - The DB is encrypted at rest with SQLCipher. The encryption key is
   generated once on first launch and stored in your OS keychain
@@ -25,16 +25,16 @@ Everything mail-shaped stays on your machine:
 
 ## What goes off your machine, and where
 
-| When | What is sent | To whom | How to disable |
-|------|--------------|---------|----------------|
-| Always (mail sync) | Your mail credentials, IMAP/SMTP/Graph/Gmail API calls | The mail provider you configured | Remove the account in Settings → Accounts |
-| Slack connected (opt-in) | Your Slack token + Web API calls (read conversations/messages, send messages, mark read) | `slack.com` | Disconnect in Settings → Chat, or turn off "Enable chat" |
-| Discord connected (opt-in) | Your Discord bot token + REST/Gateway calls (read & send messages in invited servers, real-time message events) | `discord.com` | Disconnect in Settings → Chat, or turn off "Enable chat" |
-| Cloud AI on (opt-in) | The text of the email, chat message, or thread you asked AI to act on, plus your prompt | The AI vendor you chose (OpenAI, Anthropic, or Google) | Settings → AI → Mode: Off (or Local) |
-| Detection agents on (opt-in) | Incoming chat/mail message text scanned for actionable items, sent to the configured AI client | Your AI vendor (cloud) or nobody (local Ollama) | Settings → AI → Detection agents → Enable, plus the per-source toggles |
-| Local AI on | (none) — the Ollama sidecar runs on your machine; no traffic leaves | Loopback only | n/a |
-| Auto-update opt-in (off by default) | App version + OS + arch on update check | `updates.gingermail.app` (run by us) | Settings → Updates → Auto-update toggle |
-| One-click unsubscribe | An RFC 8058 HTTPS POST to the sender's unsubscribe URL | The sender / their email service provider | Don't click "Unsubscribe" |
+| When                                | What is sent                                                                                                    | To whom                                                | How to disable                                                         |
+| ----------------------------------- | --------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------ | ---------------------------------------------------------------------- |
+| Always (mail sync)                  | Your mail credentials, IMAP/SMTP/Graph/Gmail API calls                                                          | The mail provider you configured                       | Remove the account in Settings → Accounts                              |
+| Slack connected (opt-in)            | Your Slack token + Web API calls (read conversations/messages, send messages, mark read)                        | `slack.com`                                            | Disconnect in Settings → Chat, or turn off "Enable chat"               |
+| Discord connected (opt-in)          | Your Discord bot token + REST/Gateway calls (read & send messages in invited servers, real-time message events) | `discord.com`                                          | Disconnect in Settings → Chat, or turn off "Enable chat"               |
+| Cloud AI on (opt-in)                | The text of the email, chat message, or thread you asked AI to act on, plus your prompt                         | The AI vendor you chose (OpenAI, Anthropic, or Google) | Settings → AI → Mode: Off (or Local)                                   |
+| Detection agents on (opt-in)        | Incoming chat/mail message text scanned for actionable items, sent to the configured AI client                  | Your AI vendor (cloud) or nobody (local Ollama)        | Settings → AI → Detection agents → Enable, plus the per-source toggles |
+| Local AI on                         | (none) — the Ollama sidecar runs on your machine; no traffic leaves                                             | Loopback only                                          | n/a                                                                    |
+| Auto-update opt-in (off by default) | App version + OS + arch on update check                                                                         | `updates.gingermail.app` (run by us)                   | Settings → Updates → Auto-update toggle                                |
+| One-click unsubscribe               | An RFC 8058 HTTPS POST to the sender's unsubscribe URL                                                          | The sender / their email service provider              | Don't click "Unsubscribe"                                              |
 
 ## Things we explicitly do NOT do
 

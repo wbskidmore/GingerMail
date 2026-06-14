@@ -48,7 +48,9 @@ export function SlackTab() {
       const ws = await getApi().slack.listWorkspaces();
       setWorkspaces(ws);
       if (ws.length > 0) {
-        await getApi().slack.refresh().catch(() => undefined);
+        await getApi()
+          .slack.refresh()
+          .catch(() => undefined);
         await loadConversations();
       }
     })();
@@ -100,7 +102,8 @@ export function SlackTab() {
 
   const onTurnIntoTask = async (m: ChatMessage): Promise<void> => {
     try {
-      const title = m.text.length > 80 ? `${m.text.slice(0, 77)}…` : m.text || `Message from ${m.authorName}`;
+      const title =
+        m.text.length > 80 ? `${m.text.slice(0, 77)}…` : m.text || `Message from ${m.authorName}`;
       await getApi().tasks.createTask({
         listId: 'local:default',
         accountId: 'local',
@@ -116,7 +119,11 @@ export function SlackTab() {
         autoClose: 2200,
       });
     } catch (e) {
-      notifications.show({ title: 'Could not create task', message: (e as Error).message, color: 'red' });
+      notifications.show({
+        title: 'Could not create task',
+        message: (e as Error).message,
+        color: 'red',
+      });
     }
   };
 
@@ -149,24 +156,32 @@ export function SlackTab() {
   }
 
   return (
-    <Box style={{ display: 'grid', gridTemplateColumns: '280px 1fr', height: '100%', minHeight: 0 }}>
-      <ScrollArea
-        h="100%"
-        style={{ borderRight: '1px solid var(--mantine-color-default-border)' }}
-      >
+    <Box
+      style={{ display: 'grid', gridTemplateColumns: '280px 1fr', height: '100%', minHeight: 0 }}
+    >
+      <ScrollArea h="100%" style={{ borderRight: '1px solid var(--mantine-color-default-border)' }}>
         {conversations.length === 0 ? (
           <Text size="sm" c="dimmed" p="md">
             No conversations yet. They’ll appear here after the first sync.
           </Text>
         ) : (
-          <ConversationList conversations={conversations} accounts={workspaces} activeId={active?.id ?? null} onSelect={openConversation} />
+          <ConversationList
+            conversations={conversations}
+            accounts={workspaces}
+            activeId={active?.id ?? null}
+            onSelect={openConversation}
+          />
         )}
       </ScrollArea>
 
       <Stack gap={0} h="100%" style={{ minHeight: 0 }}>
         {active ? (
           <>
-            <Group px="md" py="sm" style={{ borderBottom: '1px solid var(--mantine-color-default-border)' }}>
+            <Group
+              px="md"
+              py="sm"
+              style={{ borderBottom: '1px solid var(--mantine-color-default-border)' }}
+            >
               <Text fw={700}>{active.name}</Text>
             </Group>
             {loadingMessages ? (

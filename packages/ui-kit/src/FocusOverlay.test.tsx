@@ -22,7 +22,10 @@ describe('FocusOverlay', () => {
     const endsAt = Date.now() + 5 * 60_000;
     render(
       <MantineProvider theme={gingermailTheme}>
-        <FocusOverlay state={{ active: true, endsAt, startedAt: Date.now(), durationMin: 5 }} onStop={onStop} />
+        <FocusOverlay
+          state={{ active: true, endsAt, startedAt: Date.now(), durationMin: 5 }}
+          onStop={onStop}
+        />
       </MantineProvider>,
     );
     expect(screen.getByText(/focus mode/i)).toBeInTheDocument();

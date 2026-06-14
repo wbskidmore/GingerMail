@@ -30,7 +30,16 @@ import type {
 
 type Listener<T> = (data: T) => void;
 type Unsubscribe = () => void;
-export type Platform = 'darwin' | 'win32' | 'linux' | 'aix' | 'freebsd' | 'openbsd' | 'sunos' | 'cygwin' | 'netbsd';
+export type Platform =
+  | 'darwin'
+  | 'win32'
+  | 'linux'
+  | 'aix'
+  | 'freebsd'
+  | 'openbsd'
+  | 'sunos'
+  | 'cygwin'
+  | 'netbsd';
 
 /**
  * Renderer view of the IPC contract that the Electron preload script exposes
@@ -79,7 +88,11 @@ export interface Api {
   };
   calendar: {
     listCalendars: () => Promise<Calendar[]>;
-    listEvents: (input: { from: number; to: number; calendarIds?: string[] }) => Promise<CalendarEvent[]>;
+    listEvents: (input: {
+      from: number;
+      to: number;
+      calendarIds?: string[];
+    }) => Promise<CalendarEvent[]>;
     createEvent: (event: Omit<CalendarEvent, 'id'>) => Promise<CalendarEvent>;
     updateEvent: (event: CalendarEvent) => Promise<CalendarEvent>;
     deleteEvent: (id: string) => Promise<void>;
@@ -127,7 +140,12 @@ export interface Api {
   };
   unsubscribe: {
     listSuggestions: () => Promise<UnsubscribeSuggestion[]>;
-    perform: (input: { email: string; http?: string; mailto?: string; oneClick: boolean }) => Promise<{ ok: boolean; method: 'http' | 'mailto' | 'none'; error?: string }>;
+    perform: (input: {
+      email: string;
+      http?: string;
+      mailto?: string;
+      oneClick: boolean;
+    }) => Promise<{ ok: boolean; method: 'http' | 'mailto' | 'none'; error?: string }>;
     mute: (input: { email: string }) => Promise<void>;
     unmute: (input: { email: string }) => Promise<void>;
     dismiss: (input: { email: string }) => Promise<void>;
@@ -207,15 +225,35 @@ function createMockApi(): Api {
     },
     settings: {
       get: async () => ({
-        appearance: { themeMode: 'system', density: 'cozy', fontFamily: 'system', baseFontSize: 14 },
-        accessibility: { reduceMotion: 'system', highContrast: 'system', alwaysShowFocus: true, showShortcutHints: true },
+        appearance: {
+          themeMode: 'system',
+          density: 'cozy',
+          fontFamily: 'system',
+          baseFontSize: 14,
+        },
+        accessibility: {
+          reduceMotion: 'system',
+          highContrast: 'system',
+          alwaysShowFocus: true,
+          showShortcutHints: true,
+        },
         notifications: { enabled: true, batchIntervalMin: 15, dockBadge: false, perAccount: {} },
         ai: { mode: 'off' },
         focus: { defaultDurationMin: 25, pomodoroBreaksEnabled: true, breakReminderEveryMin: 45 },
       }),
       update: async (p) => ({
-        appearance: { themeMode: 'system', density: 'cozy', fontFamily: 'system', baseFontSize: 14 },
-        accessibility: { reduceMotion: 'system', highContrast: 'system', alwaysShowFocus: true, showShortcutHints: true },
+        appearance: {
+          themeMode: 'system',
+          density: 'cozy',
+          fontFamily: 'system',
+          baseFontSize: 14,
+        },
+        accessibility: {
+          reduceMotion: 'system',
+          highContrast: 'system',
+          alwaysShowFocus: true,
+          showShortcutHints: true,
+        },
         notifications: { enabled: true, batchIntervalMin: 15, dockBadge: false, perAccount: {} },
         ai: { mode: 'off' },
         focus: { defaultDurationMin: 25, pomodoroBreaksEnabled: true, breakReminderEveryMin: 45 },
@@ -224,7 +262,12 @@ function createMockApi(): Api {
     },
     accounts: {
       list: async () => [],
-      add: async (input) => ({ ...baseAccount, displayName: input.displayName, emailAddress: input.emailAddress, kind: input.kind }),
+      add: async (input) => ({
+        ...baseAccount,
+        displayName: input.displayName,
+        emailAddress: input.emailAddress,
+        kind: input.kind,
+      }),
       remove: async () => {},
       test: async () => ({ ok: true }),
       beginOAuth: async () => baseAccount,
@@ -291,7 +334,12 @@ function createMockApi(): Api {
       extractActionItems: async () => [],
       nlSearch: async (query) => ({ messages: [], usedAi: false, query }),
       testConnection: async () => ({ ok: false, error: 'Mock API - run inside Electron' }),
-      localStatus: async () => ({ running: false, reusingExternal: false, binaryFound: false, uptimeMs: 0 }),
+      localStatus: async () => ({
+        running: false,
+        reusingExternal: false,
+        binaryFound: false,
+        uptimeMs: 0,
+      }),
       listAvailableModels: async () => [],
       listInstalledModels: async () => [],
       pullModel: async () => {},

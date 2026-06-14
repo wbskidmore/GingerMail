@@ -5,7 +5,11 @@ export interface FocusState {
   breakReminderAt?: number;
 }
 
-export function createFocusState(durationMin: number, breakEveryMin?: number, now: Date = new Date()): FocusState {
+export function createFocusState(
+  durationMin: number,
+  breakEveryMin?: number,
+  now: Date = new Date(),
+): FocusState {
   const start = now.getTime();
   const end = start + durationMin * 60_000;
   return {

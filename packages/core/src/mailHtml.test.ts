@@ -35,7 +35,17 @@ describe('mailHtmlSanitiserConfig', () => {
 
   it('forbids the obvious script-bearing tags', () => {
     const cfg = mailHtmlSanitiserConfig();
-    for (const t of ['script', 'iframe', 'object', 'embed', 'form', 'style', 'meta', 'link', 'base']) {
+    for (const t of [
+      'script',
+      'iframe',
+      'object',
+      'embed',
+      'form',
+      'style',
+      'meta',
+      'link',
+      'base',
+    ]) {
       expect(cfg.FORBID_TAGS).toContain(t);
     }
   });
@@ -43,12 +53,14 @@ describe('mailHtmlSanitiserConfig', () => {
 
 describe('sanitiseInlineStyle', () => {
   it('returns the original value when safe', () => {
-    expect(sanitiseInlineStyle('color: #333; font-weight: 600')).toBe('color: #333; font-weight: 600');
+    expect(sanitiseInlineStyle('color: #333; font-weight: 600')).toBe(
+      'color: #333; font-weight: 600',
+    );
   });
 
   it('drops any style containing url(...) (CSS exfil vector)', () => {
     expect(sanitiseInlineStyle('background: url(https://x.com/bg.png)')).toBe('');
-    expect(sanitiseInlineStyle('background-image:url(\'x\')')).toBe('');
+    expect(sanitiseInlineStyle("background-image:url('x')")).toBe('');
   });
 
   it.each(DISALLOWED_STYLE_FRAGMENTS)('drops style containing %s', (frag) => {

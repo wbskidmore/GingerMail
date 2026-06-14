@@ -23,7 +23,10 @@ afterEach(() => {
   vi.resetModules();
 });
 
-async function fetchCallback(redirect: string, qs: string): Promise<{ status: number; body: string }> {
+async function fetchCallback(
+  redirect: string,
+  qs: string,
+): Promise<{ status: number; body: string }> {
   const url = redirect.replace('/callback', `/callback${qs}`);
   const res = await fetch(url);
   return { status: res.status, body: await res.text() };
@@ -45,8 +48,12 @@ function redirectFromOpenedUrl(): string {
 function capture(p: Promise<unknown>): { reason: () => unknown } {
   let reason: unknown;
   p.then(
-    (v) => { reason = { ok: v }; },
-    (e) => { reason = e; },
+    (v) => {
+      reason = { ok: v };
+    },
+    (e) => {
+      reason = e;
+    },
   );
   return { reason: () => reason };
 }
@@ -56,7 +63,8 @@ describe('runLoopbackOAuth', () => {
     const p = runLoopbackOAuth({
       expectedState: 'correct-nonce',
       timeoutMs: 3000,
-      buildAuthUrl: (redirect) => `https://example.com/authorize?redirect_uri=${encodeURIComponent(redirect)}&state=correct-nonce`,
+      buildAuthUrl: (redirect) =>
+        `https://example.com/authorize?redirect_uri=${encodeURIComponent(redirect)}&state=correct-nonce`,
     });
     const captured = capture(p);
     await vi.waitFor(() => expect(openedUrls.length).toBe(1));
@@ -72,7 +80,8 @@ describe('runLoopbackOAuth', () => {
     const p = runLoopbackOAuth({
       expectedState: 'n1',
       timeoutMs: 3000,
-      buildAuthUrl: (redirect) => `https://example.com/authorize?redirect_uri=${encodeURIComponent(redirect)}`,
+      buildAuthUrl: (redirect) =>
+        `https://example.com/authorize?redirect_uri=${encodeURIComponent(redirect)}`,
     });
     const captured = capture(p);
     await vi.waitFor(() => expect(openedUrls.length).toBe(1));
@@ -81,14 +90,19 @@ describe('runLoopbackOAuth', () => {
     expect(probe.status).toBe(404);
     const ok = await fetchCallback(redirect, '?code=valid-code&state=n1');
     expect(ok.status).toBe(200);
-    await vi.waitFor(() => expect(captured.reason()).toEqual({ ok: expect.objectContaining({ code: 'valid-code', state: 'n1' }) }));
+    await vi.waitFor(() =>
+      expect(captured.reason()).toEqual({
+        ok: expect.objectContaining({ code: 'valid-code', state: 'n1' }),
+      }),
+    );
   });
 
   it('resolves with code + state when both match', async () => {
     const p = runLoopbackOAuth({
       expectedState: 'matchme',
       timeoutMs: 3000,
-      buildAuthUrl: (redirect) => `https://example.com/authorize?redirect_uri=${encodeURIComponent(redirect)}`,
+      buildAuthUrl: (redirect) =>
+        `https://example.com/authorize?redirect_uri=${encodeURIComponent(redirect)}`,
     });
     const captured = capture(p);
     await vi.waitFor(() => expect(openedUrls.length).toBe(1));
@@ -96,14 +110,19 @@ describe('runLoopbackOAuth', () => {
     const res = await fetchCallback(redirect, '?code=THE_CODE&state=matchme');
     expect(res.status).toBe(200);
     expect(res.body).toMatch(/Signed in/);
-    await vi.waitFor(() => expect(captured.reason()).toEqual({ ok: expect.objectContaining({ code: 'THE_CODE', state: 'matchme' }) }));
+    await vi.waitFor(() =>
+      expect(captured.reason()).toEqual({
+        ok: expect.objectContaining({ code: 'THE_CODE', state: 'matchme' }),
+      }),
+    );
   });
 
   it('rejects on OAuth error responses without invoking the token exchange', async () => {
     const p = runLoopbackOAuth({
       expectedState: 'n2',
       timeoutMs: 3000,
-      buildAuthUrl: (redirect) => `https://example.com/authorize?redirect_uri=${encodeURIComponent(redirect)}`,
+      buildAuthUrl: (redirect) =>
+        `https://example.com/authorize?redirect_uri=${encodeURIComponent(redirect)}`,
     });
     const captured = capture(p);
     await vi.waitFor(() => expect(openedUrls.length).toBe(1));

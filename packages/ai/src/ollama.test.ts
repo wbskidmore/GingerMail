@@ -38,12 +38,13 @@ describe('OllamaClient.pullModel', () => {
   it('parses NDJSON progress lines and calls onProgress for each', async () => {
     const events: Array<{ status: string; completed?: number; total?: number }> = [];
     const original = global.fetch;
-    const ndjson = [
-      JSON.stringify({ status: 'pulling manifest' }),
-      JSON.stringify({ status: 'downloading', completed: 1024, total: 4096 }),
-      JSON.stringify({ status: 'downloading', completed: 4096, total: 4096 }),
-      JSON.stringify({ status: 'success' }),
-    ].join('\n') + '\n';
+    const ndjson =
+      [
+        JSON.stringify({ status: 'pulling manifest' }),
+        JSON.stringify({ status: 'downloading', completed: 1024, total: 4096 }),
+        JSON.stringify({ status: 'downloading', completed: 4096, total: 4096 }),
+        JSON.stringify({ status: 'success' }),
+      ].join('\n') + '\n';
     global.fetch = vi.fn(async () => {
       const enc = new TextEncoder();
       return new Response(

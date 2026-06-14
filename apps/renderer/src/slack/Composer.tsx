@@ -7,7 +7,13 @@ import { IconSend } from '@tabler/icons-react';
  * convention people already have muscle memory for, so there's nothing new
  * to learn.
  */
-export function Composer({ onSend, disabled }: { onSend: (text: string) => Promise<void>; disabled?: boolean }) {
+export function Composer({
+  onSend,
+  disabled,
+}: {
+  onSend: (text: string) => Promise<void>;
+  disabled?: boolean;
+}) {
   const [value, setValue] = useState('');
   const [busy, setBusy] = useState(false);
 

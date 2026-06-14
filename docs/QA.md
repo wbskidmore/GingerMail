@@ -17,20 +17,20 @@ maintained by the QA engineer + UI/UX expert on the team.
 
 ## UI/UX audit findings (before migration)
 
-| #   | Severity | Area          | Finding                                                          | Resolved by                                                          |
-| --- | -------- | ------------- | ---------------------------------------------------------------- | -------------------------------------------------------------------- |
-| Q1  | High     | Mail tab      | Fixed 260/360 columns; no resize.                                | Mantine `AppShell` + CSS grid columns; responsive default.           |
-| Q2  | High     | Composer      | `alert(...)` used for AI summary output.                         | `modals.open(...)` with formatted Stack + Divider.                   |
-| Q3  | High     | Errors        | `alert(...)` used for OAuth failures.                            | `notifications.show(... color: 'red')`.                              |
-| Q4  | High     | Snooze        | Absolute-positioned div; no focus trap, ESC, click-outside.      | Mantine `Menu` with arrow + keyboard nav + auto-dismiss.             |
-| Q5  | Medium   | Settings      | Bare `<input>`s, no labels, no validation.                       | Mantine `TextInput`/`PasswordInput`/`Select` + `@mantine/form`.      |
-| Q6  | Medium   | Navigation    | Tabs not keyboard-navigable.                                     | Mantine `Tabs` (arrow keys built in) + `Cmd/Ctrl+Shift+F` hotkey.    |
-| Q7  | Medium   | Theming       | CSS variables drifting from OS feel.                             | Mantine theme + ginger primary; `--mantine-color-*` tokens.          |
-| Q8  | Medium   | Calendar      | "Drag task to time-block" missing.                               | Tracked as follow-up: `mantine-cal-dnd` (deferred).                  |
-| Q9  | Low      | Iconography   | Hand-rolled SVGs inconsistent stroke widths.                     | `@tabler/icons-react` (1.5px stroke standard).                       |
-| Q10 | Low      | A11y          | Missing `aria-label`s, browser focus rings.                      | All `ActionIcon`s have explicit `aria-label`; visible focus ring CSS.|
-| Q11 | Low      | Density       | "Compact/Cozy/Spacious" tokens applied inconsistently.           | `densityScale.ts` in ui-kit, single source.                          |
-| Q12 | Low      | Test coverage | Only 12 unit tests, no component / e2e.                          | 22 unit + component tests; Playwright smoke spec.                    |
+| #   | Severity | Area          | Finding                                                     | Resolved by                                                           |
+| --- | -------- | ------------- | ----------------------------------------------------------- | --------------------------------------------------------------------- |
+| Q1  | High     | Mail tab      | Fixed 260/360 columns; no resize.                           | Mantine `AppShell` + CSS grid columns; responsive default.            |
+| Q2  | High     | Composer      | `alert(...)` used for AI summary output.                    | `modals.open(...)` with formatted Stack + Divider.                    |
+| Q3  | High     | Errors        | `alert(...)` used for OAuth failures.                       | `notifications.show(... color: 'red')`.                               |
+| Q4  | High     | Snooze        | Absolute-positioned div; no focus trap, ESC, click-outside. | Mantine `Menu` with arrow + keyboard nav + auto-dismiss.              |
+| Q5  | Medium   | Settings      | Bare `<input>`s, no labels, no validation.                  | Mantine `TextInput`/`PasswordInput`/`Select` + `@mantine/form`.       |
+| Q6  | Medium   | Navigation    | Tabs not keyboard-navigable.                                | Mantine `Tabs` (arrow keys built in) + `Cmd/Ctrl+Shift+F` hotkey.     |
+| Q7  | Medium   | Theming       | CSS variables drifting from OS feel.                        | Mantine theme + ginger primary; `--mantine-color-*` tokens.           |
+| Q8  | Medium   | Calendar      | "Drag task to time-block" missing.                          | Tracked as follow-up: `mantine-cal-dnd` (deferred).                   |
+| Q9  | Low      | Iconography   | Hand-rolled SVGs inconsistent stroke widths.                | `@tabler/icons-react` (1.5px stroke standard).                        |
+| Q10 | Low      | A11y          | Missing `aria-label`s, browser focus rings.                 | All `ActionIcon`s have explicit `aria-label`; visible focus ring CSS. |
+| Q11 | Low      | Density       | "Compact/Cozy/Spacious" tokens applied inconsistently.      | `densityScale.ts` in ui-kit, single source.                           |
+| Q12 | Low      | Test coverage | Only 12 unit tests, no component / e2e.                     | 22 unit + component tests; Playwright smoke spec.                     |
 
 ## Test infrastructure
 
@@ -52,18 +52,18 @@ pnpm test:e2e      # Playwright smoke against renderer (requires `pnpm dev`)
 
 ## Coverage at the time of writing
 
-| Suite                                | Tests | Notes                                                              |
-| ------------------------------------ | ----- | ------------------------------------------------------------------ |
-| `packages/core/src/snooze.test.ts`   | 6     | All snooze presets.                                                |
-| `packages/core/src/focus.test.ts`    | 4     | Focus state lifecycle.                                             |
-| `packages/providers/.../parser.test` | 2     | RFC 822 parser.                                                    |
-| `packages/ui-kit/EnergyChip.test`    | 2     | Labels + nothing-when-undefined.                                   |
-| `packages/ui-kit/AccountBadge.test`  | 2     | Initials + email-fallback.                                         |
-| `packages/ui-kit/SnoozeMenu.test`    | 1     | Opens, selects, returns preset id + computed fire time.            |
-| `packages/ui-kit/FocusOverlay.test`  | 2     | Hidden when off, stop callback when on.                            |
-| `apps/renderer/App.test`             | 3     | Boots, switches to Tasks + Settings, mock IPC.                     |
-| `e2e/smoke.spec.ts`                  | 2     | Tabs render, focus mode overlay toggles.                           |
-| **Total**                            | **24**| 22 unit/component + 2 e2e.                                         |
+| Suite                                | Tests  | Notes                                                   |
+| ------------------------------------ | ------ | ------------------------------------------------------- |
+| `packages/core/src/snooze.test.ts`   | 6      | All snooze presets.                                     |
+| `packages/core/src/focus.test.ts`    | 4      | Focus state lifecycle.                                  |
+| `packages/providers/.../parser.test` | 2      | RFC 822 parser.                                         |
+| `packages/ui-kit/EnergyChip.test`    | 2      | Labels + nothing-when-undefined.                        |
+| `packages/ui-kit/AccountBadge.test`  | 2      | Initials + email-fallback.                              |
+| `packages/ui-kit/SnoozeMenu.test`    | 1      | Opens, selects, returns preset id + computed fire time. |
+| `packages/ui-kit/FocusOverlay.test`  | 2      | Hidden when off, stop callback when on.                 |
+| `apps/renderer/App.test`             | 3      | Boots, switches to Tasks + Settings, mock IPC.          |
+| `e2e/smoke.spec.ts`                  | 2      | Tabs render, focus mode overlay toggles.                |
+| **Total**                            | **24** | 22 unit/component + 2 e2e.                              |
 
 ## Mantine theme
 

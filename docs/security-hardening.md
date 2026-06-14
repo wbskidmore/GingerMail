@@ -78,7 +78,7 @@ mapping, gap assessment, SSP, and POA&M, see
   - `scrubSecrets()` (Bearer, Basic, x-api-key, JWT, OpenAI/Slack/Google
     prefixed tokens, long hex, JSON access_token/password/cookie etc.).
   - `wrapLoggerWithScrub()` for the electron-log logger.
-  - `installConsoleScrubbing()` — global console.* patch installed at
+  - `installConsoleScrubbing()` — global console.\* patch installed at
     boot so even libraries that bypass our logger get scrubbed.
 
 ## #7 — Mail HTML iframe lockdown
@@ -140,7 +140,7 @@ write channels).
   Windows Authenticode certs. Procurement is a separate workstream.
 - Refresh-token rotation hooks (Google/Microsoft providers): currently
   the providers refresh tokens implicitly; an explicit rotation event
-  + `TokenVault` update is a follow-up.
+  - `TokenVault` update is a follow-up.
 - Per-account "Sensitive" UI toggle. The data model carries
   `sensitiveAccountIds` but the Settings card does not yet expose it.
 - Settings → Updates UI card. The IPC channels are wired but the React

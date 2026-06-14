@@ -84,7 +84,10 @@ function handleLiveMessage(ctx: AppContext, accountId: string, message: ChatMess
       ctx.db.setChatUnread({
         accountId,
         conversationId: message.conversationId,
-        unreadCount: (ctx.db.listChatMessages(accountId, message.conversationId, 50).filter((m) => lastRead === undefined || tsGreater(m.ts, lastRead)).length) || 1,
+        unreadCount:
+          ctx.db
+            .listChatMessages(accountId, message.conversationId, 50)
+            .filter((m) => lastRead === undefined || tsGreater(m.ts, lastRead)).length || 1,
         hasMention: message.mentionsMe,
       });
     }
@@ -101,15 +104,24 @@ function handleLiveMessage(ctx: AppContext, accountId: string, message: ChatMess
 }
 
 /** Pull the conversation list for a push provider so the tab has channels. */
-async function refreshConversations(ctx: AppContext, accountId: string, provider: ChatProvider): Promise<void> {
+async function refreshConversations(
+  ctx: AppContext,
+  accountId: string,
+  provider: ChatProvider,
+): Promise<void> {
   const conversations = await provider.listConversations();
   ctx.db.upsertChatConversations(conversations);
-  ctx.mainWindow?.webContents.send(IPC_CHANNELS.slackSyncEvent, { type: 'conversations-updated', accountId });
+  ctx.mainWindow?.webContents.send(IPC_CHANNELS.slackSyncEvent, {
+    type: 'conversations-updated',
+    accountId,
+  });
 }
 
 /** Enqueue a chat message for the AI detection agent (no-op if disabled). */
 function feedDetection(ctx: AppContext, accountId: string, message: ChatMessage): void {
-  const conv = ctx.db.listChatConversations(accountId).find((c) => c.conversationId === message.conversationId);
+  const conv = ctx.db
+    .listChatConversations(accountId)
+    .find((c) => c.conversationId === message.conversationId);
   enqueueDetection(ctx, {
     source: 'chat',
     sourceId: message.id,
@@ -139,7 +151,11 @@ function syncWorkspace(ctx: AppContext, accountId: string, provider: ChatProvide
   return p;
 }
 
-async function doSyncWorkspace(ctx: AppContext, accountId: string, provider: ChatProvider): Promise<void> {
+async function doSyncWorkspace(
+  ctx: AppContext,
+  accountId: string,
+  provider: ChatProvider,
+): Promise<void> {
   ctx.mainWindow?.webContents.send(IPC_CHANNELS.slackSyncEvent, { type: 'started', accountId });
   try {
     const identity = await provider.authTest();
@@ -160,7 +176,9 @@ async function doSyncWorkspace(ctx: AppContext, accountId: string, provider: Cha
       // otherwise cost a history call each with no unread value).
       if (c.kind === 'channel' && !c.isMember) continue;
 
-      const messages = await provider.listMessages(c.conversationId, 30).catch(() => [] as ChatMessage[]);
+      const messages = await provider
+        .listMessages(c.conversationId, 30)
+        .catch(() => [] as ChatMessage[]);
       if (messages.length) ctx.db.upsertChatMessages(messages);
 
       const lastRead = ctx.db.getChatLastRead(accountId, c.conversationId);
@@ -209,11 +227,18 @@ async function doSyncWorkspace(ctx: AppContext, accountId: string, provider: Cha
 
     maybeNotify(ctx, identity.teamName, newDmCount, newMentionCount);
 
-    ctx.mainWindow?.webContents.send(IPC_CHANNELS.slackSyncEvent, { type: 'conversations-updated', accountId });
+    ctx.mainWindow?.webContents.send(IPC_CHANNELS.slackSyncEvent, {
+      type: 'conversations-updated',
+      accountId,
+    });
     ctx.mainWindow?.webContents.send(IPC_CHANNELS.slackSyncEvent, { type: 'finished', accountId });
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
-    ctx.mainWindow?.webContents.send(IPC_CHANNELS.slackSyncEvent, { type: 'error', accountId, error: message });
+    ctx.mainWindow?.webContents.send(IPC_CHANNELS.slackSyncEvent, {
+      type: 'error',
+      accountId,
+      error: message,
+    });
     log.warn(`[chatSync] workspace ${accountId} failed: ${message}`);
   }
 }

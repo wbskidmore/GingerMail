@@ -47,7 +47,9 @@ describe('isUrlAllowedForAi', () => {
     expect(isUrlAllowedForAi('http://127.0.0.1:11434/api/chat', off).allowed).toBe(false);
   });
   it('allows the configured vendor only', () => {
-    expect(isUrlAllowedForAi('https://api.openai.com/v1/chat/completions', openai).allowed).toBe(true);
+    expect(isUrlAllowedForAi('https://api.openai.com/v1/chat/completions', openai).allowed).toBe(
+      true,
+    );
     expect(isUrlAllowedForAi('https://api.anthropic.com/v1/messages', openai).allowed).toBe(false);
   });
   it('refuses http for cloud mode', () => {

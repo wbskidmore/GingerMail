@@ -1,9 +1,5 @@
 import DOMPurify from 'dompurify';
-import {
-  mailHtmlSanitiserConfig,
-  sanitiseInlineStyle,
-  SAFE_LINK_SCHEMES,
-} from '@gingermail/core';
+import { mailHtmlSanitiserConfig, sanitiseInlineStyle, SAFE_LINK_SCHEMES } from '@gingermail/core';
 
 /**
  * Renderer-side mail HTML sanitiser. Wraps DOMPurify with the project-wide
@@ -85,10 +81,7 @@ export interface SanitiseMailHtmlOptions {
   allowRemoteImages?: boolean;
 }
 
-export function sanitiseMailHtml(
-  html: string,
-  opts: SanitiseMailHtmlOptions = {},
-): string {
+export function sanitiseMailHtml(html: string, opts: SanitiseMailHtmlOptions = {}): string {
   installHooks();
   const cfg = mailHtmlSanitiserConfig({ allowRemoteImages: opts.allowRemoteImages });
   currentAllowRemoteImages = !!opts.allowRemoteImages;

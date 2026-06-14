@@ -82,7 +82,9 @@ function installCsp(win: BrowserWindowType, opts: HardeningOptions): void {
     responseHeaders['Content-Security-Policy'] = [csp];
     responseHeaders['X-Content-Type-Options'] = ['nosniff'];
     responseHeaders['Referrer-Policy'] = ['no-referrer'];
-    responseHeaders['Permissions-Policy'] = ['camera=(), microphone=(), geolocation=(), interest-cohort=()'];
+    responseHeaders['Permissions-Policy'] = [
+      'camera=(), microphone=(), geolocation=(), interest-cohort=()',
+    ];
     callback({ responseHeaders });
   });
 }

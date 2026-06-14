@@ -97,11 +97,11 @@ docker run -d --name gingermail \
 Then open **https://localhost:3001** (self-signed cert, so accept the browser
 warning on first load).
 
-| Flag | Why |
-| --- | --- |
-| `-p 3001:3001` | KasmVNC web UI (HTTPS). Map to another host port if 3001 is taken. |
-| `--shm-size=1g` | Gives Chromium enough shared memory; the app may crash without it. |
-| `-v gingermail-data:/config` | Persists accounts, cache, and settings across restarts. |
+| Flag                         | Why                                                                |
+| ---------------------------- | ------------------------------------------------------------------ |
+| `-p 3001:3001`               | KasmVNC web UI (HTTPS). Map to another host port if 3001 is taken. |
+| `--shm-size=1g`              | Gives Chromium enough shared memory; the app may crash without it. |
+| `-v gingermail-data:/config` | Persists accounts, cache, and settings across restarts.            |
 
 ### Manage the container
 

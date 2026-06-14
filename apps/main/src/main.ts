@@ -2,7 +2,14 @@ import path from 'node:path';
 import fs from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import type { BrowserWindow as BrowserWindowType } from 'electron';
-import { app, BrowserWindow, log, nativeImage, nativeTheme, systemPreferences } from './electronShim.js';
+import {
+  app,
+  BrowserWindow,
+  log,
+  nativeImage,
+  nativeTheme,
+  systemPreferences,
+} from './electronShim.js';
 import { AppContext } from './context.js';
 import { registerIpc } from './ipc/register.js';
 import { startOllamaSidecar, stopOllamaSidecar } from './ipc/aiHandlers.js';
@@ -25,7 +32,9 @@ const __dirname = path.dirname(__filename);
 // and isn't strictly required - skip it and just configure transports if
 // the underlying Logger exposes them.
 try {
-  if (typeof (log as { initialize?: (opts: { preload: boolean }) => void }).initialize === 'function') {
+  if (
+    typeof (log as { initialize?: (opts: { preload: boolean }) => void }).initialize === 'function'
+  ) {
     (log as { initialize: (opts: { preload: boolean }) => void }).initialize({ preload: true });
   }
   if (log.transports?.file) {
@@ -48,9 +57,8 @@ let mainWindow: BrowserWindowType | null = null;
  * and Alt-Tab pick it up.
  */
 function findIcon(): string | undefined {
-  const candidates = process.platform === 'win32'
-    ? ['build/icon.ico', 'build/icon.png']
-    : ['build/icon.png'];
+  const candidates =
+    process.platform === 'win32' ? ['build/icon.ico', 'build/icon.png'] : ['build/icon.png'];
   const repoRoot = path.resolve(__dirname, '..', '..', '..');
   for (const rel of candidates) {
     const abs = path.join(repoRoot, rel);
@@ -63,11 +71,14 @@ async function createWindow(): Promise<void> {
   await context.init();
 
   const accent = readAccentColor();
-  log.info(`[main] os accent=${accent} theme=${nativeTheme.shouldUseDarkColors ? 'dark' : 'light'}`);
+  log.info(
+    `[main] os accent=${accent} theme=${nativeTheme.shouldUseDarkColors ? 'dark' : 'light'}`,
+  );
 
   const iconPath = findIcon();
   // macOS uses .icns from the .app bundle; dev/Win/Linux take icon from the BrowserWindow.
-  const iconImage = iconPath && process.platform !== 'darwin' ? nativeImage.createFromPath(iconPath) : undefined;
+  const iconImage =
+    iconPath && process.platform !== 'darwin' ? nativeImage.createFromPath(iconPath) : undefined;
 
   if (process.platform === 'darwin' && app.dock && iconPath) {
     // In dev the .app bundle is the generic Electron one - force the dock icon
@@ -131,9 +142,13 @@ async function createWindow(): Promise<void> {
   // renderer session), so this filter is defense-in-depth for any future
   // call-site that goes through the renderer.
   try {
-    installAiEgressFilter(mainWindow.webContents.session, () => context.getSettings().ai, (info) => {
-      log.warn(`[ai-egress] blocked host=${maskHost(info.url)} reason=${info.reason}`);
-    });
+    installAiEgressFilter(
+      mainWindow.webContents.session,
+      () => context.getSettings().ai,
+      (info) => {
+        log.warn(`[ai-egress] blocked host=${maskHost(info.url)} reason=${info.reason}`);
+      },
+    );
   } catch (err) {
     log.warn('[ai-egress] failed to install filter:', err);
   }
@@ -149,7 +164,10 @@ async function createWindow(): Promise<void> {
   startChatPolling(context);
 
   nativeTheme.on('updated', () => {
-    mainWindow?.webContents.send('app:themeChanged', nativeTheme.shouldUseDarkColors ? 'dark' : 'light');
+    mainWindow?.webContents.send(
+      'app:themeChanged',
+      nativeTheme.shouldUseDarkColors ? 'dark' : 'light',
+    );
   });
 }
 
@@ -169,9 +187,12 @@ function readAccentColor(): string {
   return '#6366f1';
 }
 
-app.whenReady().then(createWindow).catch((err) => {
-  log.error('Failed to start main window', err);
-});
+app
+  .whenReady()
+  .then(createWindow)
+  .catch((err) => {
+    log.error('Failed to start main window', err);
+  });
 
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') app.quit();

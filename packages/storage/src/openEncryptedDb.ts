@@ -112,7 +112,7 @@ export function openEncryptedDatabase(opts: OpenEncryptedOptions): OpenEncrypted
   //   - works → encrypted DB, our key is correct, done.
   //   - "file is not a database" → file is plaintext, run migration.
   //   - other error → propagate (likely permission / disk failure).
-  const file = (createRequire(import.meta.url)('node:fs') as typeof FsModule);
+  const file = createRequire(import.meta.url)('node:fs') as typeof FsModule;
   const fileExists = file.existsSync(dbPath);
 
   if (fileExists) {
@@ -124,7 +124,12 @@ export function openEncryptedDatabase(opts: OpenEncryptedOptions): OpenEncrypted
       probeDb.prepare('SELECT count(*) FROM sqlite_master').get();
       // Looks encrypted (or empty + key-set) and readable → done.
       configurePragmas(probeDb);
-      return { db: probeDb, encrypted: true, migratedFromPlaintext: false, driverFell: 'multiple-ciphers' };
+      return {
+        db: probeDb,
+        encrypted: true,
+        migratedFromPlaintext: false,
+        driverFell: 'multiple-ciphers',
+      };
     } catch (err) {
       probeDb.close();
       const msg = String(err);
@@ -154,7 +159,11 @@ export function openEncryptedDatabase(opts: OpenEncryptedOptions): OpenEncrypted
   return { db, encrypted: true, migratedFromPlaintext: true, driverFell: 'multiple-ciphers' };
 }
 
-function openWith(Driver: typeof DatabaseTypes, dbPath: string, readonly: boolean | undefined): DatabaseTypes.Database {
+function openWith(
+  Driver: typeof DatabaseTypes,
+  dbPath: string,
+  readonly: boolean | undefined,
+): DatabaseTypes.Database {
   return new Driver(dbPath, readonly === undefined ? {} : { readonly });
 }
 
@@ -190,7 +199,11 @@ function migratePlaintextToEncrypted(
   // copy's WAL is created from scratch.
   for (const sib of [`${dbPath}-wal`, `${dbPath}-shm`]) {
     if (fs.existsSync(sib)) {
-      try { fs.rmSync(sib); } catch { /* ignore */ }
+      try {
+        fs.rmSync(sib);
+      } catch {
+        /* ignore */
+      }
     }
   }
 
@@ -199,7 +212,9 @@ function migratePlaintextToEncrypted(
   // consistent. (Mixing engines for ATTACH is undefined behavior.)
   const src = openWith(drivers.EncryptedDriver, dbPath, false);
   try {
-    src.exec(`ATTACH DATABASE '${encryptedTmp.replace(/'/g, "''")}' AS encrypted KEY "x'${encryptionKeyHex}'"`);
+    src.exec(
+      `ATTACH DATABASE '${encryptedTmp.replace(/'/g, "''")}' AS encrypted KEY "x'${encryptionKeyHex}'"`,
+    );
     src.exec(`SELECT sqlcipher_export('encrypted')`);
     src.exec(`DETACH DATABASE encrypted`);
   } finally {
@@ -219,7 +234,11 @@ function migratePlaintextToEncrypted(
     fs.renameSync(encryptedTmp, dbPath);
   } catch (err) {
     // Restore the original on failure so the app can still boot.
-    try { fs.renameSync(backupPath, dbPath); } catch { /* swallow */ }
+    try {
+      fs.renameSync(backupPath, dbPath);
+    } catch {
+      /* swallow */
+    }
     throw err;
   }
 
@@ -245,4 +264,3 @@ export function generateEncryptionKeyHex(): string {
   const crypto = createRequire(import.meta.url)('node:crypto') as typeof CryptoModule;
   return crypto.randomBytes(32).toString('hex');
 }
-

@@ -22,7 +22,10 @@ export interface GoogleAuthOutcome {
  * across attempts.
  */
 export class GoogleOAuthFlow {
-  constructor(private readonly clientId: string, private readonly clientSecret: string) {}
+  constructor(
+    private readonly clientId: string,
+    private readonly clientSecret: string,
+  ) {}
 
   async run(): Promise<GoogleAuthOutcome> {
     const { google } = getGoogleApis();
@@ -34,7 +37,11 @@ export class GoogleOAuthFlow {
       timeoutMs: 5 * 60_000,
       expectedState: state,
       buildAuthUrl: (redirectUri) => {
-        const client = new google.auth.OAuth2({ clientId: this.clientId, clientSecret: this.clientSecret, redirectUri });
+        const client = new google.auth.OAuth2({
+          clientId: this.clientId,
+          clientSecret: this.clientSecret,
+          redirectUri,
+        });
         return client.generateAuthUrl({
           access_type: 'offline',
           scope: GOOGLE_SCOPES,
@@ -43,7 +50,10 @@ export class GoogleOAuthFlow {
           // googleapis@>=128 supports PKCE via these two opts.
           code_challenge_method: 'S256' as unknown as undefined,
           code_challenge: codeChallenge as unknown as string,
-        } as Parameters<typeof client.generateAuthUrl>[0] & { code_challenge_method?: string; code_challenge?: string });
+        } as Parameters<typeof client.generateAuthUrl>[0] & {
+          code_challenge_method?: string;
+          code_challenge?: string;
+        });
       },
     });
     const client = new google.auth.OAuth2({

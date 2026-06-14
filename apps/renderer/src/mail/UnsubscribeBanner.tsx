@@ -1,5 +1,16 @@
 import { useEffect, useState } from 'react';
-import { Alert, Anchor, Button, Code, Group, Modal, ScrollArea, Stack, Text, Title } from '@mantine/core';
+import {
+  Alert,
+  Anchor,
+  Button,
+  Code,
+  Group,
+  Modal,
+  ScrollArea,
+  Stack,
+  Text,
+  Title,
+} from '@mantine/core';
 import { notifications } from '@mantine/notifications';
 import { IconMailOff } from '@tabler/icons-react';
 import type { UnsubscribeSuggestion } from '@gingermail/core';
@@ -44,7 +55,10 @@ export function UnsubscribeBanner(): JSX.Element | null {
   if (suggestions.length === 0) return null;
 
   const count = suggestions.length;
-  const top = suggestions.slice(0, 3).map((s) => s.email).join(', ');
+  const top = suggestions
+    .slice(0, 3)
+    .map((s) => s.email)
+    .join(', ');
 
   return (
     <>
@@ -54,7 +68,11 @@ export function UnsubscribeBanner(): JSX.Element | null {
         variant="light"
         radius={0}
         styles={{
-          root: { borderTop: 0, borderInline: 0, borderBottom: '1px solid var(--mantine-color-default-border)' },
+          root: {
+            borderTop: 0,
+            borderInline: 0,
+            borderBottom: '1px solid var(--mantine-color-default-border)',
+          },
         }}
       >
         <Group justify="space-between" wrap="nowrap" gap="md">
@@ -63,7 +81,9 @@ export function UnsubscribeBanner(): JSX.Element | null {
             {count > 3 ? ', \u2026' : ''}). Want to clean them up?
           </Text>
           <Group gap="xs" wrap="nowrap">
-            <Button size="xs" variant="light" onClick={() => setOpen(true)}>Review</Button>
+            <Button size="xs" variant="light" onClick={() => setOpen(true)}>
+              Review
+            </Button>
           </Group>
         </Group>
       </Alert>
@@ -88,7 +108,11 @@ export function UnsubscribeBanner(): JSX.Element | null {
           try {
             if (action === 'mute') {
               await getApi().unsubscribe.mute({ email: s.email });
-              notifications.show({ title: 'Muted', message: `Future mail from ${s.email} will be hidden from your inbox and search.`, color: 'gray' });
+              notifications.show({
+                title: 'Muted',
+                message: `Future mail from ${s.email} will be hidden from your inbox and search.`,
+                color: 'gray',
+              });
             } else if (action === 'dismiss') {
               await getApi().unsubscribe.dismiss({ email: s.email });
             }
@@ -130,7 +154,11 @@ export function UnsubscribeBanner(): JSX.Element | null {
           color: 'orange',
         });
       } else {
-        notifications.show({ title: 'Unsubscribe failed', message: res.error ?? 'Unknown error', color: 'red' });
+        notifications.show({
+          title: 'Unsubscribe failed',
+          message: res.error ?? 'Unknown error',
+          color: 'red',
+        });
       }
     } finally {
       setBusy(false);
@@ -152,7 +180,12 @@ interface ConfirmProps {
  * before we send the request. There is no "remember this choice" affordance
  * \u2014 every send is confirmed.
  */
-function UnsubscribeDestinationConfirm({ suggestion, busy, onConfirm, onCancel }: ConfirmProps): JSX.Element {
+function UnsubscribeDestinationConfirm({
+  suggestion,
+  busy,
+  onConfirm,
+  onCancel,
+}: ConfirmProps): JSX.Element {
   const url = suggestion?.methods.http ?? '';
   let host = '';
   try {
@@ -164,15 +197,21 @@ function UnsubscribeDestinationConfirm({ suggestion, busy, onConfirm, onCancel }
     <Modal opened={Boolean(suggestion)} onClose={onCancel} title="Confirm unsubscribe">
       <Stack gap="sm">
         <Text size="sm">
-          GingerMail will send a one-click <Code>POST</Code> to the address below to unsubscribe from{' '}
-          <strong>{suggestion?.email}</strong>. No cookies or credentials are sent.
+          GingerMail will send a one-click <Code>POST</Code> to the address below to unsubscribe
+          from <strong>{suggestion?.email}</strong>. No cookies or credentials are sent.
         </Text>
-        <Code block style={{ wordBreak: 'break-all' }}>{url || '(no destination)'}</Code>
+        <Code block style={{ wordBreak: 'break-all' }}>
+          {url || '(no destination)'}
+        </Code>
         {host && (
-          <Text size="xs" c="dimmed">Destination host: <Code>{host}</Code></Text>
+          <Text size="xs" c="dimmed">
+            Destination host: <Code>{host}</Code>
+          </Text>
         )}
         <Group justify="flex-end" gap="xs">
-          <Button variant="default" onClick={onCancel} disabled={busy}>Cancel</Button>
+          <Button variant="default" onClick={onCancel} disabled={busy}>
+            Cancel
+          </Button>
           <Button color="ginger" onClick={() => void onConfirm()} loading={busy} disabled={!url}>
             Send unsubscribe
           </Button>
@@ -190,13 +229,20 @@ interface ModalProps {
   onAct: (s: UnsubscribeSuggestion, action: 'unsubscribe' | 'mute' | 'dismiss') => Promise<void>;
 }
 
-function UnsubscribeReviewModal({ opened, onClose, suggestions, busy, onAct }: ModalProps): JSX.Element {
+function UnsubscribeReviewModal({
+  opened,
+  onClose,
+  suggestions,
+  busy,
+  onAct,
+}: ModalProps): JSX.Element {
   return (
     <Modal opened={opened} onClose={onClose} title="Unsubscribe suggestions" size="lg">
       <Stack gap="sm">
         <Text size="sm" c="dimmed">
-          For each sender you can either run the sender&apos;s real unsubscribe (RFC 8058 one-click POST or a prepared mailto), or
-          mute them locally so future mail is auto-marked read. Muting is private to GingerMail and reversible from Settings &rarr; Privacy.
+          For each sender you can either run the sender&apos;s real unsubscribe (RFC 8058 one-click
+          POST or a prepared mailto), or mute them locally so future mail is auto-marked read.
+          Muting is private to GingerMail and reversible from Settings &rarr; Privacy.
         </Text>
         <ScrollArea h={420}>
           <Stack gap="xs">
@@ -209,7 +255,9 @@ function UnsubscribeReviewModal({ opened, onClose, suggestions, busy, onAct }: M
               >
                 <Group justify="space-between" wrap="nowrap">
                   <Stack gap={0}>
-                    <Title order={5} size="sm">{s.email}</Title>
+                    <Title order={5} size="sm">
+                      {s.email}
+                    </Title>
                     <Text size="xs" c="dimmed">
                       Trashed {s.trashedCount} of last {s.totalSeen}
                       {s.aiReason ? ` \u00b7 AI: ${s.aiReason}` : ''}
@@ -221,7 +269,13 @@ function UnsubscribeReviewModal({ opened, onClose, suggestions, busy, onAct }: M
                         Unsubscribe
                       </Button>
                     )}
-                    <Button size="xs" variant="light" color="gray" disabled={busy} onClick={() => onAct(s, 'mute')}>
+                    <Button
+                      size="xs"
+                      variant="light"
+                      color="gray"
+                      disabled={busy}
+                      onClick={() => onAct(s, 'mute')}
+                    >
                       Mute sender
                     </Button>
                     <Anchor size="xs" c="dimmed" onClick={() => void onAct(s, 'dismiss')}>

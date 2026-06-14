@@ -10,11 +10,7 @@
  */
 import DOMPurify from 'dompurify';
 import { JSDOM } from 'jsdom';
-import {
-  mailHtmlSanitiserConfig,
-  sanitiseInlineStyle,
-  SAFE_LINK_SCHEMES,
-} from '@gingermail/core';
+import { mailHtmlSanitiserConfig, sanitiseInlineStyle, SAFE_LINK_SCHEMES } from '@gingermail/core';
 
 let cachedPurify: ReturnType<typeof DOMPurify> | null = null;
 let currentAllowRemoteImages = false;
@@ -76,10 +72,7 @@ export interface SanitiseMailHtmlOptions {
   allowRemoteImages?: boolean;
 }
 
-export function sanitiseMailHtmlMain(
-  html: string,
-  opts: SanitiseMailHtmlOptions = {},
-): string {
+export function sanitiseMailHtmlMain(html: string, opts: SanitiseMailHtmlOptions = {}): string {
   const purify = getPurify();
   const cfg = mailHtmlSanitiserConfig({ allowRemoteImages: opts.allowRemoteImages });
   currentAllowRemoteImages = !!opts.allowRemoteImages;

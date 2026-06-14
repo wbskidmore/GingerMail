@@ -44,13 +44,17 @@ export function LocalAiWizard({ opened, onClose, onModelInstalled }: LocalAiWiza
     let cancelled = false;
     void Promise.all([
       getApi().ai.listAvailableModels(),
-      getApi().ai.listInstalledModels().catch(() => []),
+      getApi()
+        .ai.listInstalledModels()
+        .catch(() => []),
     ]).then(([avail, inst]) => {
       if (cancelled) return;
       setModels(avail);
       setInstalled(inst);
     });
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, [opened]);
 
   useEffect(() => {
@@ -69,7 +73,8 @@ export function LocalAiWizard({ opened, onClose, onModelInstalled }: LocalAiWiza
     return unsub;
   }, [opened, onModelInstalled]);
 
-  const isInstalled = (id: string): boolean => installed.some((m) => m.name === id || m.name.split(':')[0] === id.split(':')[0]);
+  const isInstalled = (id: string): boolean =>
+    installed.some((m) => m.name === id || m.name.split(':')[0] === id.split(':')[0]);
 
   const start = async (id: string): Promise<void> => {
     setError(null);
@@ -87,8 +92,8 @@ export function LocalAiWizard({ opened, onClose, onModelInstalled }: LocalAiWiza
     <Modal opened={opened} onClose={onClose} title="Set up local AI" size="lg" keepMounted={false}>
       <Stack gap="md">
         <Alert color="ginger" icon={<IconSparkles size={16} />} variant="light">
-          GingerMail can run completely offline using a small language model on this Mac.
-          Pick the one that best fits your storage and RAM \u2014 you can swap later in Settings.
+          GingerMail can run completely offline using a small language model on this Mac. Pick the
+          one that best fits your storage and RAM \u2014 you can swap later in Settings.
         </Alert>
         <ScrollArea h={420} type="auto">
           <Stack gap="sm">
@@ -100,20 +105,41 @@ export function LocalAiWizard({ opened, onClose, onModelInstalled }: LocalAiWiza
                   <Group justify="space-between" align="flex-start" wrap="nowrap">
                     <Stack gap={2} style={{ flex: 1, minWidth: 0 }}>
                       <Group gap="xs">
-                        <Title order={5} style={{ margin: 0 }}>{m.displayName}</Title>
-                        {m.recommended && <Badge color="ginger" variant="light" size="xs">Recommended</Badge>}
-                        {m.starter && <Badge color="green" variant="light" size="xs">Starter</Badge>}
+                        <Title order={5} style={{ margin: 0 }}>
+                          {m.displayName}
+                        </Title>
+                        {m.recommended && (
+                          <Badge color="ginger" variant="light" size="xs">
+                            Recommended
+                          </Badge>
+                        )}
+                        {m.starter && (
+                          <Badge color="green" variant="light" size="xs">
+                            Starter
+                          </Badge>
+                        )}
                       </Group>
                       <Group gap={6} mt={2}>
-                        <Badge size="xs" variant="outline">{m.sizeGB.toFixed(1)} GB disk</Badge>
-                        <Badge size="xs" variant="outline">~{m.ramGB.toFixed(1)} GB RAM</Badge>
+                        <Badge size="xs" variant="outline">
+                          {m.sizeGB.toFixed(1)} GB disk
+                        </Badge>
+                        <Badge size="xs" variant="outline">
+                          ~{m.ramGB.toFixed(1)} GB RAM
+                        </Badge>
                       </Group>
-                      <Text size="xs" c="dimmed" mt={4}>{m.description}</Text>
+                      <Text size="xs" c="dimmed" mt={4}>
+                        {m.description}
+                      </Text>
                       {pullingThis && progress && (
                         <Stack gap={4} mt="xs">
-                          <Text size="xs" c="dimmed">{progress.status}</Text>
+                          <Text size="xs" c="dimmed">
+                            {progress.status}
+                          </Text>
                           {progress.total ? (
-                            <Progress value={Math.round(((progress.completed ?? 0) / progress.total) * 100)} animated />
+                            <Progress
+                              value={Math.round(((progress.completed ?? 0) / progress.total) * 100)}
+                              animated
+                            />
                           ) : (
                             <Progress value={5} animated striped />
                           )}
@@ -122,7 +148,9 @@ export function LocalAiWizard({ opened, onClose, onModelInstalled }: LocalAiWiza
                     </Stack>
                     <Group gap="xs" wrap="nowrap">
                       {installedHere ? (
-                        <Badge color="green" variant="light" leftSection={<IconCheck size={12} />}>Installed</Badge>
+                        <Badge color="green" variant="light" leftSection={<IconCheck size={12} />}>
+                          Installed
+                        </Badge>
                       ) : (
                         <Button
                           size="xs"
@@ -142,13 +170,17 @@ export function LocalAiWizard({ opened, onClose, onModelInstalled }: LocalAiWiza
           </Stack>
         </ScrollArea>
         {error && (
-          <Alert color="red" variant="light" title="Download failed">{error}</Alert>
+          <Alert color="red" variant="light" title="Download failed">
+            {error}
+          </Alert>
         )}
         <Group justify="space-between">
           <Button variant="subtle" color="gray" onClick={onClose}>
             Skip for now
           </Button>
-          <Text size="xs" c="dimmed">Models download from ollama.com over HTTPS.</Text>
+          <Text size="xs" c="dimmed">
+            Models download from ollama.com over HTTPS.
+          </Text>
         </Group>
       </Stack>
     </Modal>
