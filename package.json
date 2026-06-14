@@ -87,7 +87,7 @@
     "electron-builder": "^26.0.0",
     "eslint": "^9.11.0",
     "eslint-plugin-react": "^7.37.0",
-    "eslint-plugin-react-hooks": "^5.1.0",
+    "eslint-plugin-react-hooks": "^7.1.1",
     "husky": "^9.1.6",
     "jsdom": "^25.0.1",
     "lint-staged": "^15.2.10",
