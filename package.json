@@ -100,7 +100,8 @@
     "overrides": {
       "tar": ">=7.5.15",
       "esbuild": ">=0.25.0",
-      "node-gyp": "^11"
+      "node-gyp": "^11",
+      "form-data": ">=4.0.6"
     }
   }
 }
