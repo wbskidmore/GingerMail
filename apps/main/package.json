@@ -12,7 +12,7 @@
     "test": "vitest run --passWithNoTests"
   },
   "dependencies": {
-    "@azure/msal-node": "^2.13.1",
+    "@azure/msal-node": "^5.2.4",
     "@gingermail/ai": "workspace:*",
     "@gingermail/core": "workspace:*",
     "@gingermail/providers": "workspace:*",
@@ -20,14 +20,14 @@
     "dompurify": "^3.4.7",
     "electron-log": "^5.2.0",
     "electron-updater": "^6.3.4",
-    "googleapis": "^144.0.0",
+    "googleapis": "^173.0.0",
     "jsdom": "^25.0.1",
     "node-machine-id": "^1.1.12",
-    "zod": "^3.23.8"
+    "zod": "^4.4.3"
   },
   "devDependencies": {
     "@types/jsdom": "^28.0.3",
-    "@types/node": "^20.16.0",
+    "@types/node": "^25.9.3",
     "electron": "^39.8.5",
     "typescript": "^5.6.2",
     "vitest": "^4.0.0"

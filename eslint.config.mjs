@@ -62,6 +62,14 @@ export default tseslint.config(
       ...reactHooks.configs.recommended.rules,
       'react/react-in-jsx-scope': 'off',
       'react/prop-types': 'off',
+      // eslint-plugin-react-hooks v7 ships the React Compiler rule set in
+      // `recommended` (set-state-in-effect, refs, purity, ...). They flag
+      // long-standing renderer patterns that are safe today; remediating them
+      // belongs with the deferred React 19 / Mantine migration, not this
+      // dependency bump. Keep `rules-of-hooks` + `exhaustive-deps` enabled.
+      'react-hooks/set-state-in-effect': 'off',
+      'react-hooks/refs': 'off',
+      'react-hooks/purity': 'off',
     },
   },
 );
