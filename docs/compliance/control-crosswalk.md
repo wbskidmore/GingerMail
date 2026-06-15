@@ -48,7 +48,7 @@ Status legend:
 | ---------------------------- | ------- | -------- | ---------------------------------------------------- | -------------------------------------------------- |
 | RA-5 Vulnerability scanning  | 3.11.2  | ID.RA-01 | `pnpm audit:prod` script in `package.json`           | Partial (manual only, not in CI)                   |
 | SR-3 Supply chain controls   | -       | GV.SC-01 | Lockfile, pinned pnpm, build scripts                 | Partial                                            |
-| SR-4 Provenance              | -       | GV.SC-07 | SBOM scripts (`sbom`, `sbom:xml`)                    | Partial (not generated in CI; `pnpm dlx` unpinned) |
+| SR-4 Provenance              | -       | GV.SC-07 | SBOM script (`sbom`, `@cyclonedx/cdxgen`)            | Partial (CycloneDX JSON generated in CI on `main`) |
 | SR-11 Component authenticity | -       | GV.SC-08 | Ollama binary SHA-256 pin `scripts/fetch-ollama.mjs` | Partial (placeholder SHAs)                         |
 
 ## System & Communications Protection (SC)

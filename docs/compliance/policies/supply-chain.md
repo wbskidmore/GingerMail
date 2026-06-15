@@ -16,7 +16,7 @@ Maps to NIST 800-53 SR family, CSF GV.SC.
 - Dependabot proposes npm + GitHub Actions updates (planned PM-003).
 - `scripts/fetch-ollama.mjs` verifies SHA-256 and fails the build on mismatch;
   placeholder digests must be replaced with verified values (PM-009).
-- SBOM via `@cyclonedx/cyclonedx-npm` pinned as a devDependency and produced in
+- SBOM via `@cyclonedx/cdxgen` pinned as a devDependency and produced in
   CI (PM-002/PM-009).
 
 ## Implementation references
