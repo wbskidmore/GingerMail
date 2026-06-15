@@ -38,7 +38,7 @@ jobs:
       # Cache the TypeScript project-reference build info so `tsc -b` only
       # recompiles changed packages instead of the whole graph each run.
       - name: Cache TypeScript build info
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: |
             **/*.tsbuildinfo
