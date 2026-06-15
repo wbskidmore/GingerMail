@@ -35,8 +35,7 @@
     "build:icons": "node scripts/build-icons.mjs",
     "fetch:ollama": "node scripts/fetch-ollama.mjs",
     "postinstall": "electron-builder install-app-deps",
-    "sbom": "cyclonedx-npm --output-file sbom.cdx.json --output-format JSON",
-    "sbom:xml": "cyclonedx-npm --output-file sbom.cdx.xml --output-format XML",
+    "sbom": "cdxgen -t pnpm -o sbom.cdx.json",
     "audit:prod": "pnpm audit --prod --audit-level high",
     "prepare": "husky"
   },
@@ -72,7 +71,7 @@
   "devDependencies": {
     "@commitlint/cli": "^19.5.0",
     "@commitlint/config-conventional": "^19.5.0",
-    "@cyclonedx/cyclonedx-npm": "^4.2.1",
+    "@cyclonedx/cdxgen": "^12.6.0",
     "@electron/rebuild": "^3.7.1",
     "@playwright/test": "^1.48.1",
     "@testing-library/jest-dom": "^6.5.0",
@@ -101,7 +100,8 @@
     "overrides": {
       "tar": ">=7.5.15",
       "esbuild": ">=0.25.0",
-      "node-gyp": "^11"
+      "node-gyp": "^11",
+      "form-data": ">=4.0.6"
     }
   }
 }

@@ -113,7 +113,7 @@ write channels).
 
 **Status:** partial.
 
-- `package.json` scripts: `sbom`, `sbom:xml`, `audit:prod` (present).
+- `package.json` scripts: `sbom`, `audit:prod` (present).
 - `.github/dependabot.yml` — weekly npm + github-actions update PRs,
   dev-tooling grouped to reduce noise.
 - `.github/workflows/ci.yml` — frozen-lockfile install, `lint`, `typecheck`,

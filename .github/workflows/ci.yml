@@ -61,9 +61,10 @@ jobs:
         run: pnpm audit:prod
 
       # SBOM is generated here (deps already installed) instead of in a separate
-      # job, avoiding a second cold `pnpm install` on every main push.
+      # job, avoiding a second cold `pnpm install`. We generate on PRs too so a
+      # broken SBOM toolchain fails the PR rather than only surfacing on the
+      # main push; the artifact itself is only uploaded on main.
       - name: Generate SBOM (CycloneDX JSON)
-        if: github.ref == 'refs/heads/main'
         run: pnpm sbom
 
       - name: Upload SBOM artifact
