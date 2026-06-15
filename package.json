@@ -4,7 +4,7 @@
   "private": true,
   "description": "GingerMail - cross-platform desktop email + calendar + tasks, ADHD-friendly",
   "author": "William Skidmore",
-  "license": "UNLICENSED",
+  "license": "PolyForm-Noncommercial-1.0.0",
   "type": "module",
   "packageManager": "pnpm@9.0.0",
   "engines": {
