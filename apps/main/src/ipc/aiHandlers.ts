@@ -245,6 +245,35 @@ export function handleAi(ctx: AppContext): void {
       );
       send({ name: input.name, status: 'success', done: true });
     } catch (e) {
+      // #region agent log
+      {
+        const err = e as { message?: string; name?: string; cause?: unknown; stack?: string };
+        const cause = err?.cause as
+          | { code?: string; message?: string; errno?: number; syscall?: string }
+          | undefined;
+        fetch('http://127.0.0.1:7282/ingest/00add4d2-85ba-45df-8ed2-ee74835f8d96', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'X-Debug-Session-Id': '107cf1' },
+          body: JSON.stringify({
+            sessionId: '107cf1',
+            location: 'aiHandlers.ts:aiPullModel-catch',
+            message: 'pullModel handler caught error',
+            data: {
+              hypothesis: 'A,B,C,F',
+              name: input.name,
+              errName: err?.name,
+              errMessage: err?.message,
+              causeCode: cause?.code,
+              causeMessage: cause?.message,
+              causeErrno: cause?.errno,
+              causeSyscall: cause?.syscall,
+              stack: err?.stack?.split('\n').slice(0, 4).join(' | '),
+            },
+            timestamp: Date.now(),
+          }),
+        }).catch(() => {});
+      }
+      // #endregion
       const msg = e instanceof Error ? e.message : String(e);
       send({ name: input.name, status: 'error', done: true, error: msg });
       throw e;
