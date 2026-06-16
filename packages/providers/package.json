@@ -25,7 +25,7 @@
     "googleapis": "^173.0.0",
     "ical.js": "^2.1.0",
     "imapflow": "^1.0.165",
-    "nodemailer": "^8.0.9",
+    "nodemailer": "^8.0.10",
     "tsdav": "^2.1.2"
   },
   "devDependencies": {
