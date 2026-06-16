@@ -22,9 +22,6 @@
  */
 import type { Session } from 'electron';
 import { AI_VENDOR_HOSTS, type AiSettings } from '@gingermail/core';
-// #region agent log
-import { appendFileSync as __dbgAppend } from 'node:fs';
-// #endregion
 
 export interface EgressDecision {
   allowed: boolean;
@@ -111,12 +108,6 @@ export function installAiEgressFilter(
     (details, callback) => {
       const settings = getSettings();
       const decision = isUrlAllowedForAi(details.url, settings);
-      // #region agent log
-      try {
-        const proto = (() => { try { return new URL(details.url).protocol; } catch { return 'parse-fail'; } })();
-        __dbgAppend('/Users/blake.skidmore/Documents/GitHub/GingerMail2/.cursor/debug-e05c55.log', JSON.stringify({sessionId:'e05c55',runId:'post-fix',hypothesisId:'A,B,C,D',location:'aiEgress.ts:108',message:'egress onBeforeRequest decision',data:{protocol:proto,resourceType:details.resourceType,allowed:decision.allowed,reason:decision.reason ?? null,aiMode:settings.mode},timestamp:Date.now()}) + '\n');
-      } catch {}
-      // #endregion
       if (decision.allowed) {
         callback({ cancel: false });
         return;

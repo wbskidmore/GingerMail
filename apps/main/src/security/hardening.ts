@@ -51,7 +51,12 @@ function installCsp(win: BrowserWindowType, opts: HardeningOptions): void {
         // Vite HMR ws + cloud AI endpoints are talked to from main, not
         // renderer. Renderer only needs the dev server and IPC.
         "connect-src 'self' " + devUrl + ' ws: wss: http://localhost:* http://127.0.0.1:*',
-        "script-src 'self' " + devUrl + " 'unsafe-eval' blob:",
+        // `@vitejs/plugin-react` injects an inline `<script type="module">`
+        // Fast-Refresh preamble into index.html. Without `'unsafe-inline'`
+        // (or a nonce) that inline script is CSP-blocked, the preamble never
+        // installs, and every component throws "can't detect preamble" → blank
+        // window. Dev-only; the production branch below stays strict.
+        "script-src 'self' " + devUrl + " 'unsafe-inline' 'unsafe-eval' blob:",
         "style-src 'self' " + devUrl + " 'unsafe-inline'",
         "img-src 'self' data: blob:",
         "font-src 'self' data: " + devUrl,
