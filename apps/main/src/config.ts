@@ -50,40 +50,6 @@ export function getBuildConfig(): BuildConfig {
   if (cached) return cached;
   const baked = readBakedConfig();
   cached = {
-    // #region agent log
-    ...(() => {
-      try {
-        fetch('http://127.0.0.1:7282/ingest/00add4d2-85ba-45df-8ed2-ee74835f8d96', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'X-Debug-Session-Id': 'd77297' },
-          body: JSON.stringify({
-            sessionId: 'd77297',
-            runId: 'post-fix',
-            hypothesisId: 'B',
-            location: 'apps/main/src/config.ts:getBuildConfig',
-            message: 'resolved config',
-            data: {
-              googleIdLen: (
-                nonEmpty(process.env.GM_GOOGLE_CLIENT_ID) ??
-                nonEmpty(baked.googleClientId) ??
-                ''
-              ).length,
-              googleSecretLen: (
-                nonEmpty(process.env.GM_GOOGLE_CLIENT_SECRET) ??
-                nonEmpty(baked.googleClientSecret) ??
-                ''
-              ).length,
-              hasHttpPrefix: (process.env.GM_GOOGLE_CLIENT_ID ?? '').startsWith('http'),
-            },
-            timestamp: Date.now(),
-          }),
-        }).catch(() => {});
-      } catch {
-        /* best-effort */
-      }
-      return {};
-    })(),
-    // #endregion
     googleClientId: nonEmpty(process.env.GM_GOOGLE_CLIENT_ID) ?? nonEmpty(baked.googleClientId),
     googleClientSecret:
       nonEmpty(process.env.GM_GOOGLE_CLIENT_SECRET) ?? nonEmpty(baked.googleClientSecret),

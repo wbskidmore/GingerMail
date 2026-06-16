@@ -37,19 +37,32 @@ export interface LoopbackOptions {
 export async function runLoopbackOAuth(opts: LoopbackOptions): Promise<LoopbackResult> {
   return new Promise<LoopbackResult>((resolve, reject) => {
     let resolved = false;
+    // Captured once the server is listening. Browsers fire extra requests
+    // (favicon, prefetch, duplicates) and keep-alive sockets can deliver a
+    // request AFTER we've resolved + called server.close(), at which point
+    // `server.address()` returns null. Reading `.port` off that null used to
+    // throw an uncaught exception and crash the main process, so we use this
+    // captured value instead of calling server.address() per request.
+    let boundPort = 0;
     const finish = (ok: () => void): void => {
       if (resolved) return;
       resolved = true;
       ok();
     };
     const server: Server = createServer((req: IncomingMessage, res: ServerResponse) => {
+      // Ignore any straggler request that arrives once the flow is already
+      // done (and the server is tearing down).
+      if (resolved) {
+        res.statusCode = 404;
+        res.end('Not found');
+        return;
+      }
       if (!req.url) {
         res.statusCode = 400;
         res.end('Missing URL');
         return;
       }
-      const port = (server.address() as AddressInfo).port;
-      const url = new URL(req.url, `http://127.0.0.1:${port}`);
+      const url = new URL(req.url, `http://127.0.0.1:${boundPort}`);
       if (url.pathname !== '/callback') {
         res.statusCode = 404;
         res.end('Not found');
@@ -87,11 +100,12 @@ export async function runLoopbackOAuth(opts: LoopbackOptions): Promise<LoopbackR
       res.end(opts.successHtml ?? defaultSuccessHtml());
       finish(() => {
         server.close();
-        resolve({ code, state: state ?? undefined, port });
+        resolve({ code, state: state ?? undefined, port: boundPort });
       });
     });
     server.listen(0, '127.0.0.1', () => {
       const addr = server.address() as AddressInfo;
+      boundPort = addr.port;
       const redirect = `http://127.0.0.1:${addr.port}/callback`;
       Promise.resolve(opts.buildAuthUrl(redirect))
         .then((authUrl) => shell.openExternal(authUrl))
