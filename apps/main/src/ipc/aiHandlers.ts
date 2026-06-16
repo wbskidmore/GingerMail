@@ -72,6 +72,25 @@ function localClient(): OllamaClient {
 }
 
 /**
+ * Ensure the local Ollama engine is reachable before issuing a request to it.
+ * `sidecar.start()` is idempotent: it reuses an already-running Ollama, spawns
+ * the bundled binary if present, or records `lastError` when neither exists.
+ * We surface that as an actionable message so the renderer never shows a bare
+ * `TypeError: fetch failed` (which happens when nothing is listening on
+ * 127.0.0.1:11434).
+ */
+async function ensureLocalAiReady(): Promise<void> {
+  await sidecar.start({ timeoutMs: 20_000 });
+  if (sidecar.status().running) return;
+  const detail = sidecar.status().lastError;
+  throw new Error(
+    detail
+      ? `Local AI engine (Ollama) isn't available: ${detail}`
+      : "Local AI engine (Ollama) isn't running. Install Ollama from ollama.com and make sure it's running, then try again.",
+  );
+}
+
+/**
  * Returns a copy of `settings.ai` with the cloud `apiKey` filled in from the
  * TokenVault (the OS keychain). `settings.ai.cloud.apiKey` is never read
  * directly from `prefs.json` any more — the prefs store doesn't even know
@@ -226,6 +245,9 @@ export function handleAi(ctx: AppContext): void {
 
   handle(IPC_CHANNELS.aiListInstalledModels, async (): Promise<InstalledModel[]> => {
     try {
+      // Idempotently make sure the engine is up (reuse external / spawn bundled)
+      // so the list recovers if Ollama started after the app launched.
+      await sidecar.start({ timeoutMs: 20_000 }).catch(() => {});
       const client = localClient();
       return await client.listInstalledModels();
     } catch (e) {
@@ -235,11 +257,12 @@ export function handleAi(ctx: AppContext): void {
   });
 
   safeHandle(IPC_CHANNELS.aiPullModel, AiPullModelSchema, async (input) => {
-    const client = localClient();
     const send = (evt: ModelPullProgress): void => {
       ctx.mainWindow?.webContents.send(IPC_CHANNELS.aiPullProgress, evt);
     };
     try {
+      await ensureLocalAiReady();
+      const client = localClient();
       await client.pullModel(input.name, ({ status, completed, total }) =>
         send({ name: input.name, status, completed, total }),
       );
