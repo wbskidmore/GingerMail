@@ -1,9 +1,24 @@
 // Dev entry: builds main process TS and launches electron pointing at the Vite dev server.
 import { spawn } from 'node:child_process';
-import { existsSync } from 'node:fs';
+import { existsSync, rmSync } from 'node:fs';
 import path from 'node:path';
 
 const cwd = process.cwd();
+
+// Bust any stale compiled output BEFORE starting the watch build. Without this,
+// `tsc -b`'s incremental cache (.tsbuildinfo) can decide nothing changed and
+// keep an old `dist/`, and `waitForBuild()` below would then launch Electron
+// against that stale `dist/main.js` (it only checks existence, not freshness).
+// The net effect was Electron repeatedly booting pre-edit code after a pull.
+// Deleting the cache + entry forces a full rebuild and makes the launch gate
+// wait for freshly-emitted output.
+for (const stale of ['dist/.tsbuildinfo', 'dist/main.js']) {
+  try {
+    rmSync(path.join(cwd, stale), { force: true });
+  } catch {
+    /* best-effort; a missing file is fine */
+  }
+}
 // Use build mode (`tsc -b`) so the referenced workspace packages
 // (@gingermail/core, providers, ai, storage) are compiled in dependency
 // order before main. Plain `tsc -p` does not build references, so on a
