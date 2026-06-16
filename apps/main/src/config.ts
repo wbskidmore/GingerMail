@@ -1,20 +1,19 @@
 /**
- * Build-time OAuth configuration.
+ * OAuth configuration, resolved in this precedence order:
  *
- * Populate these via environment variables at build / dev time:
- *   GM_GOOGLE_CLIENT_ID
- *   GM_GOOGLE_CLIENT_SECRET
- *   GM_MICROSOFT_CLIENT_ID
- *   GM_SLACK_CLIENT_ID
- *   GM_SLACK_CLIENT_SECRET
+ *   1. process.env (dev: real shell vars, or `.env` loaded by loadEnv.ts)
+ *   2. A baked `build-config.json` embedded next to this module at build time
+ *      (see apps/main/scripts/gen-build-config.mjs). This is what lets a
+ *      *packaged* app ship a built-in Google/Microsoft/Slack client so end
+ *      users just hit "Sign in with Google" (the browser web-login) without
+ *      configuring anything.
  *
- * When unset, OAuth providers are unavailable but the rest of the app
- * (IMAP/SMTP, POP3, Apple via app-specific password, AI, Slack via a
- * pasted token) still works.
+ * When neither source provides a value, that OAuth provider is unavailable but
+ * the rest of the app (IMAP/SMTP, POP3, Apple via app-specific password, AI,
+ * Slack via a pasted token) still works.
  */
-// #region agent log
-import { existsSync as _existsSync } from 'node:fs';
-// #endregion
+import { existsSync, readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
 
 export interface BuildConfig {
   googleClientId?: string;
@@ -27,49 +26,74 @@ export interface BuildConfig {
 
 let cached: BuildConfig | undefined;
 
-export function getBuildConfig(): BuildConfig {
-  // #region agent log
+/**
+ * Read the build-time baked credentials, if present. The file is generated
+ * into `dist/` at build time and sits next to the compiled `config.js`, so it
+ * is packaged inside the app (asar) and resolvable via `import.meta.url`.
+ */
+function readBakedConfig(): Partial<BuildConfig> {
   try {
-    const wasCached = !!cached;
-    const _cwd = process.cwd();
-    const _envCwd = _existsSync(_cwd + '/.env');
-    const _envUp = _existsSync(_cwd + '/../../.env');
-    const gid = process.env.GM_GOOGLE_CLIENT_ID;
-    const gsec = process.env.GM_GOOGLE_CLIENT_SECRET;
-    fetch('http://127.0.0.1:7282/ingest/00add4d2-85ba-45df-8ed2-ee74835f8d96', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'X-Debug-Session-Id': 'd77297' },
-      body: JSON.stringify({
-        sessionId: 'd77297',
-        hypothesisId: 'A,B,C,D',
-        location: 'apps/main/src/config.ts:getBuildConfig',
-        message: 'getBuildConfig invoked',
-        data: {
-          wasCached,
-          cwd: _cwd,
-          envFileAtCwd: _envCwd,
-          envFileAtRepoRoot: _envUp,
-          googleIdType: typeof gid,
-          googleIdLen: typeof gid === 'string' ? gid.length : -1,
-          googleSecretType: typeof gsec,
-          googleSecretLen: typeof gsec === 'string' ? gsec.length : -1,
-          msIdPresent: !!process.env.GM_MICROSOFT_CLIENT_ID,
-        },
-        timestamp: Date.now(),
-      }),
-    }).catch(() => {});
+    const p = fileURLToPath(new URL('./build-config.json', import.meta.url));
+    if (!existsSync(p)) return {};
+    const parsed = JSON.parse(readFileSync(p, 'utf8')) as Partial<BuildConfig>;
+    return parsed && typeof parsed === 'object' ? parsed : {};
   } catch {
-    /* best-effort */
+    return {};
   }
-  // #endregion
+}
+
+function nonEmpty(v: string | undefined): string | undefined {
+  return v && v.length > 0 ? v : undefined;
+}
+
+export function getBuildConfig(): BuildConfig {
   if (cached) return cached;
+  const baked = readBakedConfig();
   cached = {
-    googleClientId: process.env.GM_GOOGLE_CLIENT_ID,
-    googleClientSecret: process.env.GM_GOOGLE_CLIENT_SECRET,
-    microsoftClientId: process.env.GM_MICROSOFT_CLIENT_ID,
-    microsoftTenant: process.env.GM_MICROSOFT_TENANT ?? 'common',
-    slackClientId: process.env.GM_SLACK_CLIENT_ID,
-    slackClientSecret: process.env.GM_SLACK_CLIENT_SECRET,
+    // #region agent log
+    ...(() => {
+      try {
+        fetch('http://127.0.0.1:7282/ingest/00add4d2-85ba-45df-8ed2-ee74835f8d96', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'X-Debug-Session-Id': 'd77297' },
+          body: JSON.stringify({
+            sessionId: 'd77297',
+            runId: 'post-fix',
+            hypothesisId: 'B',
+            location: 'apps/main/src/config.ts:getBuildConfig',
+            message: 'resolved config',
+            data: {
+              googleIdLen: (
+                nonEmpty(process.env.GM_GOOGLE_CLIENT_ID) ??
+                nonEmpty(baked.googleClientId) ??
+                ''
+              ).length,
+              googleSecretLen: (
+                nonEmpty(process.env.GM_GOOGLE_CLIENT_SECRET) ??
+                nonEmpty(baked.googleClientSecret) ??
+                ''
+              ).length,
+              hasHttpPrefix: (process.env.GM_GOOGLE_CLIENT_ID ?? '').startsWith('http'),
+            },
+            timestamp: Date.now(),
+          }),
+        }).catch(() => {});
+      } catch {
+        /* best-effort */
+      }
+      return {};
+    })(),
+    // #endregion
+    googleClientId: nonEmpty(process.env.GM_GOOGLE_CLIENT_ID) ?? nonEmpty(baked.googleClientId),
+    googleClientSecret:
+      nonEmpty(process.env.GM_GOOGLE_CLIENT_SECRET) ?? nonEmpty(baked.googleClientSecret),
+    microsoftClientId:
+      nonEmpty(process.env.GM_MICROSOFT_CLIENT_ID) ?? nonEmpty(baked.microsoftClientId),
+    microsoftTenant:
+      nonEmpty(process.env.GM_MICROSOFT_TENANT) ?? nonEmpty(baked.microsoftTenant) ?? 'common',
+    slackClientId: nonEmpty(process.env.GM_SLACK_CLIENT_ID) ?? nonEmpty(baked.slackClientId),
+    slackClientSecret:
+      nonEmpty(process.env.GM_SLACK_CLIENT_SECRET) ?? nonEmpty(baked.slackClientSecret),
   };
   return cached;
 }

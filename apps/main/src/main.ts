@@ -10,6 +10,7 @@ import {
   nativeTheme,
   systemPreferences,
 } from './electronShim.js';
+import { loadDotEnv } from './loadEnv.js';
 import { AppContext } from './context.js';
 import { registerIpc } from './ipc/register.js';
 import { startOllamaSidecar, stopOllamaSidecar } from './ipc/aiHandlers.js';
@@ -19,6 +20,10 @@ import { applySecurityHardening } from './security/hardening.js';
 import { installAiEgressFilter } from './security/aiEgress.js';
 import { installConsoleScrubbing, wrapLoggerWithScrub } from './log/scrub.js';
 import { bindMainWindowForIpc, configureIpcGuards } from './ipc/guards.js';
+
+// Load `.env` (dev convenience) BEFORE anything reads process.env via
+// getBuildConfig(). Real shell / packaged-build env vars are never overridden.
+loadDotEnv();
 
 // Install secret-aware logging FIRST so nothing below us can accidentally
 // leak a token to stdout / electron-log files / a future crash report.

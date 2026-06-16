@@ -231,6 +231,17 @@ See the "Verifying signatures" section above for the `cosign verify` commands.
 
 ## Environment variables (build-time)
 
+These are read when `pnpm build` runs the main process build. The
+`apps/main/scripts/gen-build-config.mjs` step captures their values (from the
+shell env or a repo-root `.env`) and writes `apps/main/dist/build-config.json`,
+which is packaged inside the app. At runtime `apps/main/src/config.ts` reads
+`process.env` first and falls back to that baked file — so a distributed build
+ships a built-in OAuth client and end users just hit "Sign in with Google"
+without configuring anything. (`build-config.json` lives under the gitignored
+`dist/`, so credentials never enter source control. A desktop "Installed App"
+client secret is non-confidential per Google; the loopback + PKCE flow does not
+depend on hiding it.)
+
 | Variable                        | Purpose                                                 |
 | ------------------------------- | ------------------------------------------------------- |
 | `GM_GOOGLE_CLIENT_ID`           | OAuth client for Gmail / Google Calendar / Google Tasks |

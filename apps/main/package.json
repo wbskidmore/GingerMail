@@ -6,7 +6,7 @@
   "main": "./entry.cjs",
   "scripts": {
     "dev": "node --watch-path=src --experimental-vm-modules ./scripts/dev.mjs",
-    "build": "tsc -p tsconfig.json && node scripts/build-preload.mjs",
+    "build": "tsc -p tsconfig.json && node scripts/build-preload.mjs && node scripts/gen-build-config.mjs",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "start": "electron .",
     "test": "vitest run --passWithNoTests"
