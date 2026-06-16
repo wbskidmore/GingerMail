@@ -4,7 +4,12 @@ import { existsSync } from 'node:fs';
 import path from 'node:path';
 
 const cwd = process.cwd();
-const tsc = spawn('pnpm', ['exec', 'tsc', '-p', 'tsconfig.json', '--watch'], {
+// Use build mode (`tsc -b`) so the referenced workspace packages
+// (@gingermail/core, providers, ai, storage) are compiled in dependency
+// order before main. Plain `tsc -p` does not build references, so on a
+// fresh checkout it fails with TS2307 "Cannot find module" and never emits
+// dist/main.js.
+const tsc = spawn('pnpm', ['exec', 'tsc', '-b', 'tsconfig.json', '--watch'], {
   stdio: 'inherit',
   cwd,
 });

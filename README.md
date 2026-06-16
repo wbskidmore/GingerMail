@@ -31,14 +31,23 @@ clone to a running app with no prior knowledge assumed.
 
 ### Prerequisites
 
-| Tool                 | Version    | Notes                                                                             |
-| -------------------- | ---------- | --------------------------------------------------------------------------------- |
-| Node.js              | `>=20`     | The `engines` field in `package.json` enforces this.                              |
-| pnpm                 | `9`        | This repo is a pnpm workspace. Install via Corepack (below) - don't use npm/yarn. |
-| Git                  | any recent | To clone the repo.                                                                |
-| Platform build tools | see notes  | Native modules (`better-sqlite3`) are compiled locally.                           |
+| Tool                 | Version           | Notes                                                                                        |
+| -------------------- | ----------------- | -------------------------------------------------------------------------------------------- |
+| Node.js              | `22` or `24`      | `engines` requires `>=20`, but use an **even LTS (22 or 24)** - see note below.              |
+| pnpm                 | `9`               | This repo is a pnpm workspace. Install via Corepack (below) - don't use npm/yarn.            |
+| Git                  | any recent        | To clone the repo.                                                                           |
+| Platform build tools | only if compiling | Native modules (`better-sqlite3`) - needed _only_ when no prebuilt binary matches your Node. |
 
-Platform build tools are needed because `better-sqlite3` is a native module:
+> **Use Node 22 or 24.** `better-sqlite3` (and `better-sqlite3-multiple-ciphers`)
+> only ship prebuilt binaries for specific Node ABIs - currently Node **22**
+> (ABI 127) and **24** (ABI 137), not Node 18 or 20. On Node 22/24 `pnpm install`
+> just downloads the prebuilt binary, so you need **no compiler and no Python**.
+> On Node 18/20 there is no prebuilt binary, so the install falls back to
+> compiling from source (`node-gyp`), which is the usual cause of the
+> `No prebuilt binaries found` / `Could not find any Python` install failure.
+
+Platform build tools are needed **only** if you must compile from source (i.e.
+you're on a Node version without a prebuilt binary, or an unusual platform):
 
 - **macOS:** Xcode Command Line Tools (`xcode-select --install`).
 - **Windows:** "Desktop development with C++" workload (Visual Studio Build Tools).
@@ -90,11 +99,13 @@ Helpful docs: [`docs/ROADMAP.md`](docs/ROADMAP.md) (what's shipped vs. planned),
 
 ### Troubleshooting first run
 
-| Symptom                                               | Fix                                                          |
-| ----------------------------------------------------- | ------------------------------------------------------------ |
-| `better-sqlite3` / "NODE_MODULE_VERSION" mismatch     | Rerun `pnpm rebuild-native`.                                 |
-| `pnpm` not found or wrong version                     | `corepack enable && corepack prepare pnpm@9.0.0 --activate`. |
-| `node-gyp` / `ModuleNotFoundError: distutils` (macOS) | Use Python 3.11 (`brew install python@3.11`).                |
+| Symptom                                                                                                                                              | Fix                                                                                                                                                                                                                                                                                                                                                                            |
+| ---------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `pnpm install` fails at `better-sqlite3` with `No prebuilt binaries found (target=18.x …)` then `gyp ERR! find Python` / `Could not find any Python` | You're on Node 18/20, which has no prebuilt binary, so it tries (and fails) to compile. **Switch to Node 22 or 24** (`nvm install 22 && nvm use 22`, or `corepack`-aware setup) and rerun `pnpm install` - it then downloads the prebuilt binary, no Python needed. (Alternatively, stay on your Node version and install Python 3 + Xcode CLT so it can compile from source.) |
+| `Unsupported engine: wanted {"node":">=20"}`                                                                                                         | Your Node is too old; install Node 22 or 24 (see above).                                                                                                                                                                                                                                                                                                                       |
+| `better-sqlite3` / "NODE_MODULE_VERSION" mismatch                                                                                                    | Rerun `pnpm rebuild-native`.                                                                                                                                                                                                                                                                                                                                                   |
+| `pnpm` not found or wrong version                                                                                                                    | `corepack enable && corepack prepare pnpm@9.0.0 --activate`.                                                                                                                                                                                                                                                                                                                   |
+| `node-gyp` / `ModuleNotFoundError: distutils` (macOS)                                                                                                | Use Python 3.11 (`brew install python@3.11`).                                                                                                                                                                                                                                                                                                                                  |
 
 ## Getting started
 
