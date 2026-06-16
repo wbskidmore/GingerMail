@@ -103,7 +103,9 @@ async function createWindow(): Promise<void> {
     vibrancy: process.platform === 'darwin' ? 'sidebar' : undefined,
     backgroundMaterial: process.platform === 'win32' ? 'mica' : undefined,
     webPreferences: {
-      preload: path.join(__dirname, 'preload.js'),
+      // Bundled CommonJS preload (see scripts/build-preload.mjs). A sandboxed
+      // preload can't load the ESM preload.js that tsc emits.
+      preload: path.join(__dirname, 'preload.cjs'),
       contextIsolation: true,
       sandbox: true,
       nodeIntegration: false,

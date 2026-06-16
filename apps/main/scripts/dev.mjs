@@ -12,7 +12,7 @@ const cwd = process.cwd();
 // The net effect was Electron repeatedly booting pre-edit code after a pull.
 // Deleting the cache + entry forces a full rebuild and makes the launch gate
 // wait for freshly-emitted output.
-for (const stale of ['dist/.tsbuildinfo', 'dist/main.js']) {
+for (const stale of ['dist/.tsbuildinfo', 'dist/main.js', 'dist/preload.cjs']) {
   try {
     rmSync(path.join(cwd, stale), { force: true });
   } catch {
@@ -29,12 +29,24 @@ const tsc = spawn('pnpm', ['exec', 'tsc', '-b', 'tsconfig.json', '--watch'], {
   cwd,
 });
 
+// The sandboxed preload must be a CommonJS bundle, not the ESM that tsc emits.
+// esbuild rebuilds dist/preload.cjs on every change; the launch gate below
+// waits for it so Electron never boots without a working IPC bridge.
+const preload = spawn('node', ['scripts/build-preload.mjs', '--watch'], {
+  stdio: 'inherit',
+  cwd,
+  env: { ...process.env, GM_DEV: '1' },
+});
+
 const electronBin = process.platform === 'win32' ? 'electron.cmd' : 'electron';
 function waitForBuild(attempts = 60) {
-  if (existsSync(path.join(cwd, 'dist', 'main.js'))) launch();
+  const ready =
+    existsSync(path.join(cwd, 'dist', 'main.js')) &&
+    existsSync(path.join(cwd, 'dist', 'preload.cjs'));
+  if (ready) launch();
   else if (attempts > 0) setTimeout(() => waitForBuild(attempts - 1), 500);
   else {
-    console.error('[gingermail main] main.js never built; exiting');
+    console.error('[gingermail main] main.js / preload.cjs never built; exiting');
     process.exit(1);
   }
 }
@@ -53,6 +65,7 @@ function launch() {
   const electron = spawn(electronBin, ['.'], { stdio: 'inherit', cwd, env });
   electron.on('exit', (code) => {
     tsc.kill('SIGTERM');
+    preload.kill('SIGTERM');
     process.exit(code ?? 0);
   });
 }
