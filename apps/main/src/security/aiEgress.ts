@@ -99,13 +99,33 @@ export function installAiEgressFilter(
   session: Session,
   getSettings: () => AiSettings,
   onBlock?: (info: { url: string; reason: string }) => void,
+  allowedOrigins: string[] = [],
 ): void {
+  // The renderer's own app shell must always load, regardless of AI mode.
+  // In dev that's the Vite dev server (http://localhost:5173) serving HTML,
+  // modules (incl. lazy `React.lazy` chunks), HMR and assets; in prod the
+  // shell is `file://`, which isn't http/https and so is never intercepted.
+  // Without this exemption, AI mode `off`/`cloud` makes `allowedAiHosts()`
+  // empty and the filter cancels the renderer's own requests → blank tabs
+  // ("Failed to fetch dynamically imported module" / ERR_BLOCKED_BY_CLIENT).
+  const ownOrigins = new Set(allowedOrigins);
+
   // Only police real network egress (http/https). Internal Electron schemes
   // (devtools:, chrome:, chrome-extension:, blob:, data:, file:, ws/wss …)
   // are not AI egress and must not be cancelled by this filter.
   session.webRequest.onBeforeRequest(
     { urls: ['http://*/*', 'https://*/*'] },
     (details, callback) => {
+      let origin: string | null = null;
+      try {
+        origin = new URL(details.url).origin;
+      } catch {
+        /* malformed; fall through to the AI decision below */
+      }
+      if (origin && ownOrigins.has(origin)) {
+        callback({ cancel: false });
+        return;
+      }
       const settings = getSettings();
       const decision = isUrlAllowedForAi(details.url, settings);
       if (decision.allowed) {

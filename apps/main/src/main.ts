@@ -148,6 +148,9 @@ async function createWindow(): Promise<void> {
       (info) => {
         log.warn(`[ai-egress] blocked host=${maskHost(info.url)} reason=${info.reason}`);
       },
+      // Never block the renderer loading its own app shell. In dev that's the
+      // Vite dev server origin; in prod the shell is file:// (not intercepted).
+      isDev ? [new URL(rendererUrl).origin] : [],
     );
   } catch (err) {
     log.warn('[ai-egress] failed to install filter:', err);
