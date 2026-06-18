@@ -91,10 +91,10 @@
     "jsdom": "^25.0.1",
     "lint-staged": "^15.2.10",
     "png-to-ico": "^3.0.1",
-    "prettier": "^3.3.3",
+    "prettier": "^3.8.4",
     "typescript": "^5.6.2",
-    "typescript-eslint": "^8.8.0",
-    "vitest": "^4.0.0"
+    "typescript-eslint": "^8.61.1",
+    "vitest": "^4.1.9"
   },
   "pnpm": {
     "overrides": {
