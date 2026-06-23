@@ -2,7 +2,9 @@
 import { spawn } from 'node:child_process';
 import { existsSync, rmSync } from 'node:fs';
 import path from 'node:path';
+import { createRequire } from 'node:module';
 
+const require = createRequire(import.meta.url);
 const cwd = process.cwd();
 
 // Bust any stale compiled output BEFORE starting the watch build. Without this,
@@ -38,7 +40,12 @@ const preload = spawn('node', ['scripts/build-preload.mjs', '--watch'], {
   env: { ...process.env, GM_DEV: '1' },
 });
 
-const electronBin = process.platform === 'win32' ? 'electron.cmd' : 'electron';
+// Resolve the real Electron executable (electron.exe on Windows, the Electron
+// binary elsewhere) via the npm package, which exports the absolute path to it.
+// Spawning the node_modules/.bin/electron.cmd shim directly throws spawn EINVAL
+// on Windows since Node's CVE-2024-27980 fix refuses to spawn .cmd/.bat without
+// shell:true.
+const electronBin = require('electron');
 function waitForBuild(attempts = 60) {
   const ready =
     existsSync(path.join(cwd, 'dist', 'main.js')) &&
@@ -62,7 +69,14 @@ function launch() {
     GM_RENDERER_URL: process.env.GM_RENDERER_URL ?? 'http://localhost:5173',
   };
   delete env.ELECTRON_RUN_AS_NODE;
+  // #region agent log
+  fetch('http://127.0.0.1:7282/ingest/00add4d2-85ba-45df-8ed2-ee74835f8d96',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'b7b699'},body:JSON.stringify({sessionId:'b7b699',runId:'post-fix',hypothesisId:'A',location:'dev.mjs:65',message:'about to spawn electron',data:{platform:process.platform,electronBin:String(electronBin),endsWithCmd:String(electronBin).toLowerCase().endsWith('.cmd')},timestamp:Date.now()})}).catch(()=>{});
+  // #endregion
   const electron = spawn(electronBin, ['.'], { stdio: 'inherit', cwd, env });
+  // #region agent log
+  electron.on('spawn',()=>{fetch('http://127.0.0.1:7282/ingest/00add4d2-85ba-45df-8ed2-ee74835f8d96',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'b7b699'},body:JSON.stringify({sessionId:'b7b699',runId:'post-fix',hypothesisId:'C',location:'dev.mjs:65',message:'electron spawned OK',data:{pid:electron.pid},timestamp:Date.now()})}).catch(()=>{});});
+  electron.on('error',(err)=>{fetch('http://127.0.0.1:7282/ingest/00add4d2-85ba-45df-8ed2-ee74835f8d96',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'b7b699'},body:JSON.stringify({sessionId:'b7b699',runId:'post-fix',hypothesisId:'C',location:'dev.mjs:65',message:'electron spawn error',data:{code:err&&err.code,errno:err&&err.errno,syscall:err&&err.syscall},timestamp:Date.now()})}).catch(()=>{});});
+  // #endregion
   electron.on('exit', (code) => {
     tsc.kill('SIGTERM');
     preload.kill('SIGTERM');
