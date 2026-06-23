@@ -64,7 +64,7 @@
     "imapflow": "^1.0.165",
     "jsdom": "^25.0.1",
     "node-machine-id": "^1.1.12",
-    "nodemailer": "^8.0.9",
+    "nodemailer": "^8.0.10",
     "tsdav": "^2.1.2",
     "zod": "^4.4.3"
   },
