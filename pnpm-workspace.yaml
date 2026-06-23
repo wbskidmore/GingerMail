@@ -1,3 +1,19 @@
 packages:
   - 'apps/*'
   - 'packages/*'
+
+# pnpm v10+ blocks dependency lifecycle (build) scripts by default. These
+# packages need theirs to run: electron downloads its platform binary, esbuild
+# fetches its native binary, and better-sqlite3 compiles a native addon.
+onlyBuiltDependencies:
+  - electron
+  - esbuild
+  - better-sqlite3
+
+# pnpm v10+ no longer reads the "pnpm" field from package.json; overrides live
+# here now. These are security pins.
+overrides:
+  tar: '>=7.5.15'
+  esbuild: '>=0.25.0'
+  node-gyp: '^11'
+  form-data: '>=4.0.6'
