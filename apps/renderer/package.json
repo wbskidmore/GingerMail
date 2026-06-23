@@ -16,7 +16,7 @@
     "@gingermail/ui-kit": "workspace:*",
     "@mantine/core": "^7.13.2",
     "@mantine/dates": "^7.13.2",
-    "@mantine/form": "^7.13.2",
+    "@mantine/form": "^9.3.2",
     "@mantine/hooks": "^7.13.2",
     "@mantine/modals": "^7.13.2",
     "@mantine/notifications": "^7.13.2",
