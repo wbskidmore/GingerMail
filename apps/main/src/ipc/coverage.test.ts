@@ -38,6 +38,8 @@ const WRITE_CHANNEL_SCHEMAS: Record<string, ZodTypeAny> = {
   [IPC_CHANNELS.mailReply]: schemas.MailReplySchema,
   [IPC_CHANNELS.mailForward]: schemas.MailForwardSchema,
   [IPC_CHANNELS.mailPrint]: schemas.MailPrintSchema,
+  [IPC_CHANNELS.calCreate]: schemas.CalCreateSchema,
+  [IPC_CHANNELS.calUpdate]: schemas.CalUpdateSchema,
   [IPC_CHANNELS.calDelete]: schemas.CalDeleteSchema,
   [IPC_CHANNELS.tasksDelete]: schemas.TasksDeleteSchema,
   [IPC_CHANNELS.schedulerCancel]: schemas.SchedulerCancelSchema,

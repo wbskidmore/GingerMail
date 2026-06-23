@@ -1,11 +1,13 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   ActionIcon,
   Badge,
   Box,
   Button,
+  Divider,
   Group,
   Loader,
+  Modal,
   Paper,
   ScrollArea,
   SegmentedControl,
@@ -21,10 +23,17 @@ import {
   IconCalendarPlus,
   IconChevronLeft,
   IconChevronRight,
+  IconClock,
+  IconMapPin,
+  IconPencil,
+  IconRepeat,
+  IconTrash,
+  IconUsers,
 } from '@tabler/icons-react';
-import type { CalendarEvent } from '@gingermail/core';
+import type { Calendar, CalendarEvent } from '@gingermail/core';
 import { EmptyState } from '@gingermail/ui-kit';
 import { getApi } from '../ipcBridge.js';
+import { EventComposer } from './EventComposer.js';
 
 type ViewMode = 'day' | 'workweek' | 'week' | 'month';
 
@@ -32,38 +41,82 @@ export function CalendarTab() {
   const [view, setView] = useState<ViewMode>('week');
   const [anchor, setAnchor] = useState<Date>(() => new Date());
   const [events, setEvents] = useState<CalendarEvent[]>([]);
+  const [calendars, setCalendars] = useState<Calendar[]>([]);
   const [loading, setLoading] = useState(false);
+  const [detail, setDetail] = useState<CalendarEvent | null>(null);
+  const [composer, setComposer] = useState<{
+    open: boolean;
+    event: CalendarEvent | null;
+    initialStart?: number;
+  }>({ open: false, event: null });
 
   const range = useMemo(() => rangeFor(view, anchor), [view, anchor]);
 
-  useEffect(() => {
-    void (async () => {
-      setLoading(true);
-      try {
-        const list = await getApi().calendar.listEvents({ from: range.from, to: range.to });
-        setEvents(list);
-      } finally {
-        setLoading(false);
-      }
-    })();
+  const reload = useCallback(async (): Promise<void> => {
+    setLoading(true);
+    try {
+      const list = await getApi().calendar.listEvents({ from: range.from, to: range.to });
+      setEvents(list);
+    } finally {
+      setLoading(false);
+    }
   }, [range.from, range.to]);
 
-  const newEvent = async (): Promise<void> => {
-    const start = roundUpHour(new Date());
-    const ev = await getApi().calendar.createEvent({
-      calendarId: 'local-ics',
-      accountId: 'local',
-      title: 'New event',
-      start: start.getTime(),
-      end: start.getTime() + 60 * 60_000,
-      allDay: false,
-      status: 'confirmed',
-      reminders: [10],
-    });
-    setEvents((prev) => [...prev, ev]);
-    notifications.show({
-      title: 'Event created',
-      message: `${ev.title} at ${new Date(ev.start).toLocaleTimeString()}`,
+  useEffect(() => {
+    void reload();
+  }, [reload]);
+
+  // Load writable calendars once for the composer's account/calendar picker.
+  useEffect(() => {
+    void (async () => {
+      try {
+        setCalendars(await getApi().calendar.listCalendars());
+      } catch {
+        setCalendars([]);
+      }
+    })();
+  }, []);
+
+  const writableCalendars = useMemo(() => calendars.filter((c) => !c.readonly), [calendars]);
+
+  const openCreate = (): void => setComposer({ open: true, event: null });
+  const openEdit = (event: CalendarEvent): void => {
+    setDetail(null);
+    setComposer({ open: true, event });
+  };
+
+  const handleSaved = (saved: CalendarEvent, mode: 'create' | 'update'): void => {
+    setEvents((prev) =>
+      mode === 'update'
+        ? prev.map((e) => (e.id === saved.id ? saved : e))
+        : [...prev.filter((e) => e.id !== saved.id), saved],
+    );
+    // Re-pull so provider-rewritten ids / synced fields stay consistent.
+    void reload();
+  };
+
+  const handleDelete = (event: CalendarEvent): void => {
+    modals.openConfirmModal({
+      title: 'Delete event',
+      children: <Text size="sm">Delete "{event.title}"? This cannot be undone.</Text>,
+      labels: { confirm: 'Delete', cancel: 'Cancel' },
+      confirmProps: { color: 'red' },
+      onConfirm: () => {
+        void (async () => {
+          try {
+            await getApi().calendar.deleteEvent(event.id);
+            setEvents((prev) => prev.filter((e) => e.id !== event.id));
+            setDetail(null);
+            notifications.show({ title: 'Event deleted', message: event.title });
+          } catch (err) {
+            notifications.show({
+              color: 'red',
+              title: 'Could not delete event',
+              message: err instanceof Error ? err.message : 'Unknown error',
+            });
+          }
+        })();
+      },
     });
   };
 
@@ -114,7 +167,7 @@ export function CalendarTab() {
               { value: 'month', label: 'Month' },
             ]}
           />
-          <Button size="xs" leftSection={<IconCalendarPlus size={14} />} onClick={newEvent}>
+          <Button size="xs" leftSection={<IconCalendarPlus size={14} />} onClick={openCreate}>
             New event
           </Button>
         </Group>
@@ -127,40 +180,140 @@ export function CalendarTab() {
             description="Either nothing is scheduled, or no calendar accounts are connected yet."
           />
         ) : view === 'month' ? (
-          <MonthView events={events} anchor={anchor} onOpen={(ev) => openEventModal(ev)} />
+          <MonthView events={events} anchor={anchor} onOpen={setDetail} />
         ) : (
-          <WeekView events={events} range={range} onOpen={(ev) => openEventModal(ev)} />
+          <WeekView events={events} range={range} onOpen={setDetail} />
         )}
       </Box>
+
+      <EventComposer
+        opened={composer.open}
+        onClose={() => setComposer((c) => ({ ...c, open: false }))}
+        calendars={writableCalendars}
+        event={composer.event}
+        initialStart={composer.initialStart}
+        onSaved={handleSaved}
+      />
+
+      <EventDetail
+        event={detail}
+        onClose={() => setDetail(null)}
+        onEdit={openEdit}
+        onDelete={handleDelete}
+      />
     </Stack>
   );
 }
 
-function openEventModal(event: CalendarEvent) {
-  modals.open({
-    title: event.title,
-    size: 'md',
-    children: (
-      <Stack gap="xs">
-        <Text size="sm" c="dimmed">
-          {event.allDay
-            ? 'All day'
-            : `${new Date(event.start).toLocaleString()} → ${new Date(event.end).toLocaleString()}`}
-        </Text>
-        {event.location && (
-          <Text size="sm">
-            <strong>Location: </strong>
-            {event.location}
-          </Text>
-        )}
-        {event.description && (
-          <Text size="sm" style={{ whiteSpace: 'pre-wrap' }}>
-            {event.description}
-          </Text>
-        )}
-      </Stack>
-    ),
-  });
+function EventDetail({
+  event,
+  onClose,
+  onEdit,
+  onDelete,
+}: {
+  event: CalendarEvent | null;
+  onClose: () => void;
+  onEdit: (e: CalendarEvent) => void;
+  onDelete: (e: CalendarEvent) => void;
+}) {
+  const recurring = !!event?.recurrenceRule;
+  return (
+    <Modal opened={!!event} onClose={onClose} title={event?.title ?? ''} size="md">
+      {event && (
+        <Stack gap="sm">
+          <Group gap="xs" wrap="nowrap">
+            <IconClock size={16} />
+            <Text size="sm">
+              {event.allDay
+                ? 'All day'
+                : `${new Date(event.start).toLocaleString()} - ${new Date(event.end).toLocaleString()}`}
+            </Text>
+          </Group>
+          {event.location && (
+            <Group gap="xs" wrap="nowrap">
+              <IconMapPin size={16} />
+              <Text size="sm">{event.location}</Text>
+            </Group>
+          )}
+          {recurring && (
+            <Group gap="xs" wrap="nowrap">
+              <IconRepeat size={16} />
+              <Text size="sm" c="dimmed">
+                Repeating event
+              </Text>
+            </Group>
+          )}
+          {event.status !== 'confirmed' && (
+            <Badge variant="light" color={event.status === 'cancelled' ? 'red' : 'yellow'}>
+              {event.status}
+            </Badge>
+          )}
+          {event.organizer && (
+            <Text size="sm">
+              <strong>Organizer: </strong>
+              {event.organizer.name ?? event.organizer.email}
+            </Text>
+          )}
+          {event.attendees && event.attendees.length > 0 && (
+            <Stack gap={4}>
+              <Group gap="xs" wrap="nowrap">
+                <IconUsers size={16} />
+                <Text size="sm" fw={500}>
+                  {event.attendees.length} guest{event.attendees.length > 1 ? 's' : ''}
+                </Text>
+              </Group>
+              {event.attendees.map((a) => (
+                <Text key={a.email} size="sm" c="dimmed" ml={24}>
+                  {a.name ? `${a.name} (${a.email})` : a.email}
+                </Text>
+              ))}
+            </Stack>
+          )}
+          {event.reminders && event.reminders.length > 0 && (
+            <Text size="sm" c="dimmed">
+              Reminders: {event.reminders.map(formatReminder).join(', ')}
+            </Text>
+          )}
+          {event.description && (
+            <Text size="sm" style={{ whiteSpace: 'pre-wrap' }}>
+              {event.description}
+            </Text>
+          )}
+          <Divider />
+          <Group justify="space-between">
+            <Button
+              variant="subtle"
+              color="red"
+              leftSection={<IconTrash size={14} />}
+              onClick={() => onDelete(event)}
+            >
+              Delete
+            </Button>
+            <Tooltip
+              label="Editing repeating events isn't supported yet"
+              disabled={!recurring}
+              withArrow
+            >
+              <Button
+                leftSection={<IconPencil size={14} />}
+                onClick={() => onEdit(event)}
+                disabled={recurring}
+              >
+                Edit
+              </Button>
+            </Tooltip>
+          </Group>
+        </Stack>
+      )}
+    </Modal>
+  );
+}
+
+function formatReminder(minutes: number): string {
+  if (minutes === 0) return 'at start';
+  if (minutes % 1440 === 0) return `${minutes / 1440}d before`;
+  if (minutes % 60 === 0) return `${minutes / 60}h before`;
+  return `${minutes}m before`;
 }
 
 function WeekView({
@@ -398,9 +551,3 @@ function sameDay(a: Date, b: Date): boolean {
   );
 }
 
-function roundUpHour(d: Date): Date {
-  const x = new Date(d);
-  x.setMinutes(0, 0, 0);
-  x.setHours(x.getHours() + 1);
-  return x;
-}

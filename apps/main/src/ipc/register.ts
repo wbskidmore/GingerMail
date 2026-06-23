@@ -39,7 +39,9 @@ import { safeHandle } from './guards.js';
 import {
   AccountIdSchema,
   AddAccountInputSchema,
+  CalCreateSchema,
   CalDeleteSchema,
+  CalUpdateSchema,
   MailArchiveSchema,
   MailForwardSchema,
   MailMarkReadSchema,
@@ -335,7 +337,7 @@ export function registerIpc(ctx: AppContext): void {
       return ctx.db.listEvents(input);
     },
   );
-  handle(IPC_CHANNELS.calCreate, async (_e, event: Omit<CalendarEvent, 'id'>) => {
+  safeHandle(IPC_CHANNELS.calCreate, CalCreateSchema, async (event) => {
     const provider = await ctx.getCalendarProvider(event.accountId);
     if (provider) {
       const created = await provider.createEvent(event);
@@ -348,7 +350,7 @@ export function registerIpc(ctx: AppContext): void {
     scheduleEventReminders(ctx, local);
     return local;
   });
-  handle(IPC_CHANNELS.calUpdate, async (_e, event: CalendarEvent) => {
+  safeHandle(IPC_CHANNELS.calUpdate, CalUpdateSchema, async (event) => {
     const provider = await ctx.getCalendarProvider(event.accountId);
     if (provider && !event.id.startsWith('local:')) {
       const updated = await provider.updateEvent(event);

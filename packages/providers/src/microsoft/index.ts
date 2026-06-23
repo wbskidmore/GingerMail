@@ -305,25 +305,15 @@ export class MicrosoftCalendarProvider implements CalendarProvider {
 
   async createEvent(event: Omit<CalendarEvent, 'id'>): Promise<CalendarEvent> {
     const realId = event.calendarId.split(':').slice(1).join(':');
-    const res = await this.client.api(`/me/calendars/${realId}/events`).post({
-      subject: event.title,
-      body: { contentType: 'text', content: event.description ?? '' },
-      start: { dateTime: new Date(event.start).toISOString(), timeZone: 'UTC' },
-      end: { dateTime: new Date(event.end).toISOString(), timeZone: 'UTC' },
-      location: { displayName: event.location ?? '' },
-    });
+    const res = await this.client
+      .api(`/me/calendars/${realId}/events`)
+      .post(buildGraphEventBody(event));
     return toGraphEvent(this.account.id, event.calendarId, res) ?? { ...event, id: res.id };
   }
 
   async updateEvent(event: CalendarEvent): Promise<CalendarEvent> {
     const realId = event.id.split(':').slice(2).join(':');
-    await this.client.api(`/me/events/${realId}`).patch({
-      subject: event.title,
-      body: { contentType: 'text', content: event.description ?? '' },
-      start: { dateTime: new Date(event.start).toISOString(), timeZone: 'UTC' },
-      end: { dateTime: new Date(event.end).toISOString(), timeZone: 'UTC' },
-      location: { displayName: event.location ?? '' },
-    });
+    await this.client.api(`/me/events/${realId}`).patch(buildGraphEventBody(event));
     return event;
   }
 
@@ -418,6 +408,55 @@ export class MicrosoftTasksProvider implements TaskProvider {
 
 // --- helpers ---
 
+/** The OS/local IANA time zone, used to anchor wall-clock times sent to Graph. */
+function localTimeZone(): string {
+  try {
+    return Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
+  } catch {
+    return 'UTC';
+  }
+}
+
+/** Format an epoch as a Graph-style local wall-clock string (no offset). */
+function graphLocalDateTime(ms: number, allDay: boolean): string {
+  const d = new Date(ms);
+  const pad = (n: number) => String(n).padStart(2, '0');
+  const date = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+  if (allDay) return `${date}T00:00:00`;
+  return `${date}T${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+}
+
+/**
+ * Build the Microsoft Graph request body for an event create/update. Pure (no
+ * network) for unit testing. Sends attendees (so Graph emails invitations),
+ * a reminder offset, and anchors times to the user's local zone rather than
+ * hardcoding UTC.
+ */
+export function buildGraphEventBody(event: Omit<CalendarEvent, 'id'>): Record<string, unknown> {
+  const timeZone = localTimeZone();
+  const body: Record<string, unknown> = {
+    subject: event.title,
+    body: { contentType: 'text', content: event.description ?? '' },
+    start: { dateTime: graphLocalDateTime(event.start, event.allDay), timeZone },
+    end: { dateTime: graphLocalDateTime(event.end, event.allDay), timeZone },
+    location: { displayName: event.location ?? '' },
+    isAllDay: event.allDay,
+  };
+  if (event.attendees && event.attendees.length > 0) {
+    body.attendees = event.attendees.map((a) => ({
+      emailAddress: { address: a.email, name: a.name },
+      type: 'required',
+    }));
+  }
+  if (event.reminders && event.reminders.length > 0) {
+    body.isReminderOn = true;
+    body.reminderMinutesBeforeStart = Math.min(...event.reminders);
+  } else if (event.reminders) {
+    body.isReminderOn = false;
+  }
+  return body;
+}
+
 function mapGraphFolderRole(name?: string): Folder['role'] {
   const n = (name ?? '').toLowerCase();
   if (n === 'inbox') return 'inbox';
@@ -449,6 +488,19 @@ function toGraphEvent(
     end,
     allDay: !!e.isAllDay,
     status: 'confirmed',
+    organizer: e.organizer?.emailAddress?.address
+      ? {
+          name: e.organizer.emailAddress.name ?? undefined,
+          email: e.organizer.emailAddress.address,
+        }
+      : undefined,
+    attendees: (e.attendees ?? [])
+      .filter((a) => a.emailAddress?.address)
+      .map((a) => ({ name: a.emailAddress?.name ?? undefined, email: a.emailAddress!.address! })),
+    reminders:
+      typeof e.reminderMinutesBeforeStart === 'number' && e.isReminderOn !== false
+        ? [e.reminderMinutesBeforeStart]
+        : [],
   };
 }
 
@@ -491,6 +543,10 @@ interface GraphEvent {
   start?: { dateTime?: string; timeZone?: string };
   end?: { dateTime?: string; timeZone?: string };
   isAllDay?: boolean;
+  isReminderOn?: boolean;
+  reminderMinutesBeforeStart?: number;
+  organizer?: { emailAddress?: { name?: string; address?: string } };
+  attendees?: Array<{ emailAddress?: { name?: string; address?: string }; type?: string }>;
 }
 
 interface GraphTodoList {

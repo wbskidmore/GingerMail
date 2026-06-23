@@ -134,8 +134,33 @@ export const MailMarkReadSchema = z.object({ id: messageRef, read: z.boolean() }
 // mailSearch receives a bare query string.
 export const MailSearchSchema = z.string().max(2048);
 
-export const CalCreateSchema = z.object({}).passthrough(); // CalendarEvent shape varies per provider
-export const CalUpdateSchema = z.object({}).passthrough();
+// CalendarEvent wire shape (matches `CalendarEvent` in `@gingermail/core`).
+// Every field is type- and size-bounded so a compromised renderer cannot push
+// unbounded payloads to the provider APIs (SI-10). `attendees` and `reminders`
+// are explicitly allowed so the composer's invite + reminder fields validate.
+const epochMs = z.number().int().min(0).max(8.64e15);
+const calendarEventFields = {
+  calendarId: z.string().min(1).max(1024),
+  accountId,
+  title: z.string().max(1024),
+  description: z.string().max(100_000).optional(),
+  location: z.string().max(2048).optional(),
+  start: epochMs,
+  end: epochMs,
+  allDay: z.boolean(),
+  status: z.enum(['confirmed', 'tentative', 'cancelled']),
+  organizer: addressSchema.optional(),
+  attendees: z.array(addressSchema).max(500).optional(),
+  recurrenceRule: z.string().max(4096).optional(),
+  // minutes before start; cap at 4 weeks (40320 min).
+  reminders: z.array(z.number().int().min(0).max(40_320)).max(20).optional(),
+  linkedMessageId: z.string().max(1024).optional(),
+  linkedTaskId: z.string().max(1024).optional(),
+  snoozedUntil: epochMs.optional(),
+};
+
+export const CalCreateSchema = z.object(calendarEventFields);
+export const CalUpdateSchema = z.object({ id: messageRef, ...calendarEventFields });
 // calDelete receives a bare composite event id string.
 export const CalDeleteSchema = messageRef;
 

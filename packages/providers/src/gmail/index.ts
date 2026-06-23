@@ -314,17 +314,9 @@ export class GoogleCalendarProvider implements CalendarProvider {
     const realId = event.calendarId.split(':').slice(1).join(':');
     const res = await this.cal.events.insert({
       calendarId: realId,
-      requestBody: {
-        summary: event.title,
-        description: event.description,
-        location: event.location,
-        start: event.allDay
-          ? { date: new Date(event.start).toISOString().slice(0, 10) }
-          : { dateTime: new Date(event.start).toISOString() },
-        end: event.allDay
-          ? { date: new Date(event.end).toISOString().slice(0, 10) }
-          : { dateTime: new Date(event.end).toISOString() },
-      },
+      // `all` so Google emails calendar invitations to the attendees.
+      sendUpdates: (event.attendees?.length ?? 0) > 0 ? 'all' : 'none',
+      requestBody: buildGoogleEventBody(event),
     });
     const created = toCalendarEvent(this.account.id, event.calendarId, res.data);
     if (!created) throw new Error('Calendar event create failed');
@@ -337,17 +329,8 @@ export class GoogleCalendarProvider implements CalendarProvider {
     const res = await this.cal.events.update({
       calendarId: realCal,
       eventId: realId,
-      requestBody: {
-        summary: event.title,
-        description: event.description,
-        location: event.location,
-        start: event.allDay
-          ? { date: new Date(event.start).toISOString().slice(0, 10) }
-          : { dateTime: new Date(event.start).toISOString() },
-        end: event.allDay
-          ? { date: new Date(event.end).toISOString().slice(0, 10) }
-          : { dateTime: new Date(event.end).toISOString() },
-      },
+      sendUpdates: (event.attendees?.length ?? 0) > 0 ? 'all' : 'none',
+      requestBody: buildGoogleEventBody(event),
     });
     const updated = toCalendarEvent(this.account.id, event.calendarId, res.data);
     if (!updated) throw new Error('Calendar event update failed');
@@ -542,6 +525,37 @@ function escapeHtml(s: string): string {
   return s.replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' })[c] ?? c);
 }
 
+/**
+ * Build the Google Calendar API request body for an event create/update.
+ * Pure (no network) so it can be unit-tested. Includes attendees + reminder
+ * overrides so invites are sent and reminders round-trip.
+ */
+export function buildGoogleEventBody(
+  event: Omit<CalendarEvent, 'id'>,
+): calendar_v3.Schema$Event {
+  const body: calendar_v3.Schema$Event = {
+    summary: event.title,
+    description: event.description,
+    location: event.location,
+    start: event.allDay
+      ? { date: new Date(event.start).toISOString().slice(0, 10) }
+      : { dateTime: new Date(event.start).toISOString() },
+    end: event.allDay
+      ? { date: new Date(event.end).toISOString().slice(0, 10) }
+      : { dateTime: new Date(event.end).toISOString() },
+  };
+  if (event.attendees && event.attendees.length > 0) {
+    body.attendees = event.attendees.map((a) => ({ email: a.email, displayName: a.name }));
+  }
+  if (event.reminders) {
+    body.reminders = {
+      useDefault: false,
+      overrides: event.reminders.map((minutes) => ({ method: 'popup', minutes })),
+    };
+  }
+  return body;
+}
+
 function toCalendarEvent(
   accountId: string,
   calendarId: string,
@@ -576,5 +590,9 @@ function toCalendarEvent(
     attendees: (e.attendees ?? [])
       .filter((a) => a.email)
       .map((a) => ({ name: a.displayName ?? undefined, email: a.email! })),
+    reminders: (e.reminders?.overrides ?? [])
+      .map((r) => r.minutes)
+      .filter((m): m is number => typeof m === 'number'),
+    recurrenceRule: e.recurrence?.[0] ?? undefined,
   };
 }

@@ -1,6 +1,6 @@
 // Dev entry: builds main process TS and launches electron pointing at the Vite dev server.
 import { spawn } from 'node:child_process';
-import { existsSync, rmSync, readFileSync, readdirSync } from 'node:fs';
+import { existsSync, rmSync } from 'node:fs';
 import path from 'node:path';
 import { createRequire } from 'node:module';
 
@@ -45,47 +45,6 @@ const preload = spawn('node', ['scripts/build-preload.mjs', '--watch'], {
 // Spawning the node_modules/.bin/electron.cmd shim directly throws spawn EINVAL
 // on Windows since Node's CVE-2024-27980 fix refuses to spawn .cmd/.bat without
 // shell:true.
-// #region agent log
-// Cross-machine debug: this runs on Windows while the debug server is on macOS,
-// so we print diagnostics to stdout (the [main] output the user pastes) instead
-// of POSTing to the unreachable log server.
-{
-  let electronDir = null;
-  try {
-    electronDir = path.dirname(require.resolve('electron/package.json'));
-  } catch (e) {
-    electronDir = `resolve-failed:${e && e.code}`;
-  }
-  let pathTxt = null;
-  let distExists = false;
-  let distEntries = [];
-  let exeExists = false;
-  try {
-    if (electronDir && existsSync(electronDir)) {
-      const pf = path.join(electronDir, 'path.txt');
-      pathTxt = existsSync(pf) ? readFileSync(pf, 'utf-8').trim() : null;
-      const distDir = path.join(electronDir, 'dist');
-      distExists = existsSync(distDir);
-      if (distExists) distEntries = readdirSync(distDir).slice(0, 20);
-      if (pathTxt) exeExists = existsSync(path.join(distDir, pathTxt));
-    }
-  } catch (e) {
-    pathTxt = `inspect-failed:${e && e.code}`;
-  }
-  console.error(
-    '[GM-DEBUG electron-install]',
-    JSON.stringify({
-      electronDir,
-      pathTxt,
-      distExists,
-      exeExists,
-      distEntryCount: distEntries.length,
-      distEntries,
-      overrideDist: process.env.ELECTRON_OVERRIDE_DIST_PATH ?? null,
-    }),
-  );
-}
-// #endregion
 const electronBin = require('electron');
 function waitForBuild(attempts = 60) {
   const ready =
@@ -110,14 +69,7 @@ function launch() {
     GM_RENDERER_URL: process.env.GM_RENDERER_URL ?? 'http://localhost:5173',
   };
   delete env.ELECTRON_RUN_AS_NODE;
-  // #region agent log
-  console.error('[GM-DEBUG spawn]', JSON.stringify({ platform: process.platform, electronBin: String(electronBin), endsWithCmd: String(electronBin).toLowerCase().endsWith('.cmd') }));
-  // #endregion
   const electron = spawn(electronBin, ['.'], { stdio: 'inherit', cwd, env });
-  // #region agent log
-  electron.on('spawn', () => console.error('[GM-DEBUG spawn] electron spawned OK pid=' + electron.pid));
-  electron.on('error', (err) => console.error('[GM-DEBUG spawn] electron spawn error', JSON.stringify({ code: err && err.code, errno: err && err.errno, syscall: err && err.syscall })));
-  // #endregion
   electron.on('exit', (code) => {
     tsc.kill('SIGTERM');
     preload.kill('SIGTERM');
