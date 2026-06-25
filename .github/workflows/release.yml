@@ -116,7 +116,7 @@ jobs:
       # ~100MB of Electron per platform. Keyed on the lockfile so a dependency
       # bump (incl. an Electron version change) busts the cache automatically.
       - name: Cache Electron binaries
-        uses: actions/cache@v5
+        uses: actions/cache@v6
         with:
           path: |
             ~/.cache/electron
