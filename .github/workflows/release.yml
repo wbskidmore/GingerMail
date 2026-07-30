@@ -136,7 +136,14 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Build app (renderer + main + packages)
-        run: pnpm build
+        id: build
+        continue-on-error: false
+        run: |
+          set -euo pipefail
+          echo "::group::Building packages..."
+          pnpm build
+          echo "::endgroup::"
+          echo "Build stage: success"
 
       # We skip `prepackage` (the Ollama fetch) on purpose: no verified binary
       # SHAs are pinned yet, and the app falls back to a user-installed Ollama.
@@ -200,6 +207,17 @@ jobs:
             echo "Unsigned channel or no GPG_PRIVATE_KEY secret; emitting checksums only (UNSIGNED)."
           fi
           sha256sum *.AppImage > SHA256SUMS
+
+      - name: Verify release artifacts
+        run: |
+          set -euo pipefail
+          artifact_count=$(find release/* -type f \( -name "*.dmg" -o -name "*.exe" -o -name "*.AppImage" \) | wc -l)
+          if [ "$artifact_count" -eq 0 ]; then
+            echo "::error::No release artifacts were built"
+            exit 1
+          fi
+          echo "Found $artifact_count release artifacts"
+          ls -la release/*/
 
       - name: Upload installer artifacts
         uses: actions/upload-artifact@v7

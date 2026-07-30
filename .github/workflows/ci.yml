@@ -5,6 +5,7 @@ on:
     branches: [main]
   pull_request:
     branches: [main]
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -74,3 +75,50 @@ jobs:
           name: sbom-cyclonedx
           path: sbom.cdx.json
           if-no-files-found: error
+
+  # Build verification job - runs only on specific triggers to catch build failures
+  build-verification:
+    name: Build verification
+    needs: build-test
+    runs-on: ubuntu-latest
+    if: always() || github.event_name == 'push' || contains(github.event.pull_request.labels.*.name, 'build-verify')
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v6
+        with:
+          version: 9.0.0
+
+      - name: Setup Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Verify build succeeds
+        run: |
+          echo "::group::Building packages..."
+          pnpm -r --filter "./packages/*" build
+          echo "::endgroup::"
+          
+          echo "::group::Building renderer..."
+          pnpm --filter @gingermail/renderer build
+          echo "::endgroup::"
+          
+          echo "::group::Building main..."
+          pnpm --filter @gingermail/main build
+          echo "::endgroup::"
+          
+          echo "Build completed successfully!"
+
+      - name: Verify build artifacts exist
+        run: |
+          # Check that key build artifacts exist
+          test -f apps/main/dist/preload.cjs || { echo "ERROR: preload.cjs not found"; exit 1; }
+          test -d apps/main/dist || { echo "ERROR: main dist directory not found"; exit 1; }
+          echo "Build artifacts verified!"
