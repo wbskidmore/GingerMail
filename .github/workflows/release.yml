@@ -287,6 +287,12 @@ jobs:
           tags: |
             ${{ steps.meta.outputs.image }}:${{ steps.meta.outputs.version }}
             ${{ steps.meta.outputs.image }}:latest
+            ${{ steps.meta.outputs.image }}:${{ needs.mode.outputs.tag }}
+          # Also push the tag name (e.g., v1.0.6 or v1.0.6-dev.123) for dev builds
+          # Tag format: v1.0.6-dev.123 or v1.0.6
+          labels: |
+            org.opencontainers.image.version=${{ steps.meta.outputs.version }}
+            org.opencontainers.image.revision=${{ github.sha }}
 
       - name: Install cosign
         uses: sigstore/cosign-installer@v3
