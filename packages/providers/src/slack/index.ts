@@ -1,11 +1,18 @@
 import type { Account, ChatConversation, ChatMessage, ChatUser } from '@gingermail/core';
 import type { ChatIdentity, ChatProvider } from '../types.js';
+import { RateLimiter, DEFAULT_RATE_LIMITS } from '../rateLimiter.js';
+import type { RateLimitConfig } from '../rateLimiter.js';
 
 const SLACK_API = 'https://slack.com/api';
 
 interface SlackApiError {
   ok: false;
   error: string;
+}
+
+export interface SlackRateLimitError extends Error {
+  waitMs: number;
+  retryAfter: string;
 }
 
 interface SlackAuthTest {
@@ -55,15 +62,24 @@ interface SlackUser {
  * channels; a bot token (xoxb-…) is also accepted but only sees what the
  * bot is a member of. Unread state is computed by the sync layer against a
  * locally-stored last-read marker, so this provider stays read-light.
+ * 
+ * Implements rate limiting to respect Slack's API limits (50 requests/minute).
  */
 export class SlackProvider implements ChatProvider {
   private identity: ChatIdentity | null = null;
   private userCache: Map<string, ChatUser> | null = null;
+  private rateLimiter: RateLimiter;
 
   constructor(
     private readonly account: Account,
     private readonly token: string,
-  ) {}
+    rateLimitConfig?: Omit<RateLimitConfig, 'errorMessage'>,
+  ) {
+    this.rateLimiter = new RateLimiter(
+      { id: 'slack', defaultConfig: DEFAULT_RATE_LIMITS.slack },
+      rateLimitConfig,
+    );
+  }
 
   async authTest(): Promise<ChatIdentity> {
     if (this.identity) return this.identity;
@@ -255,6 +271,17 @@ export class SlackProvider implements ChatProvider {
   }
 
   private async call<T>(method: string, params: Record<string, string> = {}): Promise<T> {
+    // Check rate limit before making the request
+    const waitMs = this.rateLimiter.consume();
+    if (waitMs > 0) {
+      const error = new Error(
+        `Slack API rate limit exceeded. Wait ${Math.ceil(waitMs / 1000)} seconds and try again.`,
+      ) as SlackRateLimitError;
+      error.waitMs = waitMs;
+      error.retryAfter = new Date(Date.now() + waitMs).toISOString();
+      throw error;
+    }
+
     const body = new URLSearchParams(params).toString();
     const res = await fetch(`${SLACK_API}/${method}`, {
       method: 'POST',
@@ -264,6 +291,22 @@ export class SlackProvider implements ChatProvider {
       },
       body,
     });
+    
+    // Handle rate limit response from Slack
+    if (res.status === 429) {
+      const retryAfter = res.headers.get('Retry-After') || '60';
+      const waitMs = parseInt(retryAfter, 10) * 1000;
+      return new Promise((resolve, reject) => {
+        setTimeout(() => {
+          reject(
+            new Error(
+              `Slack API rate limit hit (HTTP 429). Retry after ${retryAfter} seconds.`
+            ) as SlackRateLimitError,
+          );
+        }, waitMs);
+      });
+    }
+    
     if (!res.ok) {
       throw new Error(`Slack ${method} HTTP ${res.status}`);
     }

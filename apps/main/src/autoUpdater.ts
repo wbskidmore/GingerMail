@@ -74,17 +74,18 @@ export function setupAutoUpdater(deps: SetupUpdaterDeps): UpdaterController {
   // (a TOCTOU manifest swap) and refuse it.
   let lastAvailableVersion: string | null = null;
 
-  updater.on('checking-for-update', () => log.info('[updater] checking'));
-  updater.on('update-available', (info) => log.info(`[updater] available ${info.version}`));
-  updater.on('update-not-available', () => log.info('[updater] up to date'));
-  updater.on('error', (err) => log.warn('[updater] error', err));
-  updater.on('update-downloaded', () => log.info('[updater] downloaded; will install on quit'));
+  const evt = updater as unknown as { on: (event: string, handler: (...args: unknown[]) => void) => void };
+  evt.on('checking-for-update', () => log.info('[updater] checking'));
+  evt.on('update-available', (info) => log.info(`[updater] available ${(info as { version?: string }).version ?? 'unknown'}`));
+  evt.on('update-not-available', () => log.info('[updater] up to date'));
+  evt.on('error', (err) => log.warn('[updater] error', err));
+  evt.on('update-downloaded', () => log.info('[updater] downloaded; will install on quit'));
 
   // KILL-SWITCH: if the feed advertises 0.0.0-killswitch we refuse the
   // install entirely. The presence of the marker version is the signal —
   // the user-visible message comes from the renderer.
-  updater.on('update-available', (info) => {
-    if (info.version === '0.0.0-killswitch') {
+  evt.on('update-available', (info) => {
+    if ((info as { version?: string }).version === '0.0.0-killswitch') {
       log.warn('[updater] kill-switch manifest detected; aborting update');
       // No further action; we never call downloadUpdate() automatically.
     }

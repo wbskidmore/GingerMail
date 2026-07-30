@@ -8,3 +8,4 @@ export * from './slack/index.js';
 export * from './discord/index.js';
 export * from './ics.js';
 export * from './unsubscribe.js';
+export * from './rateLimiter.js';

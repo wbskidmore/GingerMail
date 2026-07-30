@@ -3,6 +3,7 @@ import { getGoogleApis } from '../electronShim.js';
 import { runLoopbackOAuth } from './loopback.js';
 import { GOOGLE_SCOPES } from '@gingermail/providers';
 import type { Account } from '@gingermail/core';
+import type { oauth2_v2 } from 'googleapis';
 
 export interface GoogleAuthOutcome {
   account: Account;
@@ -66,8 +67,11 @@ export class GoogleOAuthFlow {
       codeVerifier,
     } as Parameters<typeof client.getToken>[0]);
     client.setCredentials(tokens);
-    const oauth2v2 = google.oauth2({ version: 'v2', auth: client });
-    const profile = await oauth2v2.userinfo.get();
+    // The googleapis library accepts auth in the client instance when credentials are set
+    // but the type definitions require passing auth through options. We use 'v2' version
+    // and rely on the client having credentials set via setCredentials().
+    const oauth2v2 = google.oauth2('v2') as oauth2_v2.Oauth2;
+    const profile = await oauth2v2.userinfo.get({ auth: client });
     const email = profile.data.email ?? '';
     return {
       account: {

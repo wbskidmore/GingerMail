@@ -174,11 +174,11 @@ export function CalendarTab() {
       </Group>
       <Box style={{ flex: 1, minHeight: 0 }}>
         {events.length === 0 ? (
-          <EmptyState
-            icon={<IconCalendar size={28} />}
-            title="No events in this range"
-            description="Either nothing is scheduled, or no calendar accounts are connected yet."
-          />
+          view === 'month' ? (
+            <MonthView events={events} anchor={anchor} onOpen={setDetail} />
+          ) : (
+            <EmptyDayView view={view} anchor={anchor} />
+          )
         ) : view === 'month' ? (
           <MonthView events={events} anchor={anchor} onOpen={setDetail} />
         ) : (
@@ -479,6 +479,58 @@ function MonthView({
                 )}
               </Stack>
             </Box>
+          );
+        })}
+      </Box>
+    </ScrollArea>
+  );
+}
+
+/**
+ * Shows empty day slots for week/workweek/day view when there are no events.
+ * This ensures the calendar grid structure is visible even in the absence of events.
+ */
+function EmptyDayView({ view, anchor }: { view: ViewMode; anchor: Date }) {
+  const range = rangeFor(view, anchor);
+  const days: Date[] = [];
+  const start = new Date(range.from);
+  const dayCount = Math.ceil((range.to - range.from) / 86_400_000);
+  for (let i = 0; i < dayCount; i += 1) {
+    const d = new Date(start);
+    d.setDate(d.getDate() + i);
+    days.push(d);
+  }
+  const today = new Date();
+  
+  return (
+    <ScrollArea h="100%">
+      <Box
+        style={{
+          display: 'grid',
+          gridTemplateColumns: `repeat(${days.length}, 1fr)`,
+          gap: 1,
+          background: 'var(--mantine-color-default-border)',
+          minHeight: '100%',
+        }}
+      >
+        {days.map((d) => {
+          const isToday = sameDay(d, today);
+          return (
+            <Paper key={d.toDateString()} radius={0} p="sm" style={{ minHeight: 280 }}>
+              <Group justify="space-between" mb="xs">
+                <Text size="xs" c="dimmed" tt="uppercase">
+                  {d.toLocaleDateString(undefined, { weekday: 'short' })}
+                </Text>
+                <Badge
+                  size="sm"
+                  variant={isToday ? 'filled' : 'transparent'}
+                  color={isToday ? 'ginger' : 'gray'}
+                  radius="xl"
+                >
+                  {d.getDate()}
+                </Badge>
+              </Group>
+            </Paper>
           );
         })}
       </Box>

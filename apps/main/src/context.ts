@@ -38,7 +38,9 @@ import { GoogleOAuthFlow } from './oauth/google.js';
 import { MicrosoftOAuthFlow } from './oauth/microsoft.js';
 import { SlackOAuthFlow } from './oauth/slack.js';
 import { getBuildConfig } from './config.js';
+import { getRateLimitConfig } from './rateLimitConfig.js';
 import type { UpdaterController } from './autoUpdater.js';
+import type { RateLimitConfig } from '@gingermail/providers';
 
 export class AppContext {
   db!: GingerMailDb;
@@ -482,7 +484,13 @@ async function buildBundleFor(
     case 'slack': {
       const token = secrets?.['access_token'];
       if (!token) return undefined;
-      return { chat: new SlackProvider(account, token) };
+      const rateLimitConfig = getRateLimitConfig('slack');
+      return {
+        chat: new SlackProvider(account, token, {
+          maxTokens: rateLimitConfig.requestsPerMinute,
+          windowMs: 60_000,
+        }),
+      };
     }
     case 'discord': {
       const token = secrets?.['access_token'];
