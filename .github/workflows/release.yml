@@ -148,19 +148,14 @@ jobs:
       # We skip `prepackage` (the Ollama fetch) on purpose: no verified binary
       # SHAs are pinned yet, and the app falls back to a user-installed Ollama.
       #
-      # SIGNED builds (channel=prod / tag push) sign + notarize when the
-      # secrets are present and otherwise produce an unsigned artifact (the
-      # creds simply no-op until provisioned):
-      #   * macOS  - CSC_LINK/CSC_KEY_PASSWORD (Developer ID Application .p12,
-      #     base64) sign the .app; APPLE_ID/APPLE_APP_SPECIFIC_PASSWORD/
-      #     APPLE_TEAM_ID notarize it (notarize:true in electron-builder.yml).
-      #   * Windows - WIN_CSC_LINK/WIN_CSC_KEY_PASSWORD (code-signing .pfx,
-      #     base64). Mapped onto the CSC_* env that electron-builder reads.
+      # SIGNED builds (channel=prod / tag push) require signing credentials.
+      # This section handles both prod (signed) and dev (unsigned) builds:
       #
-      # DEV builds (channel=dev) are deliberately UNSIGNED: we disable keychain
-      # auto-discovery and override `mac.notarize=false` so a credential-less
-      # macOS leg cannot fail at the notarization step. This is the path that
-      # works today, before any signing identity exists.
+      # DEV builds: CSC_IDENTITY_AUTO_DISCOVERY=false skips Mac auth,
+      # mac.notarize=false skips Mac notarization, Windows builds unsigned.
+      #
+      # PROD builds: require CSC_LINK/CSC_KEY_PASSWORD for Windows signing,
+      # and APPLE_ID/APPLE_APP_SPECIFIC_PASSWORD/APPLE_TEAM_ID for Mac signing.
       - name: Package installer
         env:
           SIGNED: ${{ needs.mode.outputs.signed }}
@@ -169,19 +164,36 @@ jobs:
           APPLE_ID: ${{ secrets.APPLE_ID }}
           APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
-        shell: bash
         run: |
           set -euo pipefail
-          if [ "${SIGNED}" = "true" ]; then
-            # Only let macOS auto-discover an identity when a cert is actually
-            # provided, so a signed build without creds stays graceful.
-            if [ "${{ matrix.platform }}" = "mac" ] && [ -z "${CSC_LINK:-}" ]; then
-              export CSC_IDENTITY_AUTO_DISCOVERY=false
-            fi
-            pnpm exec electron-builder --${{ matrix.platform }} --publish never
-          else
+          
+          if [ "${SIGNED}" != "true" ]; then
+            # Dev/unsigned build: disable all signing and notarization
+            echo "Setting up unsigned build..."
             export CSC_IDENTITY_AUTO_DISCOVERY=false
             pnpm exec electron-builder --${{ matrix.platform }} --config.mac.notarize=false --publish never
+          else
+            # Signed build: require credentials
+            if [ "${{ matrix.platform }}" = "mac" ]; then
+              if [ -z "${APPLE_ID:-}" ] || [ -z "${APPLE_APP_SPECIFIC_PASSWORD:-}" ] || [ -z "${APPLE_TEAM_ID:-}" ]; then
+                echo "::error::Apple credentials not configured for signed macOS build"
+                exit 1
+              fi
+              if [ -z "${CSC_LINK:-}" ]; then
+                echo "::warning::CSC_LINK not set, will attempt identity discovery"
+                export CSC_IDENTITY_AUTO_DISCOVERY=true
+              else
+                echo "Using provided CSC_LINK for macOS signing"
+              fi
+            else
+              # Windows
+              if [ -z "${CSC_LINK:-}" ] || [ -z "${CSC_KEY_PASSWORD:-}" ]; then
+                echo "::error::Windows signing credentials not configured for signed build"
+                exit 1
+              fi
+            fi
+            echo "Building signed ${{ matrix.platform }} package..."
+            pnpm exec electron-builder --${{ matrix.platform }} --publish never
           fi
 
       # Linux has no OS trust store like Gatekeeper/Authenticode, so we attach a
