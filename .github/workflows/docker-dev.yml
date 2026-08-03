@@ -4,11 +4,11 @@ name: Docker Dev Build
 # This runs automatically on pushes to main and can also be triggered manually.
 #
 # Usage:
-#   1. Push to main branch -> builds dev image tagged with commit SHA
+#   1. Push to main branch -> builds dev image tagged with package version + -dev
 #   2. Manual dispatch -> can specify a version tag for the image
 #
-# Images are pushed to ghcr.io/wbskidmore/gingermail:
-#   - main branch -> latest-dev (for testing latest code)
+# Images are pushed to ghcr.io/<owner>/gingermail:
+#   - main branch -> <version>-dev and latest-dev
 #   - manual trigger with version -> that version tag
 
 on:
@@ -17,7 +17,7 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: 'Docker image version tag (e.g., 1.0.6-dev)'
+        description: 'Docker image version tag (e.g., 1.0.7-dev)'
         type: string
         required: false
       build_tarball:
@@ -34,11 +34,13 @@ jobs:
   build:
     name: Build Docker image
     runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.tag }}
+      digest: ${{ steps.build.outputs.digest }}
     steps:
       - name: Checkout
         uses: actions/checkout@v6
         with:
-          # Fetch deep history for better versioning if needed
           fetch-depth: 0
 
       - name: Set up Buildx
@@ -54,35 +56,52 @@ jobs:
       - name: Determine image version
         id: version
         run: |
+          set -euo pipefail
+          # ghcr.io repository names must be lowercase.
+          image="ghcr.io/$(echo '${{ github.repository_owner }}/gingermail' | tr '[:upper:]' '[:lower:]')"
+
           if [ -n "${{ github.event.inputs.version }}" ]; then
-            echo "tag=${{ github.event.inputs.version }}" >> "$GITHUB_OUTPUT"
+            tag="${{ github.event.inputs.version }}"
+            tags="${image}:${tag}"$'\n'"${image}:latest-dev"
           elif [[ "${{ github.ref }}" == refs/heads/main ]]; then
-            # Get version from package.json
             VERSION=$(node -p "require('./package.json').version")
-            echo "tag=${VERSION}-dev" >> "$GITHUB_OUTPUT"
-            echo "sha_tag=sha-${{ github.sha }}" >> "$GITHUB_OUTPUT"
+            if [ -z "$VERSION" ] || [ "$VERSION" = "undefined" ]; then
+              echo "::error::package.json version is empty; cannot tag Docker image"
+              exit 1
+            fi
+            tag="${VERSION}-dev"
+            sha_tag="sha-${GITHUB_SHA:0:12}"
+            tags="${image}:${tag}"$'\n'"${image}:latest-dev"$'\n'"${image}:${sha_tag}"
           else
-            echo "tag=sha-${{ github.sha }}" >> "$GITHUB_OUTPUT"
+            tag="sha-${GITHUB_SHA:0:12}"
+            tags="${image}:${tag}"
           fi
 
-      # Browser-accessible convenience image (KasmVNC desktop)
+          if [ -z "$tag" ]; then
+            echo "::error::Resolved Docker tag is empty"
+            exit 1
+          fi
+          {
+            echo "image=$image"
+            echo "tag=$tag"
+            echo "tags<<EOF"
+            echo "$tags"
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
+          echo "Docker tags -> ${tags//$'\n'/ }"
+
       - name: Build and push Docker image
         id: build
         uses: docker/build-push-action@v7
         with:
           context: .
           push: true
-          tags: |
-            ghcr.io/${{ github.repository_owner }}/gingermail:${{ steps.version.outputs.tag }}
-            ghcr.io/${{ github.repository_owner }}/gingermail:latest-dev
-            ${{ steps.version.outputs.sha_tag && format('ghcr.io/{0}/gingermail:{1}', github.repository_owner, steps.version.outputs.sha_tag) || '' }}
+          tags: ${{ steps.version.outputs.tags }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
           labels: |
             org.opencontainers.image.version=${{ steps.version.outputs.tag }}
             org.opencontainers.image.revision=${{ github.sha }}
-            org.opencontainers.image.created=${{ github.event.head commit.timestamp }}
-            org.opencontainers.image.authors=williamskidmore
             org.opencontainers.image.url=https://github.com/${{ github.repository }}
 
       - name: Install cosign
@@ -91,14 +110,13 @@ jobs:
       - name: Sign image (cosign keyless)
         env:
           DIGEST: ${{ steps.build.outputs.digest }}
-          IMAGE: ghcr.io/${{ github.repository_owner }}/gingermail
-          TAG: ${{ steps.version.outputs.tag }}
+          IMAGE: ${{ steps.version.outputs.image }}
         run: |
           cosign sign --yes "${IMAGE}@${DIGEST}"
 
       - name: Export image tarball
         env:
-          IMAGE: ghcr.io/${{ github.repository_owner }}/gingermail
+          IMAGE: ${{ steps.version.outputs.image }}
           TAG: ${{ steps.version.outputs.tag }}
           VERSION: ${{ steps.version.outputs.tag }}
         if: ${{ github.event.inputs.build_tarball == 'true' }}
@@ -128,7 +146,3 @@ jobs:
           name: gingermail-docker-dev
           if-no-files-found: error
           path: docker-dist/*
-
-outputs:
-  version: ${{ steps.version.outputs.tag }}
-  digest: ${{ steps.build.outputs.digest }}

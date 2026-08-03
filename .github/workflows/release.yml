@@ -166,7 +166,7 @@ jobs:
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
         run: |
           set -euo pipefail
-          
+
           if [ "${SIGNED}" != "true" ]; then
             # Dev/unsigned build: disable all signing and notarization
             echo "Setting up unsigned build..."
@@ -185,13 +185,13 @@ jobs:
               else
                 echo "Using provided CSC_LINK for macOS signing"
               fi
-            else
-              # Windows
+            elif [ "${{ matrix.platform }}" = "win" ]; then
               if [ -z "${CSC_LINK:-}" ] || [ -z "${CSC_KEY_PASSWORD:-}" ]; then
                 echo "::error::Windows signing credentials not configured for signed build"
                 exit 1
               fi
             fi
+            # linux: no Authenticode/Developer ID requirement here; GPG is optional below
             echo "Building signed ${{ matrix.platform }} package..."
             pnpm exec electron-builder --${{ matrix.platform }} --publish never
           fi
@@ -247,6 +247,10 @@ jobs:
 
   docker:
     name: Build Docker image
+    # needs.mode so image tags can include the resolved release tag
+    # (v1.0.7 / v1.0.7-dev.N). Without this, needs.mode.outputs.tag is empty
+    # and buildx fails with: invalid tag "ghcr.io/.../gingermail:".
+    needs: mode
     runs-on: ubuntu-latest
     # packages: write -> push to ghcr.io; id-token: write -> cosign keyless
     # (Sigstore) OIDC signing with the Actions-issued token (no key to manage).
@@ -261,9 +265,25 @@ jobs:
       - name: Read version + image name
         id: meta
         run: |
-          echo "version=$(node -p "require('./package.json').version")" >> "$GITHUB_OUTPUT"
+          set -euo pipefail
+          version=$(node -p "require('./package.json').version")
+          if [ -z "$version" ] || [ "$version" = "undefined" ]; then
+            echo "::error::package.json version is empty; cannot tag Docker image"
+            exit 1
+          fi
+          # Prefer the resolved release tag (v1.0.7); fall back to package version.
+          release_tag="${{ needs.mode.outputs.tag }}"
+          if [ -z "$release_tag" ]; then
+            release_tag="v${version}"
+          fi
           # ghcr.io repository names must be lowercase.
-          echo "image=ghcr.io/$(echo '${{ github.repository_owner }}/gingermail' | tr '[:upper:]' '[:lower:]')" >> "$GITHUB_OUTPUT"
+          image="ghcr.io/$(echo '${{ github.repository_owner }}/gingermail' | tr '[:upper:]' '[:lower:]')"
+          {
+            echo "version=$version"
+            echo "release_tag=$release_tag"
+            echo "image=$image"
+          } >> "$GITHUB_OUTPUT"
+          echo "Docker tags -> ${image}:${version} ${image}:latest ${image}:${release_tag}"
 
       - name: Set up Buildx
         uses: docker/setup-buildx-action@v4
@@ -287,9 +307,7 @@ jobs:
           tags: |
             ${{ steps.meta.outputs.image }}:${{ steps.meta.outputs.version }}
             ${{ steps.meta.outputs.image }}:latest
-            ${{ steps.meta.outputs.image }}:${{ needs.mode.outputs.tag }}
-          # Also push the tag name (e.g., v1.0.6 or v1.0.6-dev.123) for dev builds
-          # Tag format: v1.0.6-dev.123 or v1.0.6
+            ${{ steps.meta.outputs.image }}:${{ steps.meta.outputs.release_tag }}
           labels: |
             org.opencontainers.image.version=${{ steps.meta.outputs.version }}
             org.opencontainers.image.revision=${{ github.sha }}
@@ -349,7 +367,15 @@ jobs:
     needs: [mode, build, docker]
     runs-on: ubuntu-latest
     # Publish on a tag push, or on a manual run where publish_release was ticked.
-    if: ${{ startsWith(github.ref, 'refs/tags/') || needs.mode.outputs.publish == 'true' }}
+    # always() so a single matrix leg failure (e.g. Windows) does not skip
+    # publishing macOS/Linux/Docker artifacts that already succeeded.
+    if: >-
+      always()
+      && !cancelled()
+      && needs.mode.result == 'success'
+      && needs.docker.result == 'success'
+      && (needs.build.result == 'success' || needs.build.result == 'failure')
+      && (startsWith(github.ref, 'refs/tags/') || needs.mode.outputs.publish == 'true')
     steps:
       - name: Download all build artifacts
         uses: actions/download-artifact@v8
