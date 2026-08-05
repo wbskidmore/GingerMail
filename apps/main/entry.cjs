@@ -15,10 +15,110 @@
 // Electron-flavoured here (where interception works), stash the live module
 // objects on `globalThis`, then dynamic-import the ESM main entry.
 const path = require('node:path');
+const fs = require('node:fs');
 const { pathToFileURL } = require('node:url');
 
+// #region agent log
+function __gmDebugLog(hypothesisId, message, data) {
+  const payload = {
+    sessionId: '1f347e',
+    hypothesisId,
+    location: 'apps/main/entry.cjs',
+    message,
+    data,
+    timestamp: Date.now(),
+    runId: process.env.GM_DEBUG_RUN_ID || 'runtime',
+  };
+  try {
+    fetch('http://127.0.0.1:7282/ingest/00add4d2-85ba-45df-8ed2-ee74835f8d96', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-Debug-Session-Id': '1f347e' },
+      body: JSON.stringify(payload),
+    }).catch(() => {});
+  } catch {
+    /* ignore */
+  }
+  try {
+    fs.appendFileSync(
+      '/Users/blake.skidmore/Documents/GitHub/GingerMail2/.cursor/debug-1f347e.log',
+      JSON.stringify(payload) + '\n',
+    );
+  } catch {
+    /* packaged app may lack this path */
+  }
+}
+try {
+  const candidates = [
+    path.join(__dirname, 'node_modules', 'electron-log'),
+    path.join(__dirname, '..', '..', 'node_modules', 'electron-log'),
+    path.join(
+      __dirname,
+      'node_modules',
+      '.pnpm',
+      'electron-log@5.4.4',
+      'node_modules',
+      'electron-log',
+    ),
+  ];
+  const probe = candidates.map((p) => {
+    let exists = false;
+    let isSymlink = false;
+    let linkTarget = null;
+    try {
+      exists = fs.existsSync(p);
+      if (exists) {
+        try {
+          isSymlink = fs.lstatSync(p).isSymbolicLink();
+          if (isSymlink) linkTarget = fs.readlinkSync(p);
+        } catch {
+          /* asar may throw on lstat */
+        }
+      }
+    } catch (e) {
+      linkTarget = String(e && e.message ? e.message : e);
+    }
+    return { p, exists, isSymlink, linkTarget };
+  });
+  let resolved = null;
+  try {
+    resolved = require.resolve('electron-log');
+  } catch (e) {
+    resolved = { error: String(e && e.message ? e.message : e) };
+  }
+  __gmDebugLog('A', 'electron-log resolve probe before require', {
+    dirname: __dirname,
+    probe,
+    resolved,
+  });
+} catch (e) {
+  __gmDebugLog('A', 'electron-log probe failed', { error: String(e && e.message ? e.message : e) });
+}
+// #endregion
+
 const electron = require('electron');
-const electronLog = require('electron-log');
+let electronLog;
+try {
+  electronLog = require('electron-log');
+  // #region agent log
+  __gmDebugLog('A', 'electron-log require succeeded', {
+    resolved: (() => {
+      try {
+        return require.resolve('electron-log');
+      } catch {
+        return null;
+      }
+    })(),
+  });
+  // #endregion
+} catch (err) {
+  // #region agent log
+  __gmDebugLog('A', 'electron-log require FAILED', {
+    error: String(err && err.message ? err.message : err),
+    code: err && err.code,
+  });
+  // #endregion
+  throw err;
+}
 const log = electronLog && electronLog.default ? electronLog.default : electronLog;
 
 const g = globalThis;

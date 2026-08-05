@@ -17,14 +17,22 @@ files:
   - 'packages/*/dist/**'
   - 'packages/*/package.json'
   - 'package.json'
-  # Dependency tree. WITHOUT these globs electron-builder ships zero
-  # node_modules and entry.cjs crashes with `Cannot find module
+  # Dependency tree. WITHOUT the root node_modules glob electron-builder
+  # ships zero deps and entry.cjs crashes with `Cannot find module
   # 'electron-log'` on first launch (we hit this between v1.0.0 builds).
-  # electron-builder follows pnpm symlinks correctly when both the
-  # per-app node_modules dir AND the hoisted .pnpm store are listed.
+  #
+  # IMPORTANT: do NOT include apps/*/node_modules or packages/*/node_modules.
+  # Under pnpm those dirs are almost entirely symlinks into
+  # node_modules/.pnpm/... . electron-builder preserves the link targets in
+  # the asar but does not pack the .pnpm store, so
+  # require('electron-log') from apps/main/entry.cjs resolves
+  # apps/main/node_modules/electron-log -> missing
+  # node_modules/.pnpm/electron-log@… and crashes with ENOENT on a clean
+  # machine. Root node_modules/** is unpacked with real files (symlinks
+  # followed), which is what Node walks up to once the nested dirs are gone.
   - 'node_modules/**'
-  - 'apps/main/node_modules/**'
-  - 'packages/*/node_modules/**'
+  - '!apps/*/node_modules/**'
+  - '!packages/*/node_modules/**'
   # Exclusions: source maps and tests bloat the package and may leak
   # internal paths. Native bindings are kept (they live under
   # node_modules/<pkg>/build/Release/*.node and are matched by the
