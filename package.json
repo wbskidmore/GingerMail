@@ -7,6 +7,14 @@
   "license": "PolyForm-Noncommercial-1.0.0",
   "type": "module",
   "packageManager": "pnpm@9.0.0",
+  "pnpm": {
+    "overrides": {
+      "builder-util-runtime": ">=9.7.0",
+      "js-yaml": ">=4.3.0",
+      "nodemailer": "$nodemailer",
+      "undici": ">=7.29.0"
+    }
+  },
   "engines": {
     "node": ">=20"
   },

@@ -150,8 +150,13 @@ describe('CloudAiClient Gemini dispatch', () => {
       'gemini-1.5-flash',
       'google',
     );
-    await expect(client.chat({ messages: [{ role: 'user', content: 'x' }] })).rejects.toThrow(
-      /SAFETY/,
-    );
+    let err: unknown;
+    try {
+      await client.chat({ messages: [{ role: 'user', content: 'x' }] });
+    } catch (e) {
+      err = e;
+    }
+    expect(err).toBeTruthy();
+    expect(err instanceof Error ? err.message : String(err)).toMatch(/SAFETY/);
   });
 });

@@ -340,100 +340,18 @@ export class OllamaClient implements AiClient {
     onProgress: (evt: { status: string; completed?: number; total?: number }) => void,
   ): Promise<void> {
     const pullUrl = `${this.baseUrl.replace(/\/$/, '')}/api/pull`;
-    // #region agent log
-    const __dbg = (location: string, message: string, data: Record<string, unknown>): void => {
-      const err = data.error as { message?: string; name?: string; cause?: unknown } | undefined;
-      const cause = err?.cause as
-        | { code?: string; message?: string; errno?: number; syscall?: string }
-        | undefined;
-      const payload =
-        data.error instanceof Error
-          ? {
-              ...data,
-              error: {
-                name: err?.name,
-                message: err?.message,
-                causeCode: cause?.code,
-                causeMessage: cause?.message,
-                causeErrno: cause?.errno,
-                causeSyscall: cause?.syscall,
-              },
-            }
-          : data;
-      fetch('http://127.0.0.1:7282/ingest/00add4d2-85ba-45df-8ed2-ee74835f8d96', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'X-Debug-Session-Id': '107cf1' },
-        body: JSON.stringify({
-          sessionId: '107cf1',
-          location,
-          message,
-          data: payload,
-          timestamp: Date.now(),
-        }),
-      }).catch(() => {});
-    };
-    __dbg('client.ts:pullModel-entry', 'pullModel called', {
-      hypothesis: 'A,D,E',
-      pullUrl,
-      name,
-      baseUrl: this.baseUrl,
+    const r = await fetch(pullUrl, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ name, stream: true }),
     });
-    // #endregion
-    let r: Response;
-    try {
-      r = await fetch(pullUrl, {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ name, stream: true }),
-      });
-    } catch (e) {
-      // #region agent log
-      __dbg('client.ts:pullModel-fetch-throw', 'initial fetch rejected', {
-        hypothesis: 'A,E',
-        pullUrl,
-        error: e,
-      });
-      // #endregion
-      throw e;
-    }
-    // #region agent log
-    __dbg('client.ts:pullModel-fetch-ok', 'initial fetch returned', {
-      hypothesis: 'A,B,C',
-      status: r.status,
-      ok: r.ok,
-      hasBody: Boolean(r.body),
-    });
-    // #endregion
     if (!r.ok || !r.body) throw new Error(`Pull failed: ${r.status} ${r.statusText}`);
     const reader = r.body.getReader();
     const decoder = new TextDecoder();
     let buf = '';
-    let __lines = 0;
     for (;;) {
-      let chunk: ReadableStreamReadResult<Uint8Array>;
-      try {
-        chunk = await reader.read();
-      } catch (e) {
-        // #region agent log
-        __dbg('client.ts:pullModel-read-throw', 'stream read rejected mid-pull', {
-          hypothesis: 'B,C',
-          linesProcessed: __lines,
-          error: e,
-        });
-        // #endregion
-        throw e;
-      }
-      const { value, done } = chunk;
-      if (done) {
-        // #region agent log
-        __dbg('client.ts:pullModel-stream-done', 'stream completed normally', {
-          hypothesis: 'B',
-          linesProcessed: __lines,
-        });
-        // #endregion
-        break;
-      }
-      __lines++;
+      const { value, done } = await reader.read();
+      if (done) break;
       buf += decoder.decode(value, { stream: true });
       const lines = buf.split('\n');
       buf = lines.pop() ?? '';
@@ -447,23 +365,16 @@ export class OllamaClient implements AiClient {
             total?: number;
             error?: string;
           };
-          if (evt.error) {
-            // #region agent log
-            __dbg('client.ts:pullModel-stream-error', 'ollama reported error in stream', {
-              hypothesis: 'F',
-              ollamaError: evt.error,
-            });
-            // #endregion
-            throw new Error(evt.error);
-          }
+          if (evt.error) throw new Error(evt.error);
           onProgress({
             status: evt.status ?? 'pulling',
             completed: evt.completed,
             total: evt.total,
           });
         } catch (e) {
-          // Swallow malformed lines so a single bad chunk doesn't abort the pull.
-          if (e instanceof Error && e.message && !e.message.includes('JSON')) throw e;
+          // Swallow malformed NDJSON lines only; propagate server errors and pull failures.
+          if (e instanceof SyntaxError) continue;
+          throw e;
         }
       }
     }

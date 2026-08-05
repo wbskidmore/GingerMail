@@ -19,7 +19,6 @@ import {
 import { modals } from '@mantine/modals';
 import { notifications } from '@mantine/notifications';
 import {
-  IconCalendar,
   IconCalendarPlus,
   IconChevronLeft,
   IconChevronRight,
@@ -31,7 +30,6 @@ import {
   IconUsers,
 } from '@tabler/icons-react';
 import type { Calendar, CalendarEvent } from '@gingermail/core';
-import { EmptyState } from '@gingermail/ui-kit';
 import { getApi } from '../ipcBridge.js';
 import { EventComposer } from './EventComposer.js';
 
@@ -98,7 +96,7 @@ export function CalendarTab() {
   const handleDelete = (event: CalendarEvent): void => {
     modals.openConfirmModal({
       title: 'Delete event',
-      children: <Text size="sm">Delete "{event.title}"? This cannot be undone.</Text>,
+      children: <Text size="sm">{`Delete "${event.title}"? This cannot be undone.`}</Text>,
       labels: { confirm: 'Delete', cancel: 'Cancel' },
       confirmProps: { color: 'red' },
       onConfirm: () => {
@@ -501,7 +499,7 @@ function EmptyDayView({ view, anchor }: { view: ViewMode; anchor: Date }) {
     days.push(d);
   }
   const today = new Date();
-  
+
   return (
     <ScrollArea h="100%">
       <Box
@@ -602,4 +600,3 @@ function sameDay(a: Date, b: Date): boolean {
     a.getDate() === b.getDate()
   );
 }
-

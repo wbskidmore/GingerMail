@@ -5,8 +5,7 @@ import { afterEach, vi } from 'vitest';
  * Global test setup. Loaded by every package's vitest run.
  *
  * - matchMedia / ResizeObserver are required by Mantine (jsdom only).
- * - We lazy-require @testing-library/react inside the afterEach so this file
- *   stays usable in pure-Node test environments (packages/core, providers).
+ * - DOM cleanup for jsdom lives in test/setup-dom.ts (renderer + ui-kit).
  */
 
 if (typeof window !== 'undefined') {
@@ -37,14 +36,8 @@ if (typeof window !== 'undefined') {
   }
 }
 
-afterEach(async () => {
+afterEach(() => {
   if (typeof document !== 'undefined') {
-    try {
-      const { cleanup } = await import('@testing-library/react');
-      cleanup();
-    } catch {
-      // @testing-library/react isn't installed in this package - that's fine.
-    }
     document.documentElement.className = '';
     delete document.documentElement.dataset['theme'];
     delete document.documentElement.dataset['density'];

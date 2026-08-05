@@ -40,7 +40,6 @@ import { SlackOAuthFlow } from './oauth/slack.js';
 import { getBuildConfig } from './config.js';
 import { getRateLimitConfig } from './rateLimitConfig.js';
 import type { UpdaterController } from './autoUpdater.js';
-import type { RateLimitConfig } from '@gingermail/providers';
 
 export class AppContext {
   db!: GingerMailDb;

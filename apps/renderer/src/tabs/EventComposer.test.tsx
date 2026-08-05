@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { cleanup, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MantineProvider } from '@mantine/core';
 import { Notifications } from '@mantine/notifications';
@@ -45,17 +45,18 @@ describe('EventComposer', () => {
     updateEvent.mockReset().mockImplementation(async (e) => e);
   });
 
+  afterEach(() => {
+    cleanup();
+  });
+
   it('builds a create payload with title, guests, reminders, and the local account', async () => {
     const user = userEvent.setup();
-    render(
-      wrap(
-        <EventComposer opened calendars={[]} onClose={() => {}} onSaved={() => {}} />,
-      ),
-    );
+    render(wrap(<EventComposer opened calendars={[]} onClose={() => {}} onSaved={() => {}} />));
 
-    await user.type(screen.getByPlaceholderText('Add a title'), 'Launch review');
-    await user.type(screen.getByPlaceholderText(/add guest email/i), 'ada@x.com{enter}');
-    await user.click(screen.getByRole('button', { name: /create event/i }));
+    const dialog = screen.getByRole('dialog');
+    await user.type(within(dialog).getByPlaceholderText('Add a title'), 'Launch review');
+    await user.type(within(dialog).getByPlaceholderText(/add guest email/i), 'ada@x.com{enter}');
+    await user.click(within(dialog).getByRole('button', { name: /create event/i }));
 
     await waitFor(() => expect(createEvent).toHaveBeenCalledTimes(1));
     const payload = createEvent.mock.calls[0]![0];
@@ -84,10 +85,11 @@ describe('EventComposer', () => {
       ),
     );
 
-    const title = screen.getByPlaceholderText('Add a title');
+    const dialog = screen.getByRole('dialog');
+    const title = within(dialog).getByPlaceholderText('Add a title');
     await user.clear(title);
     await user.type(title, 'New title');
-    await user.click(screen.getByRole('button', { name: /save changes/i }));
+    await user.click(within(dialog).getByRole('button', { name: /save changes/i }));
 
     await waitFor(() => expect(updateEvent).toHaveBeenCalledTimes(1));
     const payload = updateEvent.mock.calls[0]![0];

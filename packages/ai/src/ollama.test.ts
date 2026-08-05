@@ -85,7 +85,14 @@ describe('OllamaClient.pullModel', () => {
     }) as unknown as typeof global.fetch;
     try {
       const c = new OllamaClient('http://x', 'missing');
-      await expect(c.pullModel('missing', () => {})).rejects.toThrow(/model not found/);
+      let err: unknown;
+      try {
+        await c.pullModel('missing', () => {});
+      } catch (e) {
+        err = e;
+      }
+      expect(err).toBeTruthy();
+      expect(err instanceof Error ? err.message : String(err)).toMatch(/model not found/);
     } finally {
       global.fetch = original;
     }
