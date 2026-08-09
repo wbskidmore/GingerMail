@@ -64,7 +64,7 @@
     "@gingermail/providers": "workspace:*",
     "@gingermail/storage": "workspace:*",
     "@microsoft/microsoft-graph-client": "^3.0.7",
-    "dompurify": "^3.4.12",
+    "dompurify": "^3.4.13",
     "electron-log": "^5.4.4",
     "electron-updater": "^6.8.9",
     "googleapis": "^173.0.0",
